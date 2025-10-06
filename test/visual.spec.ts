@@ -129,6 +129,7 @@ describe('Visual mode operations', () => {
 
     // User sets color to index 5
     eng.handleKey({ key: '6' }); // count 6
+    eng.handleKey({ key: 'g' });
     eng.handleKey({ key: 'c' }); // select color (index 5, because count-1)
     assert.equal(eng.currentColorIndex, 5);
 
@@ -178,6 +179,7 @@ describe('Visual mode operations', () => {
 
     // User sets color to index 5
     eng.handleKey({ key: '6' }); // count 6
+    eng.handleKey({ key: 'g' });
     eng.handleKey({ key: 'c' }); // select color (index 5, because count-1)
     assert.equal(eng.currentColorIndex, 5);
 

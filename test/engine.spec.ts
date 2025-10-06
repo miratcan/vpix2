@@ -96,6 +96,7 @@ describe('VPixEngine', () => {
   it('[count] c selects color index', () => {
     const eng = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
     eng.handleKey({ key: '3' });
+    eng.handleKey({ key: 'g' });
     eng.handleKey({ key: 'c' });
     assert.equal(eng.currentColorIndex, 2);
   });
@@ -137,5 +138,118 @@ describe('VPixEngine', () => {
     assert.equal((eng as any).axis, 'vertical');
     eng.handleKey({ key: 'Tab' });
     assert.equal((eng as any).axis, 'horizontal');
+  });
+
+  it('axis-aware word motions respect run boundaries', () => {
+    const eng = new VPixEngine({ width: 6, height: 6, palette: pico.colors });
+    const row = eng.grid[0];
+    [row[0], row[1], row[2], row[3], row[4], row[5]] = [1, 1, null, null, 2, 2];
+
+    eng.cursor = { x: 0, y: 0 };
+    eng.handleKey({ key: 'w' });
+    assert.equal(eng.cursor.x, 2);
+    eng.handleKey({ key: 'w' });
+    assert.equal(eng.cursor.x, 4);
+    eng.handleKey({ key: 'b' });
+    assert.equal(eng.cursor.x, 2);
+    eng.handleKey({ key: 'e' });
+    assert.equal(eng.cursor.x, 3);
+    eng.cursor = { x: 4, y: 0 };
+    eng.handleKey({ key: 'g' });
+    eng.handleKey({ key: 'e' });
+    assert.equal(eng.cursor.x, 3);
+
+    for (let y = 0; y < 6; y += 1) {
+      eng.grid[y][0] = y < 2 ? 7 : y < 4 ? null : 5;
+    }
+    eng.setAxis('vertical');
+    eng.cursor = { x: 0, y: 0 };
+    eng.handleKey({ key: 'w' });
+    assert.equal(eng.cursor.y, 2);
+    eng.handleKey({ key: 'w' });
+    assert.equal(eng.cursor.y, 4);
+    eng.handleKey({ key: 'b' });
+    assert.equal(eng.cursor.y, 2);
+    eng.handleKey({ key: 'e' });
+    assert.equal(eng.cursor.y, 3);
+    eng.cursor = { x: 0, y: 4 };
+    eng.handleKey({ key: 'g' });
+    eng.handleKey({ key: 'e' });
+    assert.equal(eng.cursor.y, 3);
+  });
+
+  it('gg and G jump to canvas bounds based on axis', () => {
+    const eng = new VPixEngine({ width: 5, height: 4, palette: pico.colors });
+    eng.cursor = { x: 3, y: 2 };
+    eng.handleKey({ key: 'g' });
+    eng.handleKey({ key: 'g' });
+    assert.deepEqual(eng.cursor, { x: 0, y: 2 });
+    eng.handleKey({ key: 'G' });
+    assert.deepEqual(eng.cursor, { x: 4, y: 2 });
+
+    eng.setAxis('vertical');
+    eng.cursor = { x: 2, y: 1 };
+    eng.handleKey({ key: 'g' });
+    eng.handleKey({ key: 'g' });
+    assert.deepEqual(eng.cursor, { x: 2, y: 0 });
+    eng.handleKey({ key: 'G' });
+    assert.deepEqual(eng.cursor, { x: 2, y: 3 });
+  });
+
+  it('operator motions delete and change along axis', () => {
+    const eng = new VPixEngine({ width: 6, height: 1, palette: pico.colors });
+    const row = eng.grid[0];
+    [row[0], row[1], row[2], row[3], row[4], row[5]] = [1, 1, null, null, 2, 2];
+
+    eng.cursor = { x: 0, y: 0 };
+    eng.handleKey({ key: 'd' });
+    eng.handleKey({ key: 'w' });
+    assert.deepEqual(row.slice(0, 6), [null, null, null, null, 2, 2]);
+    assert.equal(eng.cursor.x, 0);
+
+    eng.handleKey({ key: 'w' });
+    eng.handleKey({ key: '.' });
+    assert.deepEqual(row.slice(0, 6), [null, null, null, null, null, null]);
+
+    const engChange = new VPixEngine({ width: 4, height: 1, palette: pico.colors });
+    const rowChange = engChange.grid[0];
+    [rowChange[0], rowChange[1], rowChange[2], rowChange[3]] = [3, 3, 4, 4];
+    engChange.cursor = { x: 0, y: 0 };
+    engChange.handleKey({ key: 'c' });
+    engChange.handleKey({ key: 'w' });
+    assert.deepEqual(rowChange.slice(0, 4), [null, null, 4, 4]);
+    assert.equal(engChange.mode, MODES.INSERT);
+
+    const engDeleteToEnd = new VPixEngine({ width: 4, height: 1, palette: pico.colors });
+    const rowEnd = engDeleteToEnd.grid[0];
+    [rowEnd[0], rowEnd[1], rowEnd[2], rowEnd[3]] = [5, 5, 6, 6];
+    engDeleteToEnd.cursor = { x: 1, y: 0 };
+    engDeleteToEnd.handleKey({ key: 'D' });
+    assert.deepEqual(rowEnd.slice(0, 4), [5, null, null, null]);
+  });
+
+  it('repeat last action replays toggles and deletes', () => {
+    const eng = new VPixEngine({ width: 4, height: 1, palette: pico.colors });
+    eng.handleKey({ key: ' ' });
+    eng.cursor = { x: 1, y: 0 };
+    eng.handleKey({ key: '.' });
+    assert.ok(eng.grid[0][1] != null);
+
+    eng.grid[0].splice(0, 4, 1, 1, null, null);
+    eng.cursor = { x: 0, y: 0 };
+    eng.handleKey({ key: 'd' });
+    eng.handleKey({ key: 'w' });
+    eng.cursor = { x: 2, y: 0 };
+    eng.handleKey({ key: '.' });
+    assert.deepEqual(eng.grid[0].slice(0, 4), [null, null, null, null]);
+  });
+
+  it('u and Ctrl-r act as undo/redo aliases', () => {
+    const eng = new VPixEngine({ width: 2, height: 1, palette: pico.colors });
+    eng.paint();
+    eng.handleKey({ key: 'u' });
+    assert.equal(eng.grid[0][0], null);
+    eng.handleKey({ key: 'r', ctrlKey: true });
+    assert.ok(eng.grid[0][0] != null);
   });
 });

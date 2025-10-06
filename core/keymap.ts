@@ -113,25 +113,55 @@ function scopeForMode(mode: number): BindingScope {
 
 export function dispatchKey(engine: VPixEngine, evt: EventLike) {
   const prefix = engine.prefix ?? null;
+  const pendingOperator = engine.pendingOperator;
 
-  if (engine.mode === MODES.NORMAL && !prefix && !evt.ctrlKey && !evt.metaKey && /^\d$/.test(evt.key)) {
+  if (pendingOperator && evt.key === 'Escape') {
+    engine.clearPendingOperator();
+    engine.clearPrefix();
+    return 'operator.cancel';
+  }
+
+  const isDigit = /^\d$/.test(evt.key);
+  const isLeadingZero = evt.key === '0' && !engine.hasCount();
+  if (engine.mode === MODES.NORMAL && !prefix && !evt.ctrlKey && !evt.metaKey && isDigit && !isLeadingZero) {
     engine.pushCountDigit(evt.key);
     return `count:${evt.key}`;
   }
 
   const count = engine.countValue();
-  engine.clearCount();
+  let shouldClearCount = true;
 
   const globalBinding = findBinding('global', engine, evt, prefix, count);
   if (globalBinding) {
-    return runBinding(globalBinding, engine, evt, prefix, count);
+    if (globalBinding.command === 'prefix.set') shouldClearCount = false;
+    const result = runBinding(globalBinding, engine, evt, prefix, count);
+    if (shouldClearCount) engine.clearCount();
+    return result;
   }
 
   const scope = scopeForMode(engine.mode);
   const binding = findBinding(scope, engine, evt, prefix, count);
   if (binding) {
-    return runBinding(binding, engine, evt, prefix, count);
+    if (binding.command === 'prefix.set') shouldClearCount = false;
+    if (pendingOperator && binding.command.startsWith('motion.')) {
+      const ctx: BindingContext = { engine, event: evt, prefix, count };
+      const args = binding.args ? binding.args(ctx) ?? {} : {};
+      const motionCount = typeof (args as any).count === 'number' ? Number((args as any).count) : count;
+      const result = runCommand(engine, 'operator.apply-with-motion', {
+        motionId: binding.command,
+        count: motionCount,
+      });
+      if (result && typeof (result as any).then === 'function') {
+        (result as Promise<unknown>).catch(() => {});
+      }
+      if (shouldClearCount) engine.clearCount();
+      return binding.command;
+    }
+    const output = runBinding(binding, engine, evt, prefix, count);
+    if (shouldClearCount) engine.clearCount();
+    return output;
   }
 
+  if (shouldClearCount) engine.clearCount();
   return undefined;
 }
