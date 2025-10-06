@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import type VPixEngine from '../../../core/engine';
+import { MODES } from '../../../core/engine';
+import { COLOR_THEME } from '../../theme/colors';
 import './CanvasGrid.css';
 
 type Props = {
@@ -16,6 +18,9 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
   const panX = pan?.x ?? 0;
   const panY = pan?.y ?? 0;
   const cellSize = useMemo(() => Math.max(1, Math.floor(16 * (zoom || 1))), [zoom]);
+  const isInsertMode = engine.mode === MODES.INSERT;
+  const gridClassName = isInsertMode ? 'canvas-grid insert-mode' : 'canvas-grid';
+  const { canvasBackground, gridLine, accent, cursorHighlight } = COLOR_THEME;
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
@@ -41,7 +46,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
       const vx = Math.floor(offsetX + x * cell);
       const vy = Math.floor(offsetY + y * cell);
       if (vx + cell < 0 || vy + cell < 0 || vx >= viewW || vy >= viewH) return;
-      ctx.fillStyle = '#0b0b0b';
+      ctx.fillStyle = canvasBackground;
       ctx.fillRect(vx, vy, cell, cell);
       const colorIndex = engine.grid[y][x];
       if (colorIndex != null) {
@@ -54,7 +59,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
     };
 
     // Always full redraw - simpler and bug-free
-    ctx.fillStyle = '#0b0b0b';
+    ctx.fillStyle = canvasBackground;
     ctx.fillRect(0, 0, viewW, viewH);
     for (let y = 0; y < engine.height; y++) {
       for (let x = 0; x < engine.width; x++) drawCell(x, y);
@@ -93,7 +98,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
     const clipBottom = Math.min(viewH, Math.ceil(gridBottom));
 
     if (clipRight > clipLeft && clipBottom > clipTop) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.strokeStyle = gridLine;
       ctx.lineWidth = 1;
       for (let x = 0; x <= engine.width; x++) {
         const vx = Math.floor(offsetX + x * cell) + 0.5;
@@ -127,7 +132,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
       const sw = (x2 - x1 + 1) * cell;
       const sh = (y2 - y1 + 1) * cell;
       if (sx + sw >= 0 && sy + sh >= 0 && sx <= viewW && sy <= viewH) {
-        ctx.strokeStyle = '#00e1ff';
+        ctx.strokeStyle = accent;
         ctx.lineWidth = 2;
         ctx.strokeRect(Math.floor(sx) + 0.5, Math.floor(sy) + 0.5, Math.floor(sw), Math.floor(sh));
       }
@@ -136,14 +141,14 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
     const cx = offsetX + engine.cursor.x * cell;
     const cy = offsetY + engine.cursor.y * cell;
     if (cx + cell >= 0 && cy + cell >= 0 && cx <= viewW && cy <= viewH) {
-      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.strokeStyle = cursorHighlight;
       ctx.lineWidth = 1;
       ctx.strokeRect(Math.floor(cx) + 0.5, Math.floor(cy) + 0.5, Math.max(1, cell - 1), Math.max(1, cell - 1));
     }
   }, [cellSize, engine, frame, panX, panY]);
 
   return (
-    <div className="canvas-grid">
+    <div className={gridClassName}>
       <div className="canvas-layer-stack">
         <canvas ref={baseRef} className="canvas-base" width={800} height={480} />
         <canvas ref={overlayRef} className="canvas-overlay" width={800} height={480} />

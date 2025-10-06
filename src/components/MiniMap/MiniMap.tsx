@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import type VPixEngine from '../../../core/engine';
+import { COLOR_THEME } from '../../theme/colors';
 import './MiniMap.css';
 
 type Props = {
@@ -14,6 +15,7 @@ type Props = {
 
 export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, frame = 0 }: Props) {
   const ref = useRef<HTMLCanvasElement | null>(null);
+  const { canvasBackground, accent } = COLOR_THEME;
   useEffect(() => {
     // Skip drawing in jsdom test environment (no canvas impl)
     if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
@@ -32,7 +34,7 @@ export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, f
 
     const drawCell = (x, y) => {
       const px = x * cell, py = y * cell;
-      ctx.fillStyle = '#0b0b0b';
+      ctx.fillStyle = canvasBackground;
       ctx.fillRect(px, py, cell, cell);
       const colorIndex = engine.grid[y][x];
       if (colorIndex != null) {
@@ -42,7 +44,7 @@ export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, f
     };
 
     // Always full redraw
-    ctx.fillStyle = '#0b0b0b';
+    ctx.fillStyle = canvasBackground;
     ctx.fillRect(0, 0, w, h);
     for (let y = 0; y < engine.height; y++) {
       for (let x = 0; x < engine.width; x++) drawCell(x, y);
@@ -55,7 +57,7 @@ export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, f
     const ry = Math.max(0, Math.min(engine.height, (pan?.y || 0))) * cell;
     const rw = Math.min(engine.width, visWcells) * cell;
     const rh = Math.min(engine.height, visHcells) * cell;
-    ctx.strokeStyle = '#00e1ff';
+    ctx.strokeStyle = accent;
     ctx.lineWidth = 2;
     ctx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
   }, [engine, pan, zoom, viewW, viewH, frame]);
