@@ -74,8 +74,16 @@ Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
 - Test eklemeden davranış değiştirme: Kaçın.
 - Engine’e dış bağımlılık ekleme: Kaçın (DI ile çöz).
 
+**Adlandırma Rehberi**
+- React bileşenleri ve stilleri: PascalCase klasör/dosya (örn. `src/components/CanvasGrid/CanvasGrid.tsx`, `CanvasGrid.css`).
+- Bileşen testleri (co-located): `ComponentName.spec.tsx` (örn. `Grid.spec.tsx`).
+- Çekirdek ve servis modülleri: kebab-case (örn. `core/services/palette-service.ts`, `core/url.ts`).
+- Genel testler (`test/` altında): kebab-case `*.spec.ts` kabul edilebilir.
+- Hook dosyaları: `useX.ts(x)` (örn. `src/hooks/useEngine.ts`).
+- Tür/ad sabitleri: Mevcut modülün adlandırmasını takip eder; ekstra önek/sonek eklemeyin.
+
 ## Çalıştırma
 - Dev: `npm run dev`
-- Test (unit): `npm test` (Mocha)
-- Test (ui): `npm run test:ui` (Vitest + jsdom)
+- Test: `npm test` (Vitest)
+- Test (watch): `npm run test:watch`
 - Build: `npm run build`

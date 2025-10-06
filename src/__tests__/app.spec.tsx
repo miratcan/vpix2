@@ -22,4 +22,16 @@ describe('App keyboard flows', () => {
     expect(swatches.length).toBeGreaterThan(11);
     expect(active).toBe(swatches[10]);
   });
+
+  it('Tab toggles axis and StatusBar updates', async () => {
+    const ui = render(<App />);
+    const container = ui.container.querySelector('.vpix-container');
+    container.focus();
+    const axisCell = () => ui.container.querySelector('.axis-symbol');
+    expect(axisCell().textContent).toBe('-');
+    await userEvent.keyboard('{Tab}');
+    expect(axisCell().textContent).toBe('|');
+    await userEvent.keyboard('{Tab}');
+    expect(axisCell().textContent).toBe('-');
+  });
 });

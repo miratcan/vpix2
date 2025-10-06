@@ -46,9 +46,9 @@ describe('VPixEngine', () => {
     eng.paint();
     eng.handleKey({ key: 'l' });
     eng.handleKey({ key: 'l' });
-    assert.ok(eng.grid[0][0]);
-    assert.ok(eng.grid[0][1]);
-    assert.ok(eng.grid[0][2]);
+    assert.ok(eng.grid[0][0] != null);
+    assert.ok(eng.grid[0][1] != null);
+    assert.ok(eng.grid[0][2] != null);
     eng.handleKey({ key: 'Escape' });
     assert.equal(eng.mode, MODES.NORMAL);
   });
@@ -56,39 +56,41 @@ describe('VPixEngine', () => {
   it('erases with x in normal mode and Backspace in insert', () => {
     const eng = new VPixEngine({ width: 2, height: 1, palette: pico.colors });
     eng.paint();
-    assert.ok(eng.grid[0][0]);
+    assert.ok(eng.grid[0][0] != null);
     eng.handleKey({ key: 'x' });
     assert.equal(eng.grid[0][0], null);
     eng.handleKey({ key: 'i' });
     eng.paint();
-    assert.ok(eng.grid[0][0]);
+    assert.ok(eng.grid[0][0] != null);
     eng.handleKey({ key: 'Backspace' });
     assert.equal(eng.grid[0][0], null);
   });
 
   it('undo/redo works for paint/erase', () => {
     const eng = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
-    eng.paint('#ff0000');
-    const color1 = eng.grid[0][0];
+    eng.paint();
+    const colorIndex1 = eng.grid[0][0];
     eng.erase();
     assert.equal(eng.grid[0][0], null);
     eng.undo();
-    assert.equal(eng.grid[0][0], color1);
+    assert.equal(eng.grid[0][0], colorIndex1);
     eng.redo();
     assert.equal(eng.grid[0][0], null);
   });
 
   it('serialize/deserialize roundtrips', () => {
     const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
-    eng.paint('#123456');
+    eng.setColorIndex(5);
+    eng.paint();
     eng.move(1, 0);
-    eng.paint('#abcdef');
+    eng.setColorIndex(7);
+    eng.paint();
     const json = eng.serialize();
     const clone = VPixEngine.deserialize(json);
     assert.equal(clone.width, 2);
     assert.equal(clone.height, 2);
-    assert.equal(clone.grid[0][0], '#123456');
-    assert.equal(clone.grid[0][1], '#abcdef');
+    assert.equal(clone.grid[0][0], 5);
+    assert.equal(clone.grid[0][1], 7);
   });
 
   it('[count] c selects color index', () => {
@@ -124,7 +126,16 @@ describe('VPixEngine', () => {
     const before = eng.currentColorIndex;
     eng.handleKey({ key: 'r' });
     eng.handleKey({ key: '1' });
-    assert.ok(eng.grid[0][0]);
+    assert.ok(eng.grid[0][0] != null);
     assert.equal(eng.currentColorIndex, before);
+  });
+
+  it('axis defaults to horizontal and toggles with Tab', () => {
+    const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+    assert.equal((eng as any).axis, 'horizontal');
+    eng.handleKey({ key: 'Tab' });
+    assert.equal((eng as any).axis, 'vertical');
+    eng.handleKey({ key: 'Tab' });
+    assert.equal((eng as any).axis, 'horizontal');
   });
 });

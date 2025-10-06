@@ -1,7 +1,6 @@
 // Key dispatch that routes to commands via the centralized registry
 
 import { runCommand } from './commands';
-import type VPixEngine from './engine';
 import { MODES } from './engine';
 import {
   KEYBINDINGS,
@@ -10,6 +9,8 @@ import {
   type BindingScope,
   type KeyBinding,
 } from './keybindings';
+
+import type VPixEngine from './engine';
 
 type EventLike = { key: string; ctrlKey?: boolean; shiftKey?: boolean; metaKey?: boolean };
 
@@ -77,7 +78,7 @@ function findBinding(
   engine: VPixEngine,
   evt: EventLike,
   prefix: string | null,
-  count: number,
+  _count: number,
 ): KeyBinding | undefined {
   const candidates = BINDINGS_BY_SCOPE[scope];
   for (const binding of candidates) {

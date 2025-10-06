@@ -3,7 +3,6 @@ import { useEffect, useRef } from 'react';
 import type VPixEngine from '../../../core/engine';
 import './MiniMap.css';
 
-type Rect = { x1: number; y1: number; x2: number; y2: number };
 type Props = {
   engine: VPixEngine;
   pan: { x: number; y: number };
@@ -11,10 +10,9 @@ type Props = {
   viewW?: number;
   viewH?: number;
   frame?: number;
-  dirtyRects?: Rect[] | null;
 };
 
-export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, frame = 0, dirtyRects = null }: Props) {
+export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, frame = 0 }: Props) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     // Skip drawing in jsdom test environment (no canvas impl)
@@ -36,11 +34,14 @@ export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, f
       const px = x * cell, py = y * cell;
       ctx.fillStyle = '#0b0b0b';
       ctx.fillRect(px, py, cell, cell);
-      const color = engine.grid[y][x];
-      if (color) { ctx.fillStyle = color; ctx.fillRect(px, py, cell, cell); }
+      const colorIndex = engine.grid[y][x];
+      if (colorIndex != null) {
+        const color = engine.palette[colorIndex];
+        if (color) { ctx.fillStyle = color; ctx.fillRect(px, py, cell, cell); }
+      }
     };
 
-    // Always full redraw (minimap small, favors correctness over micro-optim)
+    // Always full redraw
     ctx.fillStyle = '#0b0b0b';
     ctx.fillRect(0, 0, w, h);
     for (let y = 0; y < engine.height; y++) {

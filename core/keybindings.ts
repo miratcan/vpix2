@@ -28,6 +28,7 @@ export const KEYBINDINGS: KeyBinding[] = [
   { scope: 'global', key: 'ctrl+y', command: 'history.redo', description: 'Redo last action' },
   { scope: 'global', key: 'ctrl+6', command: 'palette.swap-last-color', description: 'Swap to last used color' },
   { scope: 'global', key: 'ctrl+^', command: 'palette.swap-last-color', description: 'Swap to last used color' },
+  { scope: 'global', key: 'Tab', command: 'axis.toggle', description: 'Toggle axis (horizontal/vertical)' },
 
   // Normal mode bindings
   {
@@ -72,10 +73,10 @@ export const KEYBINDINGS: KeyBinding[] = [
   {
     scope: 'normal',
     key: 'x',
-    command: 'paint.erase',
+    command: 'paint.cut',
     when: 'no-prefix',
     args: ({ count }) => ({ count: clampCount(count) }),
-    description: 'Erase cell(s)',
+    description: 'Cut cell(s) (delete and yank)',
   },
   {
     scope: 'normal',
@@ -84,6 +85,20 @@ export const KEYBINDINGS: KeyBinding[] = [
     when: 'no-prefix',
     args: ({ count }) => ({ count: clampCount(count) }),
     description: 'Toggle cell(s)',
+  },
+  {
+    scope: 'normal',
+    key: 'p',
+    command: 'clipboard.paste',
+    when: 'no-prefix',
+    description: 'Paste at cursor',
+  },
+  {
+    scope: 'normal',
+    key: 'P',
+    command: 'clipboard.paste-transparent',
+    when: 'no-prefix',
+    description: 'Paste at cursor (transparent)',
   },
   {
     scope: 'normal',
@@ -236,7 +251,8 @@ export const KEYBINDINGS: KeyBinding[] = [
     description: 'Expand selection to the right',
   },
   { scope: 'visual', key: 'y', command: 'selection.yank', description: 'Yank selection' },
-  { scope: 'visual', key: 'd', command: 'selection.delete', description: 'Delete selection' },
+  { scope: 'visual', key: 'd', command: 'selection.delete', description: 'Delete selection (cut)' },
+  { scope: 'visual', key: 'x', command: 'selection.delete', description: 'Delete selection (cut)' },
   { scope: 'visual', key: 'p', command: 'selection.paste', description: 'Paste at cursor' },
   { scope: 'visual', key: 'P', command: 'selection.paste-transparent', description: 'Paste (transparent)' },
   { scope: 'visual', key: ']', command: 'selection.rotate-cw', description: 'Rotate clipboard clockwise' },

@@ -1,0 +1,7 @@
+- Bir komutu yazip enter a bastigimda komut calisiyor ancak text input temizlenmiyor. komut orada kaliyor.
+- exit komutu calismiyor (terminali kapatmasini bekliyorum)
+- v modu kutu secerken arkasinda kir birakiyor. secimi genisletir sonra kucultur isem buyuk secimden kucuge dogru olan butun cizgiler canvasta kaliyor. (bence komple redraw lazim ya da ayri bir katman gibi dusunup secim yaparken o katmani render etmek gerek ya da belki baska bir sey sen oner)
+- canvas uzerindeki piksel kutularini cizen cizgiler imaj boyutu bitse bile devam ediyor. yani en ve boy cizgileri ekran sonuna kadar ciziliyor.
+- cikti vermeyen terminal komutlari set vs gibi. calistiktan sonra direkt terminali kapatmali.
+- fill komutu ile bir secimi doldurursam preview ekranindaki tum resmin doldugunu goruyorum. sanki ikisi de iki farkli kaynaktan calisiyor gibi. preview ekrani single source of truth olarak calismali oysa.
+-

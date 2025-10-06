@@ -66,6 +66,28 @@ type CommandDefinition = {
 
 const COMMAND_DEFINITIONS: CommandDefinition[] = [
   {
+    id: 'axis.toggle',
+    summary: 'Toggle movement axis (horizontal/vertical)',
+    handler: ({ engine }) => {
+      engine.toggleAxis();
+    },
+    patterns: [
+      { pattern: 'axis toggle', help: 'axis toggle' },
+    ],
+  },
+  {
+    id: 'axis.set',
+    summary: 'Set movement axis explicitly',
+    handler: ({ engine }, { value }) => {
+      const v = String(value);
+      if (v === 'horizontal' || v === 'vertical') engine.setAxis(v as any);
+    },
+    patterns: [
+      { pattern: 'axis set {value:oneof[horizontal|vertical]}', help: 'axis set <horizontal|vertical>' },
+    ],
+    hidden: false,
+  },
+  {
     id: 'canvas.set-width',
     summary: 'Set canvas width',
     handler: ({ engine }, { value }) => {
@@ -322,6 +344,18 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
     ],
   },
   {
+    id: 'paint.cut',
+    summary: 'Cut cells (delete and yank to clipboard)',
+    handler: ({ engine }, { count }) => {
+      const times = Math.max(1, Number(count ?? 1));
+      for (let i = 0; i < times; i += 1) engine.cut();
+    },
+    patterns: [
+      { pattern: 'cut', help: 'cut', mapArgs: () => ({ count: 1 }) },
+      { pattern: 'cut {count:int[1..512]}', help: 'cut <count>' },
+    ],
+  },
+  {
     id: 'paint.toggle',
     summary: 'Toggle cells',
     handler: ({ engine }, { count }) => {
@@ -358,8 +392,9 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
     summary: 'Paint using palette color index',
     handler: ({ engine }, { index }) => {
       const paletteIndex = Math.max(1, Number(index ?? 1)) - 1;
-      const color = engine.palette[paletteIndex];
-      if (color) engine.paint(color);
+      if (paletteIndex >= 0 && paletteIndex < engine.palette.length) {
+        engine.paint(paletteIndex);
+      }
       engine.clearPrefix();
     },
     patterns: [{ pattern: 'paint color {index:int[1..512]}', help: 'paint color <index>' }],
@@ -476,6 +511,24 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
     patterns: [{ pattern: 'selection paste-transparent', help: 'selection paste-transparent' }],
   },
   {
+    id: 'clipboard.paste',
+    summary: 'Paste clipboard at cursor (normal mode)',
+    handler: ({ engine }) => {
+      engine.pasteAtCursor();
+      engine.clearPrefix();
+    },
+    patterns: [{ pattern: 'paste', help: 'paste' }],
+  },
+  {
+    id: 'clipboard.paste-transparent',
+    summary: 'Paste clipboard transparently (normal mode)',
+    handler: ({ engine }) => {
+      engine.pasteAtCursorTransparent();
+      engine.clearPrefix();
+    },
+    patterns: [{ pattern: 'paste transparent', help: 'paste transparent' }],
+  },
+  {
     id: 'selection.rotate-cw',
     summary: 'Rotate clipboard clockwise',
     handler: ({ engine }) => {
@@ -505,7 +558,7 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
     id: 'selection.fill',
     summary: 'Fill selection with current color',
     handler: ({ engine }) => {
-      engine.fillSelection(engine.color);
+      engine.fillSelection();
       engine.exitVisual();
       engine.clearPrefix();
     },
@@ -515,7 +568,7 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
     id: 'selection.stroke-rect',
     summary: 'Stroke selection rectangle',
     handler: ({ engine }) => {
-      engine.strokeRectSelection(engine.color);
+      engine.strokeRectSelection();
       engine.exitVisual();
       engine.clearPrefix();
     },
@@ -526,7 +579,7 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
     summary: 'Draw line between selection anchor and cursor',
     handler: ({ engine }) => {
       const snapshot = engine.selection;
-      engine.drawLine(snapshot.anchor, engine.cursor, engine.color);
+      engine.drawLine(snapshot.anchor, engine.cursor);
       engine.exitVisual();
       engine.clearPrefix();
     },
@@ -536,7 +589,7 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
     id: 'selection.flood-fill',
     summary: 'Flood fill selection area',
     handler: ({ engine }) => {
-      engine.floodFill(engine.cursor.x, engine.cursor.y, engine.color);
+      engine.floodFill(engine.cursor.x, engine.cursor.y);
       engine.exitVisual();
       engine.clearPrefix();
     },

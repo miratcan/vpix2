@@ -25,6 +25,7 @@
     "@typescript-eslint/eslint-plugin": "^8.45.0",
     "@typescript-eslint/parser": "^8.45.0",
     "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/coverage-v8": "^2.1.9",
     "chai": "^5.1.2",
     "eslint": "^9.36.0",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -34,6 +35,7 @@
     "globals": "^16.4.0",
     "jsdom": "^25.0.1",
     "mocha": "^10.7.3",
+    "ts-prune": "^0.10.3",
     "typescript": "^5.9.3",
     "vite": "^7.1.7",
     "vitest": "^2.1.4"

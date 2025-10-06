@@ -13,6 +13,14 @@ export default function StatusBar({ engine, zoom, pan }: Props) {
             <td>{engine.mode}</td>
           </tr>
           <tr>
+            <th scope="row">axis</th>
+            <td>
+              <span className="axis-symbol" aria-label="axis">
+                {engine.axis === 'horizontal' ? '-' : '|'}
+              </span>
+            </td>
+          </tr>
+          <tr>
             <th scope="row">cursor</th>
             <td>({engine.cursor.x},{engine.cursor.y})</td>
           </tr>

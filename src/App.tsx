@@ -24,7 +24,7 @@ export default function App() {
     return new VPixEngine({ width: 32, height: 24, palette: colors });
   }, [paletteService]);
 
-  const { engine, frame, dirtyRects } = useEngine({ factory: engineFactory });
+  const { engine, frame } = useEngine({ factory: engineFactory });
 
   const documents = useMemo(() => new DocumentRepository(STORAGE_KEY), []);
   const shareLinks = useMemo(() => new ShareLinkService(), []);
@@ -117,7 +117,7 @@ export default function App() {
       return;
     }
     engine.handleKey({ key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
-    if (['h', 'j', 'k', 'l', ' ', 'Backspace'].includes(e.key)) e.preventDefault();
+    if (['h', 'j', 'k', 'l', ' ', 'Backspace', 'Tab'].includes(e.key)) e.preventDefault();
   }, [appendLines, cmdMode, documents, engine, openCommand, toggleTerminal]);
 
   return (
@@ -130,11 +130,11 @@ export default function App() {
       >
         <div className="main-area">
           <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
-          <CanvasGrid engine={engine} zoom={zoom} pan={pan} frame={frame} dirtyRects={dirtyRects} />
+          <CanvasGrid engine={engine} zoom={zoom} pan={pan} frame={frame} />
         </div>
         <div className="side-panel">
           <StatusBar engine={engine} zoom={zoom} pan={pan} />
-          <MiniMap engine={engine} pan={pan} zoom={zoom} viewW={800} viewH={480} frame={frame} dirtyRects={dirtyRects} />
+          <MiniMap engine={engine} pan={pan} zoom={zoom} viewW={800} viewH={480} frame={frame} />
         </div>
         {(showTerminal || cmdMode) && (
           <Terminal

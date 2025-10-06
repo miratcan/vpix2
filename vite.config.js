@@ -6,9 +6,14 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
-    include: ['src/__tests__/**/*.spec.{ts,tsx,js,jsx}', 'test/**/*.spec.{ts,js}'],
+    include: [
+      'src/__tests__/**/*.spec.{ts,tsx,js,jsx}',
+      'test/**/*.spec.{ts,js}',
+      'src/components/**/*.spec.{ts,tsx,js,jsx}'
+    ],
     environmentMatchGlobs: [
-      ['src/__tests__/**/*.spec.*', 'jsdom']
+      ['src/__tests__/**/*.spec.*', 'jsdom'],
+      ['src/components/**/*.spec.*', 'jsdom']
     ],
     setupFiles: ['test/setup.ts'],
   },

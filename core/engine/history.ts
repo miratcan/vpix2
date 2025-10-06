@@ -4,8 +4,8 @@ export type HistoryCell = {
   type: 'cell';
   x: number;
   y: number;
-  prev: string | null | undefined;
-  next: string | null | undefined;
+  prev: number | null | undefined;
+  next: number | null | undefined;
 };
 
 export type HistoryGroup = {

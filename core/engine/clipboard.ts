@@ -1,4 +1,4 @@
-export type ClipboardData = { w: number; h: number; cells: Array<Array<string | null>> };
+export type ClipboardData = { w: number; h: number; cells: Array<Array<number | null>> };
 
 export class ClipboardBuffer {
   private buffer: ClipboardData | null = null;
@@ -22,7 +22,7 @@ export class ClipboardBuffer {
   rotateCW() {
     if (!this.buffer) return;
     const { w, h, cells } = this.buffer;
-    const out = Array.from({ length: w }, () => Array<string | null>(h).fill(null));
+    const out = Array.from({ length: w }, () => Array<number | null>(h).fill(null));
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         out[x][h - 1 - y] = cells[y][x];
@@ -34,7 +34,7 @@ export class ClipboardBuffer {
   rotateCCW() {
     if (!this.buffer) return;
     const { w, h, cells } = this.buffer;
-    const out = Array.from({ length: w }, () => Array<string | null>(h).fill(null));
+    const out = Array.from({ length: w }, () => Array<number | null>(h).fill(null));
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         out[w - 1 - x][y] = cells[y][x];

@@ -1,7 +1,6 @@
 import { decodeFromParamV2, decodeFromParamV2R, encodeToParamV2R, parseVp2Meta } from '../url';
 import { PaletteService } from './palette-service';
-
-import type VPixEngine from '../engine';
+import VPixEngine from '../engine';
 
 export type HistoryLike = {
   replaceState(data: unknown, unused: string, url?: string | URL): void;
@@ -70,16 +69,16 @@ export class ShareLinkService {
     if (!qp2r && !qp2) return false;
     let decoded: VPixEngine | null = null;
     if (qp2r) {
-      decoded = decodeFromParamV2R(qp2r, (opts) => new VPixEngine(opts));
+decoded = decodeFromParamV2R(qp2r, VPixEngine);
     } else if (qp2) {
-      decoded = decodeFromParamV2(qp2, (opts) => new VPixEngine(opts));
+decoded = decodeFromParamV2(qp2, VPixEngine);
     }
     if (!decoded) {
       const meta = parseVp2Meta(qp2r || qp2 || '');
       if (meta?.slug) {
         await this.palettes.fetchPalette(meta.slug);
-        if (qp2r) decoded = decodeFromParamV2R(qp2r, (opts) => new VPixEngine(opts));
-        else if (qp2) decoded = decodeFromParamV2(qp2, (opts) => new VPixEngine(opts));
+if (qp2r) decoded = decodeFromParamV2R(qp2r, VPixEngine);
+        else if (qp2) decoded = decodeFromParamV2(qp2, VPixEngine);
       }
     }
     if (!decoded) return false;

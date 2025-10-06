@@ -8,10 +8,10 @@ import { HistoryManager, type HistoryCell, type HistoryGroup } from './history';
 import { SelectionManager } from './selection';
 import { MODES } from './types';
 
-import type { EngineChangePayload, EngineSnapshot, Mode, Point } from './types';
+import type { Axis, EngineChangePayload, EngineSnapshot, Mode, Point } from './types';
 
 export { MODES } from './types';
-export type { Mode, Rect, EngineSnapshot } from './types';
+export type { Mode, EngineSnapshot } from './types';
 
 export default class VPixEngine {
   private readonly events = new EngineEvents<VPixEngine>();
@@ -26,6 +26,7 @@ export default class VPixEngine {
   private _mode: Mode = MODES.NORMAL;
   private _countBuffer = '';
   private _prefix: 'g' | 'r' | null = null;
+  private _axis: Axis = 'horizontal';
 
   cursor: Point = { x: 0, y: 0 };
   lastColorIndex = 0;
@@ -83,6 +84,22 @@ export default class VPixEngine {
 
   clearPrefix() {
     this._prefix = null;
+  }
+
+  get axis(): Axis {
+    return this._axis;
+  }
+
+  setAxis(axis: Axis) {
+    if (axis !== 'horizontal' && axis !== 'vertical') return;
+    if (this._axis === axis) return;
+    this._axis = axis;
+    this.emit();
+  }
+
+  toggleAxis() {
+    this._axis = this._axis === 'horizontal' ? 'vertical' : 'horizontal';
+    this.emit();
   }
 
   get color() {
@@ -160,7 +177,6 @@ export default class VPixEngine {
 
   move(dx: number, dy: number, count = 1) {
     const steps = Math.max(1, count);
-    const prev = { x: this.cursor.x, y: this.cursor.y };
     let moved = false;
     for (let i = 0; i < steps; i++) {
       const nx = clamp(this.cursor.x + dx, 0, this.width - 1);
@@ -172,23 +188,17 @@ export default class VPixEngine {
       if (this._mode === MODES.INSERT) this.paint();
     }
     if (moved) {
-      const curr = { x: this.cursor.x, y: this.cursor.y };
-      this.emit({
-        changed: [
-          { x1: prev.x, y1: prev.y, x2: prev.x, y2: prev.y },
-          { x1: curr.x, y1: curr.y, x2: curr.x, y2: curr.y },
-        ],
-      });
+      this.emit();
     }
   }
 
-  paint(color: string = this.color) {
+  paint(colorIndex: number = this._currentColorIndex) {
     const { x, y } = this.cursor;
     const prev = this.gridState.getCell(x, y);
-    if (prev === color) return;
-    this.recordCell({ type: 'cell', x, y, prev, next: color });
-    this.gridState.writeCell(x, y, color);
-    this.emit({ changed: [{ x1: x, y1: y, x2: x, y2: y }] });
+    if (prev === colorIndex) return;
+    this.recordCell({ type: 'cell', x, y, prev, next: colorIndex });
+    this.gridState.writeCell(x, y, colorIndex);
+    this.emit();
   }
 
   erase() {
@@ -197,7 +207,19 @@ export default class VPixEngine {
     if (prev == null) return;
     this.recordCell({ type: 'cell', x, y, prev, next: null });
     this.gridState.writeCell(x, y, null);
-    this.emit({ changed: [{ x1: x, y1: y, x2: x, y2: y }] });
+    this.emit();
+  }
+
+  cut() {
+    const { x, y } = this.cursor;
+    const colorIndex = this.gridState.getCell(x, y);
+    if (colorIndex == null) return;
+
+    // Put single cell into clipboard
+    this.clipboard.store({ w: 1, h: 1, cells: [[colorIndex]] });
+
+    // Then erase it
+    this.erase();
   }
 
   toggle() {
@@ -214,8 +236,7 @@ export default class VPixEngine {
   endGroup() {
     const grp = this.history.endGroup();
     if (!grp) return;
-    if (grp.bounds) this.emit({ changed: [grp.bounds] });
-    else this.emit();
+    this.emit();
   }
 
   undo() {
@@ -223,7 +244,7 @@ export default class VPixEngine {
     if (!entry) return;
     if (entry.type === 'cell') {
       this.gridState.writeCell(entry.x, entry.y, entry.prev ?? null);
-      this.emit({ changed: [{ x1: entry.x, y1: entry.y, x2: entry.x, y2: entry.y }] });
+      this.emit();
       return;
     }
     this.applyGroup(entry, 'prev');
@@ -234,7 +255,7 @@ export default class VPixEngine {
     if (!entry) return;
     if (entry.type === 'cell') {
       this.gridState.writeCell(entry.x, entry.y, entry.next ?? null);
-      this.emit({ changed: [{ x1: entry.x, y1: entry.y, x2: entry.x, y2: entry.y }] });
+      this.emit();
       return;
     }
     this.applyGroup(entry, 'next');
@@ -251,6 +272,7 @@ export default class VPixEngine {
       palette: this._palette.slice(),
       currentColorIndex: this._currentColorIndex,
       grid: this.gridState.cloneGrid(),
+      axis: this._axis,
     };
   }
 
@@ -259,6 +281,7 @@ export default class VPixEngine {
     this._currentColorIndex = clamp(snapshot.currentColorIndex ?? 0, 0, Math.max(0, this._palette.length - 1));
     this.lastColorIndex = clamp(this.lastColorIndex, 0, Math.max(0, this._palette.length - 1));
     this.gridState.load(snapshot);
+    this._axis = snapshot.axis ?? 'horizontal';
     this.cursor.x = Math.min(this.cursor.x, this.width - 1);
     this.cursor.y = Math.min(this.cursor.y, this.height - 1);
     this.history = new HistoryManager();
@@ -279,20 +302,20 @@ export default class VPixEngine {
   }
 
   enterVisual() {
-    const rect = this.selectionManager.enter({ x: this.cursor.x, y: this.cursor.y });
+    this.selectionManager.enter({ x: this.cursor.x, y: this.cursor.y });
     this.setMode(MODES.VISUAL);
-    this.emit({ changed: [rect] });
+    this.emit();
   }
 
   exitVisual() {
-    const rect = this.selectionManager.exit();
+    this.selectionManager.exit();
     this.setMode(MODES.NORMAL);
-    if (rect) this.emit({ changed: [rect] });
+    this.emit();
   }
 
   updateSelectionRect() {
-    const union = this.selectionManager.update({ x: this.cursor.x, y: this.cursor.y });
-    if (union) this.emit({ changed: [union] });
+    this.selectionManager.update({ x: this.cursor.x, y: this.cursor.y });
+    this.emit();
   }
 
   yankSelection() {
@@ -390,37 +413,37 @@ export default class VPixEngine {
     this.endGroup();
   }
 
-  fillSelection(color: string) {
+  fillSelection(colorIndex: number = this._currentColorIndex) {
     const rect = this.selection.rect;
     if (!rect) return;
     this.beginGroup('fill');
     for (let y = rect.y1; y <= rect.y2; y++) {
       for (let x = rect.x1; x <= rect.x2; x++) {
         const prev = this.gridState.getCell(x, y);
-        if (prev === color) continue;
-        this.recordCell({ type: 'cell', x, y, prev, next: color });
-        this.gridState.writeCell(x, y, color);
+        if (prev === colorIndex) continue;
+        this.recordCell({ type: 'cell', x, y, prev, next: colorIndex });
+        this.gridState.writeCell(x, y, colorIndex);
       }
     }
     this.endGroup();
   }
 
-  strokeRectSelection(color: string) {
+  strokeRectSelection(colorIndex: number = this._currentColorIndex) {
     const rect = this.selection.rect;
     if (!rect) return;
     this.beginGroup('rect');
     for (let x = rect.x1; x <= rect.x2; x++) {
-      this.paintAt(x, rect.y1, color);
-      this.paintAt(x, rect.y2, color);
+      this.paintAt(x, rect.y1, colorIndex);
+      this.paintAt(x, rect.y2, colorIndex);
     }
     for (let y = rect.y1; y <= rect.y2; y++) {
-      this.paintAt(rect.x1, y, color);
-      this.paintAt(rect.x2, y, color);
+      this.paintAt(rect.x1, y, colorIndex);
+      this.paintAt(rect.x2, y, colorIndex);
     }
     this.endGroup();
   }
 
-  drawLine(a: Point | null, b: Point | null, color: string) {
+  drawLine(a: Point | null, b: Point | null, colorIndex: number = this._currentColorIndex) {
     if (!a || !b) return;
     this.beginGroup('line');
     let x0 = a.x;
@@ -433,7 +456,7 @@ export default class VPixEngine {
     const sy = y0 < y1 ? 1 : -1;
     let err = dx - dy;
     while (true) {
-      this.paintAt(x0, y0, color);
+      this.paintAt(x0, y0, colorIndex);
       if (x0 === x1 && y0 === y1) break;
       const e2 = 2 * err;
       if (e2 > -dy) {
@@ -448,22 +471,31 @@ export default class VPixEngine {
     this.endGroup();
   }
 
-  floodFill(x: number, y: number, color: string) {
+  floodFill(x: number, y: number, colorIndex: number = this._currentColorIndex) {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
     const target = this.gridState.getCell(x, y);
-    if (target === color) return;
+    if (target === colorIndex) return;
+
+    // If in visual mode, constrain flood fill to selection bounds
+    const bounds = this.selection.rect;
+    const minX = bounds ? bounds.x1 : 0;
+    const maxX = bounds ? bounds.x2 : this.width - 1;
+    const minY = bounds ? bounds.y1 : 0;
+    const maxY = bounds ? bounds.y2 : this.height - 1;
+
     this.beginGroup('flood');
     const q: Point[] = [{ x, y }];
     const seen = new Set<string>();
     const key = (xx: number, yy: number) => `${xx},${yy}`;
     while (q.length) {
       const { x: cx, y: cy } = q.pop()!;
-      if (cx < 0 || cy < 0 || cx >= this.width || cy >= this.height) continue;
+      // Respect both canvas bounds AND selection bounds
+      if (cx < minX || cy < minY || cx > maxX || cy > maxY) continue;
       const k = key(cx, cy);
       if (seen.has(k)) continue;
       seen.add(k);
       if (this.gridState.getCell(cx, cy) !== target) continue;
-      this.paintAt(cx, cy, color);
+      this.paintAt(cx, cy, colorIndex);
       q.push({ x: cx + 1, y: cy });
       q.push({ x: cx - 1, y: cy });
       q.push({ x: cx, y: cy + 1 });
@@ -472,12 +504,12 @@ export default class VPixEngine {
     this.endGroup();
   }
 
-  private paintAt(x: number, y: number, color: string | null) {
+  private paintAt(x: number, y: number, colorIndex: number | null) {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
     const prev = this.gridState.getCell(x, y);
-    if (prev === color) return;
-    this.recordCell({ type: 'cell', x, y, prev, next: color });
-    this.gridState.writeCell(x, y, color);
+    if (prev === colorIndex) return;
+    this.recordCell({ type: 'cell', x, y, prev, next: colorIndex });
+    this.gridState.writeCell(x, y, colorIndex);
   }
 
   private recordCell(entry: HistoryCell) {
@@ -489,7 +521,6 @@ export default class VPixEngine {
       const it = group.items[i];
       this.gridState.writeCell(it.x, it.y, (it as any)[key] ?? null);
     }
-    if (group.bounds) this.emit({ changed: [group.bounds] });
-    else this.emit();
+    this.emit();
   }
 }

@@ -8,7 +8,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import globals from 'globals'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'coverage']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -48,6 +48,7 @@ export default defineConfig([
           'eslint.config.js',
           'test/**',
           'src/__tests__/**',
+          'src/components/**/*.spec.*',
         ],
       }],
       'import/no-unresolved': 'error',
@@ -95,6 +96,7 @@ export default defineConfig([
           'eslint.config.js',
           'test/**',
           'src/__tests__/**',
+          'src/components/**/*.spec.*',
         ],
       }],
       'import/no-unresolved': 'error',

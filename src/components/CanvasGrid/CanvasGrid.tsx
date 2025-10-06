@@ -3,16 +3,14 @@ import { useEffect, useMemo, useRef } from 'react';
 import type VPixEngine from '../../../core/engine';
 import './CanvasGrid.css';
 
-type Rect = { x1: number; y1: number; x2: number; y2: number };
 type Props = {
   engine: VPixEngine;
   zoom?: number;
   pan?: { x: number; y: number };
   frame?: number;
-  dirtyRects?: Rect[] | null;
 };
 
-export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, frame = 0, dirtyRects = null }: Props) {
+export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, frame = 0 }: Props) {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const overlayRef = useRef<HTMLCanvasElement | null>(null);
   const panX = pan?.x ?? 0;
@@ -45,31 +43,23 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
       if (vx + cell < 0 || vy + cell < 0 || vx >= viewW || vy >= viewH) return;
       ctx.fillStyle = '#0b0b0b';
       ctx.fillRect(vx, vy, cell, cell);
-      const color = engine.grid[y][x];
-      if (color) {
-        ctx.fillStyle = color;
-        ctx.fillRect(vx, vy, cell, cell);
+      const colorIndex = engine.grid[y][x];
+      if (colorIndex != null) {
+        const color = engine.palette[colorIndex];
+        if (color) {
+          ctx.fillStyle = color;
+          ctx.fillRect(vx, vy, cell, cell);
+        }
       }
     };
 
-    if (dirtyRects && dirtyRects.length) {
-      for (const r of dirtyRects) {
-        const x1 = Math.max(0, r.x1);
-        const y1 = Math.max(0, r.y1);
-        const x2 = Math.min(engine.width - 1, r.x2);
-        const y2 = Math.min(engine.height - 1, r.y2);
-        for (let y = y1; y <= y2; y++) {
-          for (let x = x1; x <= x2; x++) drawCell(x, y);
-        }
-      }
-    } else {
-      ctx.fillStyle = '#0b0b0b';
-      ctx.fillRect(0, 0, viewW, viewH);
-      for (let y = 0; y < engine.height; y++) {
-        for (let x = 0; x < engine.width; x++) drawCell(x, y);
-      }
+    // Always full redraw - simpler and bug-free
+    ctx.fillStyle = '#0b0b0b';
+    ctx.fillRect(0, 0, viewW, viewH);
+    for (let y = 0; y < engine.height; y++) {
+      for (let x = 0; x < engine.width; x++) drawCell(x, y);
     }
-  }, [cellSize, dirtyRects, engine, panX, panY, frame]);
+  }, [cellSize, engine, panX, panY, frame]);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;

@@ -1,6 +1,11 @@
 import './Grid.css';
+import type VPixEngine from '../../../core/engine';
 
-export default function Grid({ engine }) {
+type Props = {
+  engine: VPixEngine;
+};
+
+export default function Grid({ engine }: Props) {
   const { grid, cursor, width, height } = engine;
   const size = 16; // px per cell
   const style = {
@@ -17,7 +22,7 @@ export default function Grid({ engine }) {
             <div
               key={`${x}-${y}`}
               className={`cell${isCursor ? ' cursor' : ''}`}
-              style={{ backgroundColor: cell || 'transparent' }}
+              style={{ backgroundColor: cell ?? 'transparent' }}
             />
           );
         })
@@ -25,4 +30,3 @@ export default function Grid({ engine }) {
     </div>
   );
 }
-
