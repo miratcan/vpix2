@@ -12,6 +12,7 @@ import StatusBar from './components/StatusBar/StatusBar';
 import Terminal from './components/Terminal/Terminal';
 import { useCommandConsole } from './hooks/useCommandConsole';
 import { useEngine } from './hooks/useEngine';
+import { FALLBACK_PALETTE } from './theme/colors';
 import './App.css';
 
 const STORAGE_KEY = 'vpix.document.v1';
@@ -20,7 +21,7 @@ export default function App() {
   const paletteService = useMemo(() => new PaletteService(), []);
   const engineFactory = useCallback(() => {
     const pico = paletteService.getPaletteBySlug('pico-8');
-    const colors = pico ? pico.colors : ['#000', '#fff'];
+    const colors = pico ? pico.colors : Array.from(FALLBACK_PALETTE);
     return new VPixEngine({ width: 32, height: 24, palette: colors });
   }, [paletteService]);
 

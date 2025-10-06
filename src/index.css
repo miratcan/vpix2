@@ -1,3 +1,7 @@
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  --color-background: #0b0b0b;
+  --color-accent: #00e1ff;
+}
 html, body, #root { height: 100%; margin: 0; }
-body { background: #0b0b0b; }
+body { background: var(--color-background); }
