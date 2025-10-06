@@ -17,7 +17,12 @@ function defaultStorage(): StorageLike | null {
   return null;
 }
 
-export class DocumentRepository {
+export interface IDocumentRepository {
+  load(): EngineSnapshot | null;
+  save(snapshot: EngineSnapshot): boolean;
+}
+
+export class DocumentRepository implements IDocumentRepository {
   private readonly storageProvider: () => StorageLike | null;
 
   constructor(private readonly storageKey: string, storage?: () => StorageLike | null) {

@@ -65,10 +65,12 @@ export function registerPalette(slug: string, colors: string[]) {
   return { slug: s, colors: REGISTRY.get(s)! };
 }
 
-export async function fetchPaletteFromLospec(slug: string) {
+export async function fetchPaletteFromLospec(slug: string, fetchImpl?: typeof fetch) {
   const s = normalizeSlug(slug);
   const url = `https://lospec.com/palette-list/${s}.json`;
-  const res = await fetch(url as any);
+  const fetcher = fetchImpl ?? (typeof fetch === 'function' ? fetch : undefined);
+  if (!fetcher) throw new Error('fetch unavailable');
+  const res = await fetcher(url as any);
   if (!(res as any).ok) throw new Error(`fetch failed ${(res as any).status}`);
   const data = await (res as any).json();
   if (!data || !Array.isArray(data.colors)) throw new Error('invalid palette json');
@@ -76,11 +78,13 @@ export async function fetchPaletteFromLospec(slug: string) {
   return registerPalette(s, colors);
 }
 
-export async function searchLospecPalettes(term: string) {
+export async function searchLospecPalettes(term: string, fetchImpl?: typeof fetch) {
   const q = String(term || '').trim().toLowerCase();
   if (!q) return [] as string[];
   try {
-    const res = await fetch('https://lospec.com/palette-list.json' as any);
+    const fetcher = fetchImpl ?? (typeof fetch === 'function' ? fetch : undefined);
+    if (!fetcher) return [] as string[];
+    const res = await fetcher('https://lospec.com/palette-list.json' as any);
     if (!(res as any).ok) return [] as string[];
     const arr = await (res as any).json();
     return (arr as any[])

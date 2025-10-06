@@ -1,23 +1,9 @@
 // URL encode/decode (vp2/vp2r) using LoSpec palette slug + bit-packed pixels
 import { getPaletteByName, normalizeSlug } from './palettes';
+import { base64UrlDecodeToBytes, base64UrlEncode } from './url/base64url';
+import { fromB62, toB62 } from './url/base62';
 
 import type VPixEngine from './engine';
-
-const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-const toB62 = (n: number) => { let x = Math.max(0, n | 0); if (x === 0) return '0'; let s = ''; while (x > 0) { s = B62[x % 62] + s; x = Math.floor(x / 62); } return s; };
-const fromB62 = (s: string) => { let n = 0; for (const ch of s) { const v = B62.indexOf(ch); if (v < 0) throw new Error('bad base62'); n = n * 62 + v; } return n; };
-
-function base64UrlEncode(bytes: Uint8Array) {
-  if (typeof Buffer !== 'undefined') return Buffer.from(bytes).toString('base64').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
-  let s = ''; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
-  const b64 = (typeof btoa === 'function' ? btoa(s) : '').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
-  return b64;
-}
-function base64UrlDecodeToBytes(str: string) {
-  const b64 = str.replace(/-/g,'+').replace(/_/g,'/');
-  if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(b64, 'base64'));
-  const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out;
-}
 
 export function parseVp2Meta(value: string) {
   const s = (value || '').trim(); if (!s.startsWith('vp2;')) return null;

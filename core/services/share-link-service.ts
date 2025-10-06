@@ -1,5 +1,5 @@
 import { decodeFromParamV2, decodeFromParamV2R, encodeToParamV2R, parseVp2Meta } from '../url';
-import { PaletteService } from './palette-service';
+import { PaletteService, type IPaletteService } from './palette-service';
 import VPixEngine from '../engine';
 
 export type HistoryLike = {
@@ -43,17 +43,25 @@ function defaultClipboard(): ClipboardLike | null {
   }
 }
 
-export class ShareLinkService {
+export interface IShareLinkService {
+  loadFromLocation(engine: VPixEngine): Promise<boolean>;
+  generatePayload(engine: VPixEngine): string;
+  buildUrl(engine: VPixEngine): string;
+  updateHistory(engine: VPixEngine): { ok: boolean; msg: string };
+  copyLink(engine: VPixEngine): Promise<{ ok: boolean; msg: string }>;
+}
+
+export class ShareLinkService implements IShareLinkService {
   private readonly locate: LocationProvider;
   private readonly history: HistoryLike | null;
   private readonly clipboard: ClipboardLike | null;
-  private readonly palettes: PaletteService;
+  private readonly palettes: IPaletteService;
 
   constructor(deps: {
     locate?: LocationProvider;
     history?: HistoryLike | null;
     clipboard?: ClipboardLike | null;
-    palettes?: PaletteService;
+    palettes?: IPaletteService;
   } = {}) {
     this.locate = deps.locate ?? defaultLocation;
     this.history = deps.history ?? defaultHistory();

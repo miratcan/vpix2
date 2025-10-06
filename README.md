@@ -43,7 +43,7 @@ Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
   - Undo gruplama: `beginGroup/endGroup` (fill/line/rect/flood/paste/move/delete)
 - `core/keymap.ts`: Mod‑bazlı tuş dağıtımı (NORMAL/INSERT/VISUAL).
 - `core/url.ts`: `encodeToParamV2R/decodeFromParamV2R` (vp2r) + yardımcılar.
-- `core/commands.ts`: Komut yürütücü (`DocumentRepository`/`ShareLinkService` ile SSOT). 
+- `core/commands/`: Komut yürütücüsü ve alan bazlı modüller (`DocumentRepository`/`ShareLinkService` ile SSOT).
 - `core/services/*`: Ortak altyapı (paylaşım linki, yerel depolama, palet yönetimi).
 - `src/hooks/*`: Motor yaşam döngüsü (`useEngine`) ve terminal (`useCommandConsole`).
 - `src/components/*`: UI, render ve kompozisyon (CanvasGrid, MiniMap, Palette, StatusBar).
