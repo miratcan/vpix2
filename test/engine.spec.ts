@@ -1,5 +1,6 @@
-import { describe, it } from 'vitest';
 import { strict as assert } from 'node:assert';
+import { describe, it } from 'vitest';
+
 import VPixEngine, { MODES } from '../core/engine';
 import { getPaletteByName } from '../core/palettes';
 

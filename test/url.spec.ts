@@ -1,5 +1,6 @@
-import { describe, it } from 'vitest';
 import { strict as assert } from 'node:assert';
+import { describe, it } from 'vitest';
+
 import VPixEngine from '../core/engine';
 import { getPaletteByName } from '../core/palettes';
 import { encodeToParamV2, decodeFromParamV2, encodeToParamV2R, decodeFromParamV2R } from '../core/url';
@@ -8,7 +9,7 @@ describe('URL encode/decode', () => {
   it('vp2: encodes with palette slug + bit packing and decodes', () => {
     const pico = getPaletteByName('pico-8')!;
     const eng = new VPixEngine({ width: 3, height: 2, palette: pico.colors });
-    eng.palette = [...pico.colors];
+    eng.setPalette([...pico.colors]);
     eng.setColorIndex(2);
     eng.paint();
     eng.move(1, 0); eng.paint();

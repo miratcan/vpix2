@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+
 import type VPixEngine from '../../../core/engine';
 import './CanvasGrid.css';
 

@@ -20,10 +20,11 @@ Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
 
 ### SOLID
 - SRP (Single Responsibility):
-  - `core/engine.mjs`: State + patch üretimi + undo/redo gruplama.
-  - `core/keymap.mjs`: Mod/tuş → eylem dağıtımı (engine.handleKey delegasyonu).
-  - `core/url.mjs`: vp2/vp2r encode/decode, base62 vb.
-  - `core/palettes.mjs`: Palet kayıt/indirme (UI katmanından çağrılır).
+  - `core/engine/`: GridState, HistoryManager, SelectionManager, EngineEvents ile orkestrasyon yapan `VPixEngine`.
+  - `core/keymap.ts`: Mod/tuş → eylem dağıtımı (`engine.handleKey` delegasyonu).
+  - `core/url.ts`: vp2/vp2r encode/decode, base62 vb.
+  - `core/services/*`: Paylaşımlı servisler (`DocumentRepository`, `ShareLinkService`, `PaletteService`).
+  - `core/palettes.ts`: Palet kayıt/indirme (UI katmanından çağrılır).
 - OCP (Open/Closed): Yeni tuş/komut eklemek için keymap’e satır eklemek yeterli; engine göbeği değişmez.
 - LSP/ISP: Hücre rengi `null|string`; patch API yalnızca “cell” değişimlerini taşır. UI, sadece ihtiyaç duyduğu arayüzlere bağımlıdır (renderer/command).
 - DIP (Dependency Inversion): Engine dış bağımlılık içermez; varsayılan palet DI ile `App`’ten verilir.
@@ -36,13 +37,15 @@ Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
 ## Uygulama Rehberi
 
 ### Modül Sınırları
-- `core/engine.mjs`:
+- `core/engine/`:
   - Zorunlu DI: `new VPixEngine({ width, height, palette })` — palette dışarıdan gelir.
-  - Patch üretimi: `paint/erase/move/visual ops/undo/redo` → `_emit({ changed: Rect[] })`
+  - Patch üretimi: `paint/erase/move/visual ops/undo/redo` → `EngineEvents.emit({ changed: Rect[] })`
   - Undo gruplama: `beginGroup/endGroup` (fill/line/rect/flood/paste/move/delete)
-- `core/keymap.mjs`: Mod‑bazlı tuş dağıtımı (NORMAL/INSERT/VISUAL).
-- `core/url.mjs`: `encodeToParamV2R/decodeFromParamV2R` (vp2r) + yardımcılar.
-- `core/commands.mjs`: Komut yürütücü (palette use/fetch/list/search, set size/W/H, read/read json/url, link/copylink UI tarafında).
+- `core/keymap.ts`: Mod‑bazlı tuş dağıtımı (NORMAL/INSERT/VISUAL).
+- `core/url.ts`: `encodeToParamV2R/decodeFromParamV2R` (vp2r) + yardımcılar.
+- `core/commands.ts`: Komut yürütücü (`DocumentRepository`/`ShareLinkService` ile SSOT). 
+- `core/services/*`: Ortak altyapı (paylaşım linki, yerel depolama, palet yönetimi).
+- `src/hooks/*`: Motor yaşam döngüsü (`useEngine`) ve terminal (`useCommandConsole`).
 - `src/components/*`: UI, render ve kompozisyon (CanvasGrid, MiniMap, Palette, StatusBar).
 
 ### Render Stratejisi

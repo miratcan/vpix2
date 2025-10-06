@@ -1,6 +1,7 @@
 // URL encode/decode (vp2/vp2r) using LoSpec palette slug + bit-packed pixels
-import type VPixEngine from './engine';
 import { getPaletteByName, normalizeSlug } from './palettes';
+
+import type VPixEngine from './engine';
 
 const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const toB62 = (n: number) => { let x = Math.max(0, n | 0); if (x === 0) return '0'; let s = ''; while (x > 0) { s = B62[x % 62] + s; x = Math.floor(x / 62); } return s; };

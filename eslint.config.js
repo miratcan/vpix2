@@ -1,11 +1,11 @@
 import js from '@eslint/js'
-import globals from 'globals'
+import tsPlugin from '@typescript-eslint/eslint-plugin'
+import tsParser from '@typescript-eslint/parser'
+import { defineConfig, globalIgnores } from 'eslint/config'
+import pluginImport from 'eslint-plugin-import'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
-import tsParser from '@typescript-eslint/parser'
-import tsPlugin from '@typescript-eslint/eslint-plugin'
-import pluginImport from 'eslint-plugin-import'
-import { defineConfig, globalIgnores } from 'eslint/config'
+import globals from 'globals'
 
 export default defineConfig([
   globalIgnores(['dist']),
@@ -45,6 +45,7 @@ export default defineConfig([
       'import/no-extraneous-dependencies': ['warn', {
         devDependencies: [
           'vite.config.js',
+          'eslint.config.js',
           'test/**',
           'src/__tests__/**',
         ],
@@ -91,6 +92,7 @@ export default defineConfig([
       'import/no-extraneous-dependencies': ['warn', {
         devDependencies: [
           'vite.config.js',
+          'eslint.config.js',
           'test/**',
           'src/__tests__/**',
         ],
