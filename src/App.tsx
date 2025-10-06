@@ -89,7 +89,12 @@ export default function App() {
     }
     if (e.key === '+') { setZoom((z) => Math.min(8, z * 1.25)); e.preventDefault(); return; }
     if (e.key === '-') { setZoom((z) => Math.max(0.25, z / 1.25)); e.preventDefault(); return; }
-    if (e.key === '0') { setZoom(1); setPan({ x: 0, y: 0 }); e.preventDefault(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === '0') {
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      e.preventDefault();
+      return;
+    }
     if (e.shiftKey && ['h', 'j', 'k', 'l'].includes(e.key)) {
       const step = 2;
       if (e.key === 'h') setPan((p) => ({ ...p, x: p.x - step }));

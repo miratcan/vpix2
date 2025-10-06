@@ -10,8 +10,27 @@ import { MODES } from './types';
 
 import type { Axis, EngineChangePayload, EngineSnapshot, Mode, Point } from './types';
 
+export type OperatorKind = 'delete' | 'yank' | 'change';
+type MotionKind =
+  | 'word-next'
+  | 'word-prev'
+  | 'word-end-next'
+  | 'word-end-prev'
+  | 'line-begin'
+  | 'line-first-nonblank'
+  | 'line-end'
+  | 'canvas-begin'
+  | 'canvas-end';
+
+type AxisSegment = { axis: Axis; fixed: number; start: number; end: number };
+type MotionResolution = { target: Point; axis: Axis; exclusive: boolean; moved: boolean };
+type PendingOperator = { op: OperatorKind; count: number };
+
 export { MODES } from './types';
 export type { Mode, EngineSnapshot } from './types';
+export type { MotionResolution };
+export type { AxisSegment };
+export type { MotionKind };
 
 export default class VPixEngine {
   private readonly events = new EngineEvents<VPixEngine>();
@@ -27,6 +46,8 @@ export default class VPixEngine {
   private _countBuffer = '';
   private _prefix: 'g' | 'r' | null = null;
   private _axis: Axis = 'horizontal';
+  private _pendingOperator: PendingOperator | null = null;
+  private lastAction: (() => void) | null = null;
 
   cursor: Point = { x: 0, y: 0 };
   lastColorIndex = 0;
@@ -86,6 +107,30 @@ export default class VPixEngine {
     this._prefix = null;
   }
 
+  get pendingOperator(): PendingOperator | null {
+    return this._pendingOperator;
+  }
+
+  setPendingOperator(op: OperatorKind, count = 1) {
+    this._pendingOperator = { op, count: Math.max(1, count | 0) };
+    this.emit();
+  }
+
+  clearPendingOperator() {
+    if (!this._pendingOperator) return;
+    this._pendingOperator = null;
+    this.emit();
+  }
+
+  recordLastAction(action: ((engine: VPixEngine) => void) | null) {
+    this.lastAction = action ? () => action(this) : null;
+  }
+
+  repeatLastAction() {
+    if (!this.lastAction) return;
+    this.lastAction();
+  }
+
   get axis(): Axis {
     return this._axis;
   }
@@ -117,6 +162,10 @@ export default class VPixEngine {
   countValue() {
     const n = parseInt(this._countBuffer || '1', 10);
     return Number.isNaN(n) ? 1 : clamp(n, 1, 9999);
+  }
+
+  hasCount() {
+    return this._countBuffer.length > 0;
   }
 
   clearCount() {
@@ -502,6 +551,281 @@ export default class VPixEngine {
       q.push({ x: cx, y: cy - 1 });
     }
     this.endGroup();
+  }
+
+  resolveMotion(motion: MotionKind, count = 1, from: Point = this.cursor): MotionResolution {
+    const axis = this._axis;
+    const steps = Math.max(1, count | 0);
+    const axisLength = this.getAxisLength(axis);
+    const fixed = this.getAxisFixed(from, axis);
+    let pos = this.clampAxisPosition(this.getAxisPosition(from, axis), axis);
+    let moved = false;
+    let exclusive = false;
+
+    const toPoint = (axisPos: number): Point =>
+      axis === 'horizontal' ? { x: axisPos, y: clamp(fixed, 0, this.height - 1) } : { x: clamp(fixed, 0, this.width - 1), y: axisPos };
+
+    const clampLine = (value: number) => clamp(value, 0, axisLength - 1);
+
+    switch (motion) {
+      case 'word-next': {
+        exclusive = true;
+        for (let i = 0; i < steps; i += 1) {
+          const next = this.findNextRunStart(axis, fixed, pos);
+          if (next === pos) break;
+          pos = clampLine(next);
+          moved = true;
+        }
+        break;
+      }
+      case 'word-prev': {
+        for (let i = 0; i < steps; i += 1) {
+          const prev = this.findPreviousRunStart(axis, fixed, pos);
+          if (prev === pos) break;
+          pos = clampLine(prev);
+          moved = true;
+        }
+        break;
+      }
+      case 'word-end-next': {
+        for (let i = 0; i < steps; i += 1) {
+          const end = this.findRunEnd(axis, fixed, pos);
+          if (end !== pos) moved = true;
+          pos = clampLine(end);
+          if (i < steps - 1) {
+            const next = this.findNextRunStart(axis, fixed, pos);
+            if (next === pos) break;
+            pos = clampLine(next);
+          }
+        }
+        break;
+      }
+      case 'word-end-prev': {
+        for (let i = 0; i < steps; i += 1) {
+          const prevStart = this.findPreviousRunStart(axis, fixed, pos);
+          if (prevStart === pos) break;
+          const prevEnd = this.findRunEnd(axis, fixed, prevStart);
+          pos = clampLine(prevEnd);
+          moved = true;
+        }
+        break;
+      }
+      case 'line-begin': {
+        pos = 0;
+        moved = pos !== this.getAxisPosition(from, axis);
+        break;
+      }
+      case 'line-first-nonblank': {
+        const first = this.findFirstNonBlank(axis, fixed);
+        pos = first ?? 0;
+        moved = pos !== this.getAxisPosition(from, axis);
+        break;
+      }
+      case 'line-end': {
+        pos = axisLength - 1;
+        moved = pos !== this.getAxisPosition(from, axis);
+        break;
+      }
+      case 'canvas-begin': {
+        if (axis === 'horizontal') {
+          pos = 0;
+          moved = pos !== this.getAxisPosition(from, axis);
+        } else {
+          pos = 0;
+          moved = pos !== this.getAxisPosition(from, axis);
+        }
+        break;
+      }
+      case 'canvas-end': {
+        if (axis === 'horizontal') {
+          pos = axisLength - 1;
+          moved = pos !== this.getAxisPosition(from, axis);
+        } else {
+          pos = axisLength - 1;
+          moved = pos !== this.getAxisPosition(from, axis);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+
+    return { target: toPoint(pos), axis, exclusive, moved };
+  }
+
+  applyMotion(motion: MotionKind, count = 1) {
+    const result = this.resolveMotion(motion, count);
+    this.cursor.x = result.target.x;
+    this.cursor.y = result.target.y;
+    if (result.moved) {
+      this.emit();
+    }
+    return result;
+  }
+
+  computeOperatorSegment(start: Point, motion: MotionResolution): AxisSegment | null {
+    const axis = motion.axis;
+    const startPos = this.getAxisPosition(start, axis);
+    const targetPos = this.getAxisPosition(motion.target, axis);
+    const fixed = this.getAxisFixed(start, axis);
+    if (!motion.moved && motion.exclusive) {
+      return null;
+    }
+    let from = startPos;
+    let to = targetPos;
+    if (motion.exclusive && startPos !== targetPos) {
+      if (targetPos > startPos) to = targetPos - 1;
+      else if (targetPos < startPos) from = targetPos + 1;
+    }
+    if (motion.exclusive && startPos === targetPos) {
+      return null;
+    }
+    const segStart = Math.min(from, to);
+    const segEnd = Math.max(from, to);
+    if (segEnd < segStart) return null;
+    return {
+      axis,
+      fixed,
+      start: this.clampAxisPosition(segStart, axis),
+      end: this.clampAxisPosition(segEnd, axis),
+    };
+  }
+
+  createSegmentFromOffsets(axis: Axis, fixed: number, anchor: number, startOffset: number, endOffset: number): AxisSegment {
+    const start = anchor + Math.min(startOffset, endOffset);
+    const end = anchor + Math.max(startOffset, endOffset);
+    return {
+      axis,
+      fixed,
+      start: this.clampAxisPosition(start, axis),
+      end: this.clampAxisPosition(end, axis),
+    };
+  }
+
+  applySegmentValue(segment: AxisSegment, value: number | null, label: string) {
+    const { start, end } = segment;
+    const len = end - start + 1;
+    if (len <= 0) return false;
+    this.history.beginGroup(label);
+    let changed = false;
+    this.forEachSegmentCell(segment, (x, y) => {
+      const prev = this.gridState.getCell(x, y);
+      if (prev === value) return;
+      changed = true;
+      this.recordCell({ type: 'cell', x, y, prev, next: value });
+      this.gridState.writeCell(x, y, value);
+    });
+    const grp = this.history.endGroup();
+    if (grp) this.emit();
+    return changed;
+  }
+
+  deleteSegment(segment: AxisSegment) {
+    return this.applySegmentValue(segment, null, 'operator.delete');
+  }
+
+  paintSegment(segment: AxisSegment, colorIndex: number) {
+    return this.applySegmentValue(segment, colorIndex, 'operator.paint');
+  }
+
+  yankSegment(segment: AxisSegment) {
+    const { axis, fixed, start, end } = segment;
+    const len = end - start + 1;
+    if (len <= 0) return;
+    if (axis === 'horizontal') {
+      const cells = [Array.from({ length: len }, (_, i) => this.gridState.getCell(start + i, fixed))];
+      this.clipboard.store({ w: len, h: 1, cells });
+    } else {
+      const cells = Array.from({ length: len }, (_, i) => [this.gridState.getCell(fixed, start + i)]);
+      this.clipboard.store({ w: 1, h: len, cells });
+    }
+  }
+
+  private getAxisLength(axis: Axis) {
+    return axis === 'horizontal' ? this.width : this.height;
+  }
+
+  private getAxisPosition(point: Point, axis: Axis) {
+    return axis === 'horizontal' ? point.x : point.y;
+  }
+
+  private getAxisFixed(point: Point, axis: Axis) {
+    return axis === 'horizontal' ? point.y : point.x;
+  }
+
+  private clampAxisPosition(pos: number, axis: Axis) {
+    const length = this.getAxisLength(axis);
+    return clamp(pos, 0, Math.max(0, length - 1));
+  }
+
+  private getAxisCell(axis: Axis, fixed: number, pos: number) {
+    if (axis === 'horizontal') {
+      return this.gridState.getCell(pos, clamp(fixed, 0, this.height - 1));
+    }
+    return this.gridState.getCell(clamp(fixed, 0, this.width - 1), pos);
+  }
+
+  private findRunEnd(axis: Axis, fixed: number, pos: number) {
+    let idx = this.clampAxisPosition(pos, axis);
+    const length = this.getAxisLength(axis);
+    const type = this.getAxisCell(axis, fixed, idx);
+    while (idx + 1 < length) {
+      const nextIdx = idx + 1;
+      const nextType = this.getAxisCell(axis, fixed, nextIdx);
+      if (nextType !== type) break;
+      idx = nextIdx;
+    }
+    return idx;
+  }
+
+  private findRunStart(axis: Axis, fixed: number, pos: number) {
+    let idx = this.clampAxisPosition(pos, axis);
+    const type = this.getAxisCell(axis, fixed, idx);
+    while (idx - 1 >= 0) {
+      const prevIdx = idx - 1;
+      const prevType = this.getAxisCell(axis, fixed, prevIdx);
+      if (prevType !== type) break;
+      idx = prevIdx;
+    }
+    return idx;
+  }
+
+  private findNextRunStart(axis: Axis, fixed: number, pos: number) {
+    const end = this.findRunEnd(axis, fixed, pos);
+    const length = this.getAxisLength(axis);
+    if (end >= length - 1) return pos;
+    return end + 1;
+  }
+
+  private findPreviousRunStart(axis: Axis, fixed: number, pos: number) {
+    const start = this.findRunStart(axis, fixed, pos);
+    if (start <= 0) return pos;
+    return this.findRunStart(axis, fixed, start - 1);
+  }
+
+  private findFirstNonBlank(axis: Axis, fixed: number) {
+    const length = this.getAxisLength(axis);
+    for (let i = 0; i < length; i += 1) {
+      if (this.getAxisCell(axis, fixed, i) != null) return i;
+    }
+    return null;
+  }
+
+  private forEachSegmentCell(segment: AxisSegment, fn: (x: number, y: number) => void) {
+    const { axis, start, end, fixed } = segment;
+    if (axis === 'horizontal') {
+      const y = clamp(fixed, 0, this.height - 1);
+      for (let x = start; x <= end; x += 1) {
+        const cx = clamp(x, 0, this.width - 1);
+        fn(cx, y);
+      }
+      return;
+    }
+    const x = clamp(fixed, 0, this.width - 1);
+    for (let y = start; y <= end; y += 1) {
+      const cy = clamp(y, 0, this.height - 1);
+      fn(x, cy);
+    }
   }
 
   private paintAt(x: number, y: number, colorIndex: number | null) {
