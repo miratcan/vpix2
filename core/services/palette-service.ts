@@ -10,7 +10,23 @@ function colorsEqual(a: ReadonlyArray<string | null>, b: ReadonlyArray<string | 
   return true;
 }
 
-export class PaletteService {
+export interface IPaletteService {
+  listRegistrySlugs(): string[];
+  searchRegistry(prefix: string): string[];
+  getPaletteBySlug(slug: string): { slug: string; colors: string[] } | null;
+  applyPalette(engine: VPixEngine, slug: string): boolean;
+  findMatchingSlug(palette: readonly string[]): string | null;
+  fetchPalette(slug: string, fetcher?: typeof fetch): Promise<{ slug: string; colors: string[] } | null>;
+  searchRemote(term: string, fetcher?: typeof fetch): Promise<string[]>;
+}
+
+export class PaletteService implements IPaletteService {
+  constructor(private readonly defaultFetch: typeof fetch | undefined = typeof fetch === 'function' ? fetch : undefined) {}
+
+  private resolveFetch(fetcher?: typeof fetch) {
+    return fetcher ?? this.defaultFetch;
+  }
+
   listRegistrySlugs() {
     return Array.from(REGISTRY.keys());
   }
@@ -41,16 +57,20 @@ export class PaletteService {
     return null;
   }
 
-  async fetchPalette(slug: string) {
+  async fetchPalette(slug: string, fetcher?: typeof fetch) {
+    const impl = this.resolveFetch(fetcher);
+    if (!impl) return null;
     try {
-      const pal = await fetchPaletteFromLospec(slug);
+      const pal = await fetchPaletteFromLospec(slug, impl);
       return pal;
     } catch {
       return null;
     }
   }
 
-  async searchRemote(term: string) {
-    return searchLospecPalettes(term).catch(() => []);
+  async searchRemote(term: string, fetcher?: typeof fetch) {
+    const impl = this.resolveFetch(fetcher);
+    if (!impl) return [];
+    return searchLospecPalettes(term, impl).catch(() => []);
   }
 }

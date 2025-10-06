@@ -1,11 +1,17 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { dispatchKey } from '../keymap';
 import { clamp } from '../util';
+import { floodFill as floodFillTool } from '../tools/flood-fill';
+import { fillRect as fillRectTool } from '../tools/fill-rect';
+import { drawLine as drawLineTool } from '../tools/line';
+import { strokeRect as strokeRectTool } from '../tools/stroke-rect';
+import type { ToolOperation } from '../tools/types';
 import { ClipboardBuffer } from './clipboard';
 import { EngineEvents } from './events';
 import { GridState } from './grid-state';
 import { HistoryManager, type HistoryCell, type HistoryGroup } from './history';
 import { SelectionManager } from './selection';
+import { CountBuffer, CursorManager, ModeManager, PrefixManager } from './state';
 import { MODES } from './types';
 
 import type { Axis, EngineChangePayload, EngineSnapshot, Mode, Point } from './types';
@@ -39,17 +45,26 @@ export default class VPixEngine {
   private history: HistoryManager;
   private readonly clipboard = new ClipboardBuffer();
   private readonly selectionManager = new SelectionManager();
+  private readonly cursorManager = new CursorManager();
+  private readonly modeManager = new ModeManager();
+  private readonly prefixManager = new PrefixManager();
+  private readonly countBuffer = new CountBuffer();
 
   private _palette: string[];
   private _currentColorIndex = 2;
-  private _mode: Mode = MODES.NORMAL;
-  private _countBuffer = '';
-  private _prefix: 'g' | 'r' | null = null;
   private _axis: Axis = 'horizontal';
   private _pendingOperator: PendingOperator | null = null;
   private lastAction: (() => void) | null = null;
 
-  cursor: Point = { x: 0, y: 0 };
+  get cursor(): Point {
+    return this.cursorManager.position;
+  }
+
+  set cursor(point: Point) {
+    const x = clamp(point.x, 0, Math.max(0, this.width - 1));
+    const y = clamp(point.y, 0, Math.max(0, this.height - 1));
+    this.cursorManager.setPosition(x, y);
+  }
   lastColorIndex = 0;
 
   constructor({ width = 32, height = 32, palette }: { width?: number; height?: number; palette: string[] }) {
@@ -88,7 +103,7 @@ export default class VPixEngine {
   }
 
   get mode() {
-    return this._mode;
+    return this.modeManager.current;
   }
 
   get selection() {
@@ -96,15 +111,15 @@ export default class VPixEngine {
   }
 
   get prefix() {
-    return this._prefix;
+    return this.prefixManager.current;
   }
 
   setPrefix(prefix: 'g' | 'r' | null) {
-    this._prefix = prefix;
+    this.prefixManager.set(prefix);
   }
 
   clearPrefix() {
-    this._prefix = null;
+    this.prefixManager.clear();
   }
 
   get pendingOperator(): PendingOperator | null {
@@ -160,23 +175,20 @@ export default class VPixEngine {
   }
 
   countValue() {
-    const n = parseInt(this._countBuffer || '1', 10);
-    return Number.isNaN(n) ? 1 : clamp(n, 1, 9999);
+    return this.countBuffer.value();
   }
 
   hasCount() {
-    return this._countBuffer.length > 0;
+    return this.countBuffer.hasValue;
   }
 
   clearCount() {
-    this._countBuffer = '';
+    this.countBuffer.clear();
   }
 
   pushCountDigit(d: string) {
-    if (!/\d/.test(d)) return;
-    if (this._countBuffer === '' && d === '0') return;
-    this._countBuffer += d;
-    this.emit();
+    const changed = this.countBuffer.pushDigit(d);
+    if (changed) this.emit();
   }
 
   setColorIndex(idx: number) {
@@ -194,9 +206,8 @@ export default class VPixEngine {
   }
 
   setMode(mode: Mode) {
-    if (mode !== MODES.NORMAL && mode !== MODES.INSERT && mode !== MODES.VISUAL) return;
-    this._mode = mode;
-    this.emit();
+    const changed = this.modeManager.set(mode);
+    if (changed) this.emit();
   }
 
   setPalette(colors: string[]) {
@@ -211,8 +222,7 @@ export default class VPixEngine {
   setSize(width: number, height: number) {
     const changed = this.gridState.resize(width, height);
     if (!changed) return;
-    this.cursor.x = Math.min(this.cursor.x, this.width - 1);
-    this.cursor.y = Math.min(this.cursor.y, this.height - 1);
+    this.cursorManager.clampToBounds(this.width, this.height);
     this.emit();
   }
 
@@ -228,13 +238,10 @@ export default class VPixEngine {
     const steps = Math.max(1, count);
     let moved = false;
     for (let i = 0; i < steps; i++) {
-      const nx = clamp(this.cursor.x + dx, 0, this.width - 1);
-      const ny = clamp(this.cursor.y + dy, 0, this.height - 1);
-      if (nx === this.cursor.x && ny === this.cursor.y) continue;
-      this.cursor.x = nx;
-      this.cursor.y = ny;
+      const stepMoved = this.cursorManager.moveBy(dx, dy, this.width, this.height);
+      if (!stepMoved) continue;
       moved = true;
-      if (this._mode === MODES.INSERT) this.paint();
+      if (this.modeManager.current === MODES.INSERT) this.paint();
     }
     if (moved) {
       this.emit();
@@ -331,8 +338,7 @@ export default class VPixEngine {
     this.lastColorIndex = clamp(this.lastColorIndex, 0, Math.max(0, this._palette.length - 1));
     this.gridState.load(snapshot);
     this._axis = snapshot.axis ?? 'horizontal';
-    this.cursor.x = Math.min(this.cursor.x, this.width - 1);
-    this.cursor.y = Math.min(this.cursor.y, this.height - 1);
+    this.cursorManager.clampToBounds(this.width, this.height);
     this.history = new HistoryManager();
     this.clipboard.clear();
     this.selectionManager.exit();
@@ -465,92 +471,32 @@ export default class VPixEngine {
   fillSelection(colorIndex: number = this._currentColorIndex) {
     const rect = this.selection.rect;
     if (!rect) return;
-    this.beginGroup('fill');
-    for (let y = rect.y1; y <= rect.y2; y++) {
-      for (let x = rect.x1; x <= rect.x2; x++) {
-        const prev = this.gridState.getCell(x, y);
-        if (prev === colorIndex) continue;
-        this.recordCell({ type: 'cell', x, y, prev, next: colorIndex });
-        this.gridState.writeCell(x, y, colorIndex);
-      }
-    }
-    this.endGroup();
+    const operations = fillRectTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    this.applyToolOperations('fill', operations);
   }
 
   strokeRectSelection(colorIndex: number = this._currentColorIndex) {
     const rect = this.selection.rect;
     if (!rect) return;
-    this.beginGroup('rect');
-    for (let x = rect.x1; x <= rect.x2; x++) {
-      this.paintAt(x, rect.y1, colorIndex);
-      this.paintAt(x, rect.y2, colorIndex);
-    }
-    for (let y = rect.y1; y <= rect.y2; y++) {
-      this.paintAt(rect.x1, y, colorIndex);
-      this.paintAt(rect.x2, y, colorIndex);
-    }
-    this.endGroup();
+    const operations = strokeRectTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    this.applyToolOperations('rect', operations);
   }
 
   drawLine(a: Point | null, b: Point | null, colorIndex: number = this._currentColorIndex) {
     if (!a || !b) return;
-    this.beginGroup('line');
-    let x0 = a.x;
-    let y0 = a.y;
-    const x1 = b.x;
-    const y1 = b.y;
-    const dx = Math.abs(x1 - x0);
-    const dy = Math.abs(y1 - y0);
-    const sx = x0 < x1 ? 1 : -1;
-    const sy = y0 < y1 ? 1 : -1;
-    let err = dx - dy;
-    while (true) {
-      this.paintAt(x0, y0, colorIndex);
-      if (x0 === x1 && y0 === y1) break;
-      const e2 = 2 * err;
-      if (e2 > -dy) {
-        err -= dy;
-        x0 += sx;
-      }
-      if (e2 < dx) {
-        err += dx;
-        y0 += sy;
-      }
-    }
-    this.endGroup();
+    const operations = drawLineTool(a, b, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    this.applyToolOperations('line', operations);
   }
 
   floodFill(x: number, y: number, colorIndex: number = this._currentColorIndex) {
     if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
-    const target = this.gridState.getCell(x, y);
-    if (target === colorIndex) return;
-
-    // If in visual mode, constrain flood fill to selection bounds
-    const bounds = this.selection.rect;
-    const minX = bounds ? bounds.x1 : 0;
-    const maxX = bounds ? bounds.x2 : this.width - 1;
-    const minY = bounds ? bounds.y1 : 0;
-    const maxY = bounds ? bounds.y2 : this.height - 1;
-
-    this.beginGroup('flood');
-    const q: Point[] = [{ x, y }];
-    const seen = new Set<string>();
-    const key = (xx: number, yy: number) => `${xx},${yy}`;
-    while (q.length) {
-      const { x: cx, y: cy } = q.pop()!;
-      // Respect both canvas bounds AND selection bounds
-      if (cx < minX || cy < minY || cx > maxX || cy > maxY) continue;
-      const k = key(cx, cy);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      if (this.gridState.getCell(cx, cy) !== target) continue;
-      this.paintAt(cx, cy, colorIndex);
-      q.push({ x: cx + 1, y: cy });
-      q.push({ x: cx - 1, y: cy });
-      q.push({ x: cx, y: cy + 1 });
-      q.push({ x: cx, y: cy - 1 });
-    }
-    this.endGroup();
+    const operations = floodFillTool(
+      { x, y },
+      colorIndex,
+      (cx, cy) => this.gridState.getCell(cx, cy),
+      { width: this.width, height: this.height, bounds: this.selection.rect ?? null },
+    );
+    this.applyToolOperations('flood', operations);
   }
 
   resolveMotion(motion: MotionKind, count = 1, from: Point = this.cursor): MotionResolution {
@@ -655,8 +601,7 @@ export default class VPixEngine {
 
   applyMotion(motion: MotionKind, count = 1) {
     const result = this.resolveMotion(motion, count);
-    this.cursor.x = result.target.x;
-    this.cursor.y = result.target.y;
+    this.cursorManager.setPosition(result.target.x, result.target.y);
     if (result.moved) {
       this.emit();
     }
@@ -826,6 +771,15 @@ export default class VPixEngine {
       const cy = clamp(y, 0, this.height - 1);
       fn(x, cy);
     }
+  }
+
+  private applyToolOperations(label: string, operations: ToolOperation[]) {
+    if (!operations.length) return;
+    this.beginGroup(label);
+    for (const op of operations) {
+      this.paintAt(op.x, op.y, op.value);
+    }
+    this.endGroup();
   }
 
   private paintAt(x: number, y: number, colorIndex: number | null) {
