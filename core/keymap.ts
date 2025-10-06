@@ -1,90 +1,136 @@
-// Declarative keymap dispatch by mode
-import { MODES } from './engine';
+// Key dispatch that routes to commands via the centralized registry
 
+import { runCommand } from './commands';
 import type VPixEngine from './engine';
+import { MODES } from './engine';
+import {
+  KEYBINDINGS,
+  type BindingCondition,
+  type BindingContext,
+  type BindingScope,
+  type KeyBinding,
+} from './keybindings';
 
-export function dispatchKey(engine: VPixEngine, evt: { key: string; ctrlKey?: boolean }) {
-  const { key, ctrlKey } = evt;
-  // global
-  if (ctrlKey && (key === 'z' || key === 'Z')) { engine.undo(); return 'undo'; }
-  if (ctrlKey && (key === 'y' || key === 'Y')) { engine.redo(); return 'redo'; }
-  if (ctrlKey && (key === '^' || key === '6')) { engine.swapToLastColor(); return 'color:toggle-last'; }
-  // NORMAL: count buffer and prefixes
-  if (engine.mode === MODES.NORMAL && !engine.prefix && /\d/.test(key)) {
-    engine.pushCountDigit(key);
-    return `count:${key}`;
+type EventLike = { key: string; ctrlKey?: boolean; shiftKey?: boolean; metaKey?: boolean };
+
+type BindingLookup = Record<BindingScope, KeyBinding[]>;
+
+const BINDINGS_BY_SCOPE: BindingLookup = buildLookup(KEYBINDINGS);
+
+function buildLookup(bindings: KeyBinding[]): BindingLookup {
+  return bindings.reduce(
+    (acc, binding) => {
+      acc[binding.scope].push(binding);
+      return acc;
+    },
+    { global: [], normal: [], insert: [], visual: [] } as BindingLookup,
+  );
+}
+
+function conditionMatches(condition: BindingCondition | undefined, prefix: string | null): boolean {
+  switch (condition) {
+    case undefined:
+    case 'always':
+      return true;
+    case 'no-prefix':
+      return !prefix;
+    case 'prefix:any':
+      return Boolean(prefix);
+    case 'prefix:g':
+      return prefix === 'g';
+    case 'prefix:r':
+      return prefix === 'r';
+    default:
+      return true;
   }
-  if (engine.mode === MODES.NORMAL && key === 'g') { engine.setPrefix('g'); return 'prefix:g'; }
-  if (engine.mode === MODES.NORMAL && key === 'r') { engine.setPrefix('r'); return 'prefix:r'; }
+}
+
+function matchKeySpec(spec: string, evt: EventLike): boolean {
+  const parts = spec.split('+');
+  let requireCtrl = false;
+  let requireShift = false;
+  let base = spec;
+  if (parts.length > 1) {
+    base = parts[parts.length - 1];
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      const mod = parts[i];
+      if (mod === 'ctrl') requireCtrl = true;
+      if (mod === 'shift') requireShift = true;
+    }
+  }
+  if (requireCtrl !== Boolean(evt.ctrlKey)) return false;
+  if (requireShift !== Boolean(evt.shiftKey)) return false;
+
+  const key = requireCtrl && evt.key.length === 1 ? evt.key.toLowerCase() : evt.key;
+  if (/^\[[^\]]+\]$/.test(base)) {
+    const expr = base.slice(1, -1);
+    const regex = new RegExp(`^[${expr}]$`);
+    return regex.test(requireCtrl ? key : evt.key);
+  }
+  if (base === 'Space') return evt.key === ' ';
+  if (requireCtrl) return key === base.toLowerCase();
+  return evt.key === base;
+}
+
+function findBinding(
+  scope: BindingScope,
+  engine: VPixEngine,
+  evt: EventLike,
+  prefix: string | null,
+  count: number,
+): KeyBinding | undefined {
+  const candidates = BINDINGS_BY_SCOPE[scope];
+  for (const binding of candidates) {
+    if (!conditionMatches(binding.when, prefix)) continue;
+    if (!matchKeySpec(binding.key, evt)) continue;
+    return binding;
+  }
+  return undefined;
+}
+
+function runBinding(
+  binding: KeyBinding,
+  engine: VPixEngine,
+  evt: EventLike,
+  prefix: string | null,
+  count: number,
+) {
+  const ctx: BindingContext = { engine, event: evt, prefix, count };
+  const args = binding.args ? binding.args(ctx) ?? {} : {};
+  const result = runCommand(engine, binding.command, args);
+  if (result && typeof (result as any).then === 'function') {
+    (result as Promise<unknown>).catch(() => {});
+  }
+  return binding.command;
+}
+
+function scopeForMode(mode: number): BindingScope {
+  if (mode === MODES.NORMAL) return 'normal';
+  if (mode === MODES.INSERT) return 'insert';
+  return 'visual';
+}
+
+export function dispatchKey(engine: VPixEngine, evt: EventLike) {
+  const prefix = engine.prefix ?? null;
+
+  if (engine.mode === MODES.NORMAL && !prefix && !evt.ctrlKey && !evt.metaKey && /^\d$/.test(evt.key)) {
+    engine.pushCountDigit(evt.key);
+    return `count:${evt.key}`;
+  }
 
   const count = engine.countValue();
   engine.clearCount();
 
-  // Prefix continuations (NORMAL)
-  if (engine.mode === MODES.NORMAL) {
-    if (engine.prefix === 'r') {
-      if (/^[1-9]$/.test(key)) {
-        const idx = parseInt(key, 10) - 1;
-        const color = engine.palette[idx];
-        if (color) engine.paint(color);
-        engine.clearPrefix();
-        return `paint:color#${idx+1}`;
-      }
-      if (key === 'Escape') { engine.clearPrefix(); return 'prefix:cancel'; }
-    }
-    if (engine.prefix === 'g') {
-      if (key === 't') { const next = (engine.currentColorIndex + 1) % engine.palette.length; engine.setColorIndex(next); engine.clearPrefix(); return; }
-      if (key === 'T') { const prev = (engine.currentColorIndex - 1 + engine.palette.length) % engine.palette.length; engine.setColorIndex(prev); engine.clearPrefix(); return; }
-      if (key === 'Escape') { engine.clearPrefix(); return 'prefix:cancel'; }
-    }
+  const globalBinding = findBinding('global', engine, evt, prefix, count);
+  if (globalBinding) {
+    return runBinding(globalBinding, engine, evt, prefix, count);
   }
 
-  // Palette 1..9 unless prefix pending
-  if (!engine.prefix && /^[1-9]$/.test(key)) { const idx = parseInt(key, 10) - 1; engine.setColorIndex(idx); return `color:set#${idx+1}`; }
+  const scope = scopeForMode(engine.mode);
+  const binding = findBinding(scope, engine, evt, prefix, count);
+  if (binding) {
+    return runBinding(binding, engine, evt, prefix, count);
+  }
 
-  // Mode-local maps
-  if (engine.mode === MODES.NORMAL) return normalMap(engine, key, count);
-  if (engine.mode === MODES.INSERT) return insertMap(engine, key, count);
-  if (engine.mode === MODES.VISUAL) return visualMap(engine, key, count);
-}
-
-function normalMap(e: VPixEngine, key: string, n: number) {
-  if (key === 'h') { e.move(-1, 0, n); return `move:left x${n}`; }
-  else if (key === 'j') { e.move(0, 1, n); return `move:down x${n}`; }
-  else if (key === 'k') { e.move(0, -1, n); return `move:up x${n}`; }
-  else if (key === 'l') { e.move(1, 0, n); return `move:right x${n}`; }
-  else if (key === 'i') { e.setMode(MODES.INSERT); return 'mode:insert'; }
-  else if (key === 'x') { for (let i = 0; i < n; i++) e.erase(); return `erase x${n}`; }
-  else if (key === ' ') { for (let i = 0; i < n; i++) e.toggle(); return `toggle x${n}`; }
-  else if (key === 'c') { const idx = Math.min(e.palette.length - 1, Math.max(0, n - 1)); e.setColorIndex(idx); return `color:set#${idx+1}`; }
-  else if (key === 'v') { e.enterVisual(); return 'mode:visual'; }
-}
-
-function insertMap(e: VPixEngine, key: string, n: number) {
-  if (key === 'Escape') { e.setMode(MODES.NORMAL); return 'mode:normal'; }
-  if (key === 'h') { e.move(-1, 0, n); return `move:left x${n} (ins)`; }
-  else if (key === 'j') { e.move(0, 1, n); return `move:down x${n} (ins)`; }
-  else if (key === 'k') { e.move(0, -1, n); return `move:up x${n} (ins)`; }
-  else if (key === 'l') { e.move(1, 0, n); return `move:right x${n} (ins)`; }
-  else if (key === ' ') { e.paint(); return 'paint'; }
-  else if (key === 'Backspace') { e.erase(); return 'erase'; }
-}
-
-function visualMap(e: VPixEngine, key: string, n: number) {
-  if (key === 'Escape') { e.exitVisual(); return 'mode:normal'; }
-  if (key === 'h') { e.move(-1, 0, n); e.updateSelectionRect(); return `sel-move:left x${n}`; }
-  else if (key === 'j') { e.move(0, 1, n); e.updateSelectionRect(); return `sel-move:down x${n}`; }
-  else if (key === 'k') { e.move(0, -1, n); e.updateSelectionRect(); return `sel-move:up x${n}`; }
-  else if (key === 'l') { e.move(1, 0, n); e.updateSelectionRect(); return `sel-move:right x${n}`; }
-  else if (key === 'y') { e.yankSelection(); e.exitVisual(); return 'yank'; }
-  else if (key === 'd') { e.deleteSelection(); e.exitVisual(); return 'delete'; }
-  else if (key === 'p') { e.pasteAtCursor(); e.exitVisual(); return 'paste'; }
-  else if (key === 'P') { e.pasteAtCursorTransparent(); e.exitVisual(); return 'paste:transparent'; }
-  else if (key === ']') { e.rotateClipboardCW(); return 'clipboard:rotate-cw'; }
-  else if (key === '[') { e.rotateClipboardCCW(); return 'clipboard:rotate-ccw'; }
-  else if (key === 'M') { e.moveSelectionToCursor(); e.exitVisual(); return 'move-selection'; }
-  else if (key === 'F') { e.fillSelection(e.color); e.exitVisual(); return 'fill'; }
-  else if (key === 'R') { e.strokeRectSelection(e.color); e.exitVisual(); return 'rect'; }
-  else if (key === 'L') { e.drawLine(e.selection.anchor, e.cursor, e.color); e.exitVisual(); return 'line'; }
-  else if (key === 'f') { e.floodFill(e.cursor.x, e.cursor.y, e.color); e.exitVisual(); return 'flood'; }
+  return undefined;
 }
