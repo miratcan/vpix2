@@ -1,0 +1,9 @@
+.canvas-grid {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b0b0b;
+}
+canvas { image-rendering: pixelated; background: #0b0b0b; }
+

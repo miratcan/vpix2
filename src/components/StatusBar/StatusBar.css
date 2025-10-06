@@ -1,0 +1,32 @@
+.status-bar {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  padding: 12px;
+  background: #101010;
+  color: #bbb;
+}
+.status-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.status-table th,
+.status-table td {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+.status-table th {
+  text-align: left;
+  color: #9aa0a6;
+  font-weight: 600;
+  width: 40%;
+}
+.status-table tr + tr td,
+.status-table tr + tr th {
+  border-top: 1px solid #222;
+}
+.color-chip {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #000;
+  vertical-align: middle;
+}

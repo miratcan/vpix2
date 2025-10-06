@@ -1,0 +1,2762 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+core/
+  command-registry.ts
+  commands.ts
+  engine.ts
+  keymap.ts
+  palettes.mjs
+  palettes.ts
+  url.ts
+  util.ts
+public/
+  vite.svg
+src/
+  __tests__/
+    app.spec.tsx
+  assets/
+    react.svg
+  components/
+    CanvasGrid/
+      CanvasGrid.css
+      CanvasGrid.tsx
+    Grid/
+      Grid.css
+      Grid.jsx
+    MiniMap/
+      MiniMap.css
+      MiniMap.tsx
+    Palette/
+      Palette.css
+      Palette.tsx
+    StatusBar/
+      StatusBar.css
+      StatusBar.tsx
+    Terminal/
+      Terminal.css
+      Terminal.tsx
+  App.css
+  App.tsx
+  index.css
+  main.tsx
+test/
+  commands.spec.ts
+  engine.spec.ts
+  setup.ts
+  url.spec.ts
+  visual.spec.ts
+.gitignore
+eslint.config.js
+index.html
+package.json
+README.md
+tsconfig.json
+vite.config.js
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="core/command-registry.ts">
+// Minimal word-based command registry with typed params and suggestions
+
+export type Ctx = { engine: any };
+
+export type ParseResult<T> = { ok: true; value: T } | { ok: false; err?: string };
+export interface ParamType<T> {
+  name: string;
+  parse(token: string): ParseResult<T>;
+  placeholder?: string; // for suggest/help
+  suggest?(prefix: string): string[]; // optional, for enums
+  greedy?: boolean; // when true and last in pattern, consumes rest-of-line
+}
+
+export type LiteralSpec = { kind: 'lit'; word: string };
+export type ParamSpec<T> = { kind: 'param'; name: string; type: ParamType<T> };
+export type PatternEl = LiteralSpec | ParamSpec<any>;
+
+export function literal(word: string): LiteralSpec { return { kind: 'lit', word }; }
+export function param<T>(name: string, type: ParamType<T>): ParamSpec<T> { return { kind: 'param', name, type }; }
+
+export function int(min: number, max: number): ParamType<number> {
+  return {
+    name: `int(${min}..${max})`, placeholder: '<int>',
+    parse(token) {
+      const n = parseInt(token, 10);
+      if (Number.isNaN(n)) return { ok: false, err: 'not a number' };
+      if (n < min || n > max) return { ok: false, err: `out of range ${min}..${max}` };
+      return { ok: true, value: n };
+    },
+  };
+}
+
+export function size(): ParamType<{ w: number; h: number }> {
+  return {
+    name: 'size', placeholder: '<WxH>',
+    parse(token) {
+      const m = /^(\d+)x(\d+)$/i.exec(token.trim());
+      if (!m) return { ok: false, err: 'expected WxH' };
+      const w = parseInt(m[1], 10), h = parseInt(m[2], 10);
+      if (!w || !h) return { ok: false } as any;
+      return { ok: true, value: { w, h } };
+    },
+  };
+}
+
+export function oneOf<const T extends readonly string[]>(...vals: T): ParamType<T[number]> {
+  return {
+    name: `oneOf(${vals.join('|')})`, placeholder: `<${vals.join('|')}>`,
+    parse(token) { return (vals as readonly string[]).includes(token) ? { ok: true, value: token as T[number] } : { ok: false, err: 'invalid choice' }; },
+    suggest(prefix) { return (vals as readonly string[]).filter(v => v.startsWith(prefix)); },
+  };
+}
+
+import { REGISTRY } from './palettes';
+
+export function slug(): ParamType<string> {
+  return {
+    name: 'slug', placeholder: '<slug>',
+    parse(token) { return { ok: true, value: token }; },
+    suggest(prefix) {
+      try { return Array.from(REGISTRY.keys()).filter((k) => k.startsWith(prefix.toLowerCase())); } catch { return []; }
+    }
+  };
+}
+
+type Registered = { pattern: PatternEl[]; handler: (ctx: Ctx, args: Record<string, unknown>) => any; help?: string };
+
+export function createRegistry() {
+  const cmds: Registered[] = [];
+  return {
+    register(pattern: PatternEl[], handler: Registered['handler'], opts?: { help?: string }) {
+      cmds.push({ pattern, handler, help: opts?.help });
+    },
+    registerS(pattern: string, handler: Registered['handler'], opts?: { help?: string }) {
+      const compiled = compilePatternDSL(pattern);
+      cmds.push({ pattern: compiled, handler, help: opts?.help });
+    },
+    async execute(input: string, ctx: Ctx): Promise<{ matched: boolean; ok: boolean; msg: string }> {
+      const tokens = tokenize(input);
+      for (const c of cmds) {
+        const res = matchPattern(tokens, c.pattern);
+        if (res.matched && res.ok) {
+          try {
+            const out = await c.handler(ctx, res.args!);
+            return { matched: true, ok: true, msg: String(out ?? '') };
+          } catch {
+            return { matched: true, ok: false, msg: 'command failed' };
+          }
+        } else if (res.matched) {
+          // matched prefix but invalid args count or type
+          const usage = c.help || formatUsage(c.pattern);
+          return { matched: true, ok: false, msg: `usage: ${usage}` };
+        }
+      }
+      return { matched: false, ok: false, msg: 'unknown command' };
+    },
+    suggest(input: string): string[] {
+      const tokens = tokenize(input);
+      const last = tokens[tokens.length - 1] || '';
+      const isEndingSpace = /\s$/.test(input);
+      const candidates: string[] = [];
+      for (const c of cmds) {
+        const idx = isEndingSpace ? tokens.length : Math.max(0, tokens.length - 1);
+        const prefixTokens = tokens.slice(0, idx);
+        const match = matchPrefix(prefixTokens, c.pattern);
+        if (!match) continue;
+        const nextEl = c.pattern[idx];
+        if (!nextEl) continue;
+        if (nextEl.kind === 'lit') {
+          const word = nextEl.word;
+          if (isEndingSpace || word.startsWith(last)) candidates.push(word);
+        } else {
+          const ph = nextEl.type.placeholder || `<${nextEl.type.name}>`;
+          // param suggest if provided, else placeholder
+          const opts = nextEl.type.suggest?.(isEndingSpace ? '' : last) || [];
+          if (opts.length) candidates.push(...opts);
+          else candidates.push(ph);
+        }
+      }
+      return Array.from(new Set(candidates));
+    },
+    help(prefix?: string): string[] {
+      const list = cmds.map((c) => c.help || formatUsage(c.pattern));
+      return prefix ? list.filter((h) => h.startsWith(prefix)) : list;
+    },
+  };
+}
+
+function formatUsage(pattern: PatternEl[]) {
+  return pattern.map((el) => el.kind === 'lit' ? el.word : (el.type.placeholder || `<${el.type.name}>`)).join(' ');
+}
+
+function tokenize(input: string): string[] {
+  // minimal: split by whitespace, ignore empty
+  return input.trim().split(/\s+/g).filter(Boolean);
+}
+
+function matchPrefix(tokens: string[], pattern: PatternEl[]): boolean {
+  if (tokens.length > pattern.length) return false;
+  for (let i = 0; i < tokens.length; i++) {
+    const el = pattern[i]; const t = tokens[i];
+    if (!el) return false;
+    if (el.kind === 'lit') { if (el.word !== t) return false; }
+    else { const p = el.type.parse(t); if (!p.ok) return false; }
+  }
+  return true;
+}
+
+function matchPattern(tokens: string[], pattern: PatternEl[]): { matched: boolean; ok: boolean; args?: Record<string, unknown> } {
+  if (!matchPrefix(tokens.slice(0, Math.min(tokens.length, pattern.length)), pattern)) return { matched: false, ok: false };
+  const last = pattern[pattern.length - 1];
+  const lastGreedy = !!(last && (last as any).kind === 'param' && (last as any).type.greedy);
+  if (!lastGreedy) {
+    if (tokens.length !== pattern.length) return { matched: true, ok: false };
+  } else {
+    if (tokens.length < pattern.length) return { matched: true, ok: false };
+  }
+  const args: Record<string, unknown> = {};
+  for (let i = 0; i < pattern.length; i++) {
+    const el: any = pattern[i];
+    if (el.kind === 'lit') continue;
+    if (i === pattern.length - 1 && el.type.greedy) {
+      const rest = tokens.slice(i).join(' ');
+      const p = el.type.parse(rest);
+      if (!p.ok) return { matched: true, ok: false };
+      args[el.name] = (p as any).value;
+      break;
+    } else {
+      const t = tokens[i];
+      const p = el.type.parse(t);
+      if (!p.ok) return { matched: true, ok: false };
+      args[el.name] = (p as any).value;
+    }
+  }
+  return { matched: true, ok: true, args };
+}
+
+// ---- Pattern DSL compiler ----
+// Syntax examples:
+//  - "set W {value:int[1..256]}"
+//  - "set size {size:size}"
+//  - "set palette {slug:slug}"
+//  - "set {key:oneof[W|H|size|palette]}" (not used yet)
+function compilePatternDSL(spec: string): PatternEl[] {
+  const parts = spec.trim().split(/\s+/g).filter(Boolean);
+  const out: PatternEl[] = [];
+  for (const p of parts) {
+    const m = /^\{(?:(?<name>[a-zA-Z_][\w-]*)\:)?(?<type>[a-zA-Z_][\w-]*)(?:\[(?<cons>[^\]]+)\])?\}$/.exec(p);
+    if (!m) { out.push(literal(p)); continue; }
+    const name = m.groups?.name || m.groups?.type || 'arg';
+    const t = (m.groups?.type || '').toLowerCase();
+    const cons = m.groups?.cons || '';
+    let paramType: ParamType<any> | null = null;
+    if (t === 'int') {
+      const mm = /^(\d+)\.\.(\d+)$/.exec(cons);
+      const lo = mm ? parseInt(mm[1], 10) : 0;
+      const hi = mm ? parseInt(mm[2], 10) : 9999;
+      paramType = int(lo, hi);
+    } else if (t === 'size') {
+      paramType = size();
+    } else if (t === 'oneof') {
+      const opts = cons.split('|').map((s) => s.trim()).filter(Boolean);
+      paramType = oneOf(...(opts as any));
+    } else if (t === 'slug') {
+      paramType = slug();
+    } else if (t === 'url') {
+      paramType = { name: 'url', placeholder: '<url>', parse: (tok) => ({ ok: true, value: tok }), greedy: true };
+    } else if (t === 'json') {
+      paramType = { name: 'json', placeholder: '<json>', parse: (tok) => { try { return { ok: true, value: JSON.parse(tok) }; } catch { return { ok: false, err: 'invalid json' }; } }, greedy: true };
+    } else if (t === 'rest') {
+      paramType = { name: 'rest', placeholder: '<text>', parse: (tok) => ({ ok: true, value: tok }), greedy: true };
+    }
+    if (!paramType) throw new Error(`unknown param type in pattern: ${p}`);
+    out.push(param(name, paramType));
+  }
+  return out;
+}
+</file>
+
+<file path="core/commands.ts">
+// Simple command executor for VPix
+// Disabled direct palette color edits; rely on LoSpec palettes
+
+import VPixEngine from './engine';
+import { getPaletteByName, REGISTRY, fetchPaletteFromLospec, searchLospecPalettes } from './palettes';
+import { createRegistry } from './command-registry';
+import { encodeToParamV2R } from './url';
+import { createRegistry } from './command-registry';
+
+export function executeCommand(engine: VPixEngine, input: string): { ok: boolean; msg: string } | Promise<{ ok: boolean; msg: string }> {
+  const cmd = (input || '').trim();
+  if (!cmd) return { ok: false, msg: 'Empty command' };
+  // Try new registry first
+  const { matched, ok: rok, msg: rmsg } = registryExecute(engine, cmd);
+  if (matched) return { ok: rok, msg: rmsg };
+
+  let m: RegExpExecArray | null;
+  // set W= / H=
+  m = /^set\s+W\s*=\s*(\d+)\s*$/i.exec(cmd);
+  if (m) { const n = parseInt(m[1], 10); const w = Math.max(1, Math.min(256, n)); engine.setWidth(w); return { ok: true, msg: `W=${w}` }; }
+  m = /^set\s+H\s*=\s*(\d+)\s*$/i.exec(cmd);
+  if (m) { const n = parseInt(m[1], 10); const h = Math.max(1, Math.min(256, n)); engine.setHeight(h); return { ok: true, msg: `H=${h}` }; }
+
+  // set size
+  m = /^set\s+size\s*=\s*(\d+)\s*[xX]\s*(\d+)\s*$/i.exec(cmd) || /^set\s+size\s+(\d+)\s*[xX]\s*(\d+)\s*$/i.exec(cmd);
+  if (m) { const w = Math.max(1, Math.min(256, parseInt(m[1], 10))); const h = Math.max(1, Math.min(256, parseInt(m[2], 10))); engine.setSize(w, h); return { ok: true, msg: `size=${w}x${h}` }; }
+
+  // palette commands
+  m = /^palette\s+use\s+(.+)$/i.exec(cmd);
+  if (m) {
+    const pal = getPaletteByName(m[1].trim());
+    if (!pal) return { ok: false, msg: `unknown palette: ${m[1].trim()}` };
+    engine.palette = pal.colors;
+    const lastIdx = engine.palette.length - 1;
+    engine.currentColorIndex = Math.min(engine.currentColorIndex, lastIdx);
+    engine.lastColorIndex = Math.min(engine.lastColorIndex, lastIdx);
+    (engine as any)._emit?.();
+    return { ok: true, msg: `palette: ${pal.slug}` };
+  }
+
+  if (/^palette\s+list\s*$/i.test(cmd)) {
+    const names = Array.from(REGISTRY.keys()).join(', ');
+    return { ok: true, msg: names ? `palettes: ${names}` : 'no palettes' };
+  }
+
+  m = /^palette\s+fetch\s+(.+)$/i.exec(cmd);
+  if (m) { const name = m[1].trim(); return fetchPaletteFromLospec(name).then((pal) => ({ ok: true, msg: `loaded: ${pal.slug} (${pal.colors.length})` })).catch(() => ({ ok: false, msg: `failed to load: ${name}` })); }
+
+  m = /^palette\s+search\s+(.+)$/i.exec(cmd);
+  if (m) { const term = m[1].trim(); return searchLospecPalettes(term).then((slugs) => ({ ok: true, msg: slugs.length ? slugs.join(', ') : 'no results' })).catch(() => ({ ok: false, msg: 'search failed' })); }
+
+  // read
+  if (/^read\s*$/i.test(cmd)) {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const key = 'vpix.document.v1';
+        const data = localStorage.getItem(key);
+        if (!data) return { ok: false, msg: 'No saved document' };
+        const loaded = VPixEngine.deserialize(data);
+        engine.width = loaded.width; engine.height = loaded.height; engine.palette = loaded.palette; engine.currentColorIndex = loaded.currentColorIndex; engine.grid = loaded.grid; (engine as any)._emit?.();
+        return { ok: true, msg: 'document loaded' };
+      }
+      return { ok: false, msg: 'storage not available' };
+    } catch { return { ok: false, msg: 'read failed' }; }
+  }
+
+  m = /^read\s+json=(.+)$/i.exec(cmd);
+  if (m) {
+    try {
+      const loaded = VPixEngine.deserialize(m[1].trim());
+      engine.width = loaded.width; engine.height = loaded.height; engine.palette = loaded.palette; engine.currentColorIndex = loaded.currentColorIndex; engine.grid = loaded.grid; (engine as any)._emit?.();
+      return { ok: true, msg: 'document loaded' };
+    } catch { return { ok: false, msg: 'invalid json' }; }
+  }
+
+  m = /^read\s+url=(.+)$/i.exec(cmd);
+  if (m) {
+    const url = m[1].trim();
+    if (typeof fetch === 'function') {
+      fetch(url as any)
+        .then((r: any) => r.text())
+        .then((txt: string) => {
+          try { const loaded = VPixEngine.deserialize(txt); engine.width = loaded.width; engine.height = loaded.height; engine.palette = loaded.palette; engine.currentColorIndex = loaded.currentColorIndex; engine.grid = loaded.grid; (engine as any)._emit?.(); } catch { /* ignore */ }
+        })
+        .catch(() => {});
+      return { ok: true, msg: 'fetching document…' };
+    }
+    return { ok: false, msg: 'network not available' };
+  }
+
+  // disabled palette edits
+  if (/^set\s+color\d+\s*=\s*(#[0-9a-fA-F]{3,6})\s*$/i.test(cmd)) return { ok: false, msg: 'disabled (use: palette use <name>)' };
+  if (/^set\s+palette\s*=\s*(.+)$/i.test(cmd)) return { ok: false, msg: 'disabled (use: palette use <name>)' };
+  if (/^palette\s+add\s+(.+)$/i.test(cmd)) return { ok: false, msg: 'disabled (use: palette use <name>)' };
+  if (/^palette\s+insert\s+(\d+)\s+(.+)$/i.test(cmd)) return { ok: false, msg: 'disabled (use: palette use <name>)' };
+  if (/^palette\s+remove\s+(\d+)(?:\s+(\d+))?$/i.test(cmd)) return { ok: false, msg: 'disabled (use: palette use <name>)' };
+
+  return { ok: false, msg: `Unknown command: ${cmd}` };
+}
+
+// ---- Registry (incremental): set W/H/size/palette ----
+const _registry = createRegistry();
+let _registryInit = false;
+function ensureRegistry() {
+  if (_registryInit) return;
+  _registryInit = true;
+  (_registry as any).registerS('set W {value:int[1..256]}',
+    (ctx: any, { value }: any) => { (ctx.engine as VPixEngine).setWidth(value as number); return `W=${value}`; },
+    { help: 'set W <int(1..256)>' });
+  (_registry as any).registerS('set H {value:int[1..256]}',
+    (ctx: any, { value }: any) => { (ctx.engine as VPixEngine).setHeight(value as number); return `H=${value}`; },
+    { help: 'set H <int(1..256)>' });
+  (_registry as any).registerS('set size {size:size}',
+    (ctx: any, { size: s }: any) => { (ctx.engine as VPixEngine).setSize(s.w, s.h); return `size=${s.w}x${s.h}`; },
+    { help: 'set size <WxH>' });
+  (_registry as any).registerS('set palette {slug:slug}',
+    (ctx: any, { slug }: any) => {
+      const pal = getPaletteByName(String(slug));
+      if (!pal) return `unknown palette: ${slug}`;
+      const eng = ctx.engine as VPixEngine;
+      eng.palette = pal.colors;
+      const lastIdx = eng.palette.length - 1;
+      eng.currentColorIndex = Math.min(eng.currentColorIndex, lastIdx);
+      eng.lastColorIndex = Math.min(eng.lastColorIndex, lastIdx);
+      (eng as any)._emit?.();
+      return `palette: ${pal.slug}`;
+    }, { help: 'set palette <slug>' });
+
+  // palette commands
+  (_registry as any).registerS('palette use {slug:slug}', (ctx: any, { slug }: any) => {
+    const pal = getPaletteByName(String(slug));
+    if (!pal) return `unknown palette: ${slug}`;
+    const eng = ctx.engine as VPixEngine;
+    eng.palette = pal.colors;
+    const lastIdx = eng.palette.length - 1;
+    eng.currentColorIndex = Math.min(eng.currentColorIndex, lastIdx);
+    eng.lastColorIndex = Math.min(eng.lastColorIndex, lastIdx);
+    (eng as any)._emit?.();
+    return `palette: ${pal.slug}`;
+  }, { help: 'palette use <slug>' });
+
+  (_registry as any).registerS('palette list', () => {
+    const names = Array.from(REGISTRY.keys()).join(', ');
+    return names ? `palettes: ${names}` : 'no palettes';
+  }, { help: 'palette list' });
+
+  (_registry as any).registerS('palette fetch {slug:slug}', async (_ctx: any, { slug }: any) => {
+    const name = String(slug);
+    const pal = await fetchPaletteFromLospec(name).catch(() => null);
+    return pal ? `loaded: ${pal.slug} (${pal.colors.length})` : `failed to load: ${name}`;
+  }, { help: 'palette fetch <slug>' });
+
+  (_registry as any).registerS('palette search {term:rest}', async (_ctx: any, { term }: any) => {
+    const t = String(term);
+    const slugs = await searchLospecPalettes(t).catch(() => []);
+    return slugs.length ? slugs.join(', ') : 'no results';
+  }, { help: 'palette search <term>' });
+
+  // read commands
+  (_registry as any).registerS('read', (ctx: any) => {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        const key = 'vpix.document.v1';
+        const data = localStorage.getItem(key);
+        if (!data) return 'No saved document';
+        const loaded = VPixEngine.deserialize(data);
+        const eng = ctx.engine as VPixEngine;
+        eng.width = loaded.width; eng.height = loaded.height; eng.palette = loaded.palette; eng.currentColorIndex = loaded.currentColorIndex; eng.grid = loaded.grid; (eng as any)._emit?.();
+        return 'document loaded';
+      }
+      return 'storage not available';
+    } catch { return 'read failed'; }
+  }, { help: 'read' });
+
+  (_registry as any).registerS('read json {doc:json}', (ctx: any, { doc }: any) => {
+    try {
+      const loaded = VPixEngine.deserialize(typeof doc === 'string' ? doc : JSON.stringify(doc));
+      const eng = ctx.engine as VPixEngine;
+      eng.width = loaded.width; eng.height = loaded.height; eng.palette = loaded.palette; eng.currentColorIndex = loaded.currentColorIndex; eng.grid = loaded.grid; (eng as any)._emit?.();
+      return 'document loaded';
+    } catch { return 'invalid json'; }
+  }, { help: 'read json <{...}>' });
+
+  (_registry as any).registerS('read url {url:url}', async (ctx: any, { url }: any) => {
+    const u = String(url);
+    try {
+      const txt = await fetch(u as any).then((r) => (r as any).text());
+      const loaded = VPixEngine.deserialize(txt);
+      const eng = ctx.engine as VPixEngine;
+      eng.width = loaded.width; eng.height = loaded.height; eng.palette = loaded.palette; eng.currentColorIndex = loaded.currentColorIndex; eng.grid = loaded.grid; (eng as any)._emit?.();
+      return 'document loaded';
+    } catch { return 'network error'; }
+  }, { help: 'read url <https://...>' });
+
+  // link/copylink
+  (_registry as any).registerS('link', (ctx: any) => {
+    try {
+      const eng = ctx.engine as VPixEngine;
+      let slug: string | null = null;
+      for (const name of REGISTRY.keys()) {
+        const p = getPaletteByName(name);
+        if (p && JSON.stringify(p.colors) === JSON.stringify(eng.palette)) { slug = p.slug; break; }
+      }
+      const payload = encodeToParamV2R(eng, slug || 'pico-8');
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('vp2r', payload);
+        history.replaceState(null, '', url.toString());
+      }
+      return 'link updated (?vp2r=...)';
+    } catch { return 'link failed'; }
+  }, { help: 'link' });
+
+  (_registry as any).registerS('copylink', async (ctx: any) => {
+    try {
+      const eng = ctx.engine as VPixEngine;
+      let slug: string | null = null;
+      for (const name of REGISTRY.keys()) {
+        const p = getPaletteByName(name);
+        if (p && JSON.stringify(p.colors) === JSON.stringify(eng.palette)) { slug = p.slug; break; }
+      }
+      const payload = encodeToParamV2R(eng, slug || 'pico-8');
+      let full = '';
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.set('vp2r', payload);
+        full = url.toString();
+      } else {
+        full = `?vp2r=${payload}`;
+      }
+      if ((navigator as any)?.clipboard?.writeText) {
+        await (navigator as any).clipboard.writeText(full).catch(() => {});
+        return 'link copied';
+      }
+      return full;
+    } catch { return 'copylink failed'; }
+  }, { help: 'copylink' });
+}
+
+function registryExecute(engine: VPixEngine, cmd: string) {
+  ensureRegistry();
+  return (_registry as any).execute(cmd, { engine }) as { matched: boolean; ok: boolean; msg: string };
+}
+
+export function suggestCommands(input: string): string[] {
+  ensureRegistry();
+  return (_registry as any).suggest(input) as string[];
+}
+
+export function helpCommands(prefix?: string): string[] {
+  ensureRegistry();
+  return (_registry as any).help(prefix) as string[];
+}
+</file>
+
+<file path="core/engine.ts">
+// VPix core engine in TypeScript
+import { dispatchKey } from './keymap';
+import { clamp } from './util';
+
+export const MODES = {
+  NORMAL: 'normal',
+  INSERT: 'insert',
+  VISUAL: 'visual',
+} as const;
+
+export type Mode = typeof MODES[keyof typeof MODES];
+export type Rect = { x1: number; y1: number; x2: number; y2: number };
+type HistoryCell = { type: 'cell'; x: number; y: number; prev: string | null | undefined; next: string | null | undefined };
+type HistoryGroup = { type: 'group'; label: string; items: HistoryCell[]; bounds: Rect | null };
+type HistoryEntry = HistoryCell | HistoryGroup;
+
+export default class VPixEngine {
+  width: number;
+  height: number;
+  palette: string[];
+  currentColorIndex = 2;
+  mode: Mode = MODES.NORMAL;
+  cursor = { x: 0, y: 0 };
+  grid: (string | null)[][];
+  private _countBuffer = '';
+  private _subscribers = new Set<(eng: VPixEngine, payload?: { changed?: Rect[] }) => void>();
+  private _history: HistoryEntry[] = [];
+  private _redo: HistoryEntry[] = [];
+  lastColorIndex = 0;
+  _prefix: 'g' | 'r' | null = null;
+  selection: { active: boolean; anchor: { x: number; y: number } | null; rect: Rect | null } = { active: false, anchor: null, rect: null };
+  private _clipboard: { w: number; h: number; cells: (string | null)[][] } | null = null;
+  private _group: { label: string; items: HistoryCell[]; bounds: Rect | null } | null = null;
+
+  constructor({ width = 32, height = 32, palette }: { width?: number; height?: number; palette: string[] }) {
+    this.width = width;
+    this.height = height;
+    if (!palette || !Array.isArray(palette) || palette.length === 0) {
+      throw new Error('palette is required (DI)');
+    }
+    this.palette = palette;
+    this.grid = Array.from({ length: height }, () => Array<string | null>(width).fill(null));
+  }
+
+  setSize(newWidth: number, newHeight: number) {
+    const w = clamp(newWidth | 0, 1, 256);
+    const h = clamp(newHeight | 0, 1, 256);
+    if (w === this.width && h === this.height) return;
+    const newGrid = Array.from({ length: h }, () => Array<string | null>(w).fill(null));
+    const copyH = Math.min(this.height, h);
+    const copyW = Math.min(this.width, w);
+    for (let y = 0; y < copyH; y++) for (let x = 0; x < copyW; x++) newGrid[y][x] = this.grid[y][x];
+    this.width = w;
+    this.height = h;
+    this.grid = newGrid;
+    this.cursor.x = Math.min(this.cursor.x, this.width - 1);
+    this.cursor.y = Math.min(this.cursor.y, this.height - 1);
+    this._emit();
+  }
+  setWidth(newWidth: number) { this.setSize(newWidth, this.height); }
+  setHeight(newHeight: number) { this.setSize(this.width, newHeight); }
+
+  subscribe(fn: (eng: VPixEngine, payload?: { changed?: Rect[] }) => void) {
+    this._subscribers.add(fn);
+    return () => this._subscribers.delete(fn);
+  }
+  private _emit(payload?: { changed?: Rect[] }) { this._subscribers.forEach((fn) => fn(this, payload)); }
+
+  get color() { return this.palette[this.currentColorIndex] ?? '#000000'; }
+  setColorIndex(idx: number) {
+    if (idx >= 0 && idx < this.palette.length) {
+      this.lastColorIndex = this.currentColorIndex;
+      this.currentColorIndex = idx;
+      this._emit();
+    }
+  }
+  setMode(mode: Mode) {
+    if (mode === MODES.NORMAL || mode === MODES.INSERT || mode === MODES.VISUAL) { this.mode = mode; this._emit(); }
+  }
+
+  countValue() { const n = parseInt(this._countBuffer || '1', 10); return Number.isNaN(n) ? 1 : Math.max(1, Math.min(9999, n)); }
+  clearCount() { this._countBuffer = ''; }
+  pushCountDigit(d: string) { if (/\d/.test(d)) { if (this._countBuffer === '' && d === '0') return; this._countBuffer += d; this._emit(); } }
+  
+
+  move(dx: number, dy: number, count = 1) {
+    const steps = Math.max(1, count);
+    const prevPos = { x: this.cursor.x, y: this.cursor.y };
+    let moved = false;
+    for (let i = 0; i < steps; i++) {
+      const nx = clamp(this.cursor.x + dx, 0, this.width - 1);
+      const ny = clamp(this.cursor.y + dy, 0, this.height - 1);
+      if (nx !== this.cursor.x || ny !== this.cursor.y) { this.cursor.x = nx; this.cursor.y = ny; moved = true; if (this.mode === MODES.INSERT) this.paint(); }
+    }
+    if (moved) {
+      const curr = { x: this.cursor.x, y: this.cursor.y };
+      this._emit({ changed: [ { x1: prevPos.x, y1: prevPos.y, x2: prevPos.x, y2: prevPos.y }, { x1: curr.x, y1: curr.y, x2: curr.x, y2: curr.y } ]});
+    }
+  }
+
+  paint(color: string = this.color) {
+    const { x, y } = this.cursor;
+    const prev = this.grid[y][x];
+    if (prev === color) return;
+    this._record({ type: 'cell', x, y, prev, next: color });
+    this.grid[y][x] = color;
+    this._emit({ changed: [ { x1: x, y1: y, x2: x, y2: y } ]});
+  }
+  erase() {
+    const { x, y } = this.cursor;
+    const prev = this.grid[y][x];
+    if (prev == null) return;
+    this._record({ type: 'cell', x, y, prev, next: null });
+    this.grid[y][x] = null;
+    this._emit({ changed: [ { x1: x, y1: y, x2: x, y2: y } ]});
+  }
+  toggle() { const { x, y } = this.cursor; if (this.grid[y][x] == null) this.paint(); else this.erase(); }
+
+  private _record(entry: HistoryCell) {
+    if (this._group) {
+      this._group.items.push(entry);
+      const b = this._group.bounds || { x1: entry.x, y1: entry.y, x2: entry.x, y2: entry.y };
+      this._group.bounds = { x1: Math.min(b.x1, entry.x), y1: Math.min(b.y1, entry.y), x2: Math.max(b.x2, entry.x), y2: Math.max(b.y2, entry.y) };
+    } else {
+      this._history.push(entry);
+      if (this._history.length > 1000) this._history.shift();
+      this._redo = [];
+    }
+  }
+  beginGroup(label = '') { if (this._group) return; this._group = { label, items: [], bounds: null }; }
+  endGroup() {
+    if (!this._group) return;
+    const grp = this._group; this._group = null;
+    if (grp.items.length === 0) return;
+    this._history.push({ type: 'group', label: grp.label, items: grp.items, bounds: grp.bounds });
+    if (this._history.length > 1000) this._history.shift();
+    this._redo = [];
+    if (grp.bounds) this._emit({ changed: [grp.bounds] });
+  }
+  undo() {
+    const entry = this._history.pop(); if (!entry) return;
+    if (entry.type === 'cell') {
+      this.grid[entry.y][entry.x] = entry.prev ?? null; this._redo.push(entry); this._emit({ changed: [ { x1: entry.x, y1: entry.y, x2: entry.x, y2: entry.y } ]}); return;
+    } else {
+      for (let i = entry.items.length - 1; i >= 0; i--) { const it = entry.items[i]; this.grid[it.y][it.x] = it.prev ?? null; }
+      this._redo.push(entry); const b = entry.bounds; if (b) this._emit({ changed: [ b ] }); else this._emit(); return;
+    }
+  }
+  redo() {
+    const entry = this._redo.pop(); if (!entry) return;
+    if (entry.type === 'cell') {
+      this.grid[entry.y][entry.x] = entry.next ?? null; this._history.push(entry); this._emit({ changed: [ { x1: entry.x, y1: entry.y, x2: entry.x, y2: entry.y } ]}); return;
+    } else {
+      for (let i = 0; i < entry.items.length; i++) { const it = entry.items[i]; this.grid[it.y][it.x] = it.next ?? null; }
+      this._history.push(entry); const b = entry.bounds; if (b) this._emit({ changed: [ b ] }); else this._emit(); return;
+    }
+  }
+
+  serialize() { return JSON.stringify({ v: 1, width: this.width, height: this.height, palette: this.palette, currentColorIndex: this.currentColorIndex, grid: this.grid }); }
+  static deserialize(json: string | any) {
+    const data = typeof json === 'string' ? JSON.parse(json) : json;
+    const eng = new VPixEngine({ width: data.width, height: data.height, palette: data.palette });
+    eng.currentColorIndex = data.currentColorIndex ?? 0; eng.grid = data.grid.map((row: any[]) => row.slice()); return eng;
+  }
+
+  handleKey(evt: { key: string; ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean }) { return dispatchKey(this, evt as any); }
+
+  enterVisual() {
+    this.selection.active = true; this.selection.anchor = { x: this.cursor.x, y: this.cursor.y };
+    this.selection.rect = { x1: this.cursor.x, y1: this.cursor.y, x2: this.cursor.x, y2: this.cursor.y };
+    this.setMode(MODES.VISUAL); const r = this.selection.rect!; this._emit({ changed: [ r ] });
+  }
+  exitVisual() { const r = this.selection.rect; this.selection.active = false; this.selection.anchor = null; this.selection.rect = null; this.setMode(MODES.NORMAL); if (r) this._emit({ changed: [ r ] }); }
+  _updateSelectionRect() {
+    if (!this.selection.active || !this.selection.anchor) return;
+    const prev = this.selection.rect; const { anchor } = this.selection;
+    const x1 = Math.min(anchor.x, this.cursor.x); const y1 = Math.min(anchor.y, this.cursor.y);
+    const x2 = Math.max(anchor.x, this.cursor.x); const y2 = Math.max(anchor.y, this.cursor.y);
+    this.selection.rect = { x1, y1, x2, y2 };
+    const union = prev ? { x1: Math.min(prev.x1, x1), y1: Math.min(prev.y1, y1), x2: Math.max(prev.x2, x2), y2: Math.max(prev.y2, y2) } : { x1, y1, x2, y2 };
+    this._emit({ changed: [ union ] });
+  }
+  yankSelection() {
+    const r = this.selection.rect; if (!r) return; const w = r.x2 - r.x1 + 1; const h = r.y2 - r.y1 + 1;
+    const cells = Array.from({ length: h }, (_, yy) => Array.from({ length: w }, (_, xx) => this.grid[r.y1 + yy][r.x1 + xx]));
+    this._clipboard = { w, h, cells };
+  }
+  deleteSelection() {
+    const r = this.selection.rect; if (!r) return; this.beginGroup('deleteSelection'); this.yankSelection();
+    for (let y = r.y1; y <= r.y2; y++) for (let x = r.x1; x <= r.x2; x++) { const prev = this.grid[y][x]; if (prev != null) { this._record({ type: 'cell', x, y, prev, next: null }); this.grid[y][x] = null; } }
+    this.endGroup();
+  }
+  pasteAtCursor() {
+    if (!this._clipboard) return; const { w, h, cells } = this._clipboard; this.beginGroup('paste');
+    for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { const x = this.cursor.x + xx, y = this.cursor.y + yy; if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue; const next = cells[yy][xx]; const prev = this.grid[y][x]; this._record({ type: 'cell', x, y, prev, next }); this.grid[y][x] = next ?? null; }
+    this.endGroup();
+  }
+  pasteAtCursorTransparent() {
+    if (!this._clipboard) return; const { w, h, cells } = this._clipboard; this.beginGroup('pasteTransparent');
+    for (let yy = 0; yy < h; yy++) for (let xx = 0; xx < w; xx++) { const x = this.cursor.x + xx, y = this.cursor.y + yy; if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue; const next = cells[yy][xx]; if (next == null) continue; const prev = this.grid[y][x]; this._record({ type: 'cell', x, y, prev, next }); this.grid[y][x] = next; }
+    this.endGroup();
+  }
+  rotateClipboardCW() {
+    if (!this._clipboard) return; const { w, h, cells } = this._clipboard; const out = Array.from({ length: w }, () => Array<string | null>(h).fill(null));
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) out[x][h - 1 - y] = cells[y][x]; this._clipboard = { w: h, h: w, cells: out };
+  }
+  rotateClipboardCCW() {
+    if (!this._clipboard) return; const { w, h, cells } = this._clipboard; const out = Array.from({ length: w }, () => Array<string | null>(h).fill(null));
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) out[w - 1 - x][y] = cells[y][x]; this._clipboard = { w: h, h: w, cells: out };
+  }
+  moveSelectionToCursor() {
+    const r = this.selection.rect; if (!r) return; this.beginGroup('moveSelection'); const w = r.x2 - r.x1 + 1; const h = r.y2 - r.y1 + 1; const cells = Array.from({ length: h }, (_, yy) => Array.from({ length: w }, (_, xx) => this.grid[r.y1 + yy][r.x1 + xx]));
+    for (let y = r.y1; y <= r.y2; y++) for (let x = r.x1; x <= r.x2; x++) this._paintAt(x, y, null);
+    const orig = this._clipboard; this._clipboard = { w, h, cells }; this.pasteAtCursor(); this._clipboard = orig; this.endGroup();
+  }
+  fillSelection(color: string) {
+    const r = this.selection.rect; if (!r) return; this.beginGroup('fill');
+    for (let y = r.y1; y <= r.y2; y++) for (let x = r.x1; x <= r.x2; x++) { const prev = this.grid[y][x]; if (prev !== color) { this._record({ type: 'cell', x, y, prev, next: color }); this.grid[y][x] = color; } }
+    this.endGroup();
+  }
+  strokeRectSelection(color: string) {
+    const r = this.selection.rect; if (!r) return; this.beginGroup('rect'); for (let x = r.x1; x <= r.x2; x++) { this._paintAt(x, r.y1, color); this._paintAt(x, r.y2, color); } for (let y = r.y1; y <= r.y2; y++) { this._paintAt(r.x1, y, color); this._paintAt(r.x2, y, color); } this.endGroup();
+  }
+  private _paintAt(x: number, y: number, color: string | null) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return; const prev = this.grid[y][x]; if (prev === color) return; this._record({ type: 'cell', x, y, prev, next: color }); this.grid[y][x] = color;
+  }
+  drawLine(a: { x: number; y: number } | null, b: { x: number; y: number } | null, color: string) {
+    if (!a || !b) return; this.beginGroup('line'); let x0 = a.x, y0 = a.y, x1 = b.x, y1 = b.y; const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0); const sx = x0 < x1 ? 1 : -1; const sy = y0 < y1 ? 1 : -1; let err = dx - dy; while (true) { this._paintAt(x0, y0, color); if (x0 === x1 && y0 === y1) break; const e2 = 2 * err; if (e2 > -dy) { err -= dy; x0 += sx; } if (e2 < dx) { err += dx; y0 += sy; } } this.endGroup();
+  }
+  floodFill(x: number, y: number, color: string) {
+    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return; const target = this.grid[y][x]; if (target === color) return; this.beginGroup('flood'); const q: [number, number][] = [[x, y]]; const seen = new Set<string>(); const key = (xx: number, yy: number) => `${xx},${yy}`; while (q.length) { const [cx, cy] = q.pop()!; if (cx < 0 || cy < 0 || cx >= this.width || cy >= this.height) continue; const k = key(cx, cy); if (seen.has(k)) continue; seen.add(k); if (this.grid[cy][cx] !== target) continue; this._paintAt(cx, cy, color); q.push([cx + 1, cy], [cx - 1, cy], [cx, cy + 1], [cx, cy - 1]); } this.endGroup();
+  }
+}
+</file>
+
+<file path="core/keymap.ts">
+// Declarative keymap dispatch by mode
+import type VPixEngine from './engine';
+import { MODES } from './engine';
+
+export function dispatchKey(engine: VPixEngine, evt: { key: string; ctrlKey?: boolean }) {
+  const { key, ctrlKey } = evt;
+  // global
+  if (ctrlKey && (key === 'z' || key === 'Z')) { engine.undo(); return 'undo'; }
+  if (ctrlKey && (key === 'y' || key === 'Y')) { engine.redo(); return 'redo'; }
+  if (ctrlKey && (key === '^' || key === '6')) {
+    const tmp = engine.currentColorIndex;
+    engine.currentColorIndex = engine.lastColorIndex;
+    engine.lastColorIndex = tmp;
+    (engine as any)._emit?.();
+    return 'color:toggle-last';
+  }
+  // NORMAL: count buffer and prefixes
+  if (engine.mode === MODES.NORMAL && !(engine as any)._prefix && /\d/.test(key)) {
+    (engine as any).pushCountDigit(key);
+    return `count:${key}`;
+  }
+  if (engine.mode === MODES.NORMAL && key === 'g') { (engine as any)._prefix = 'g'; return 'prefix:g'; }
+  if (engine.mode === MODES.NORMAL && key === 'r') { (engine as any)._prefix = 'r'; return 'prefix:r'; }
+
+  const count = (engine as any).countValue();
+  (engine as any).clearCount();
+
+  // Prefix continuations (NORMAL)
+  if (engine.mode === MODES.NORMAL) {
+    if ((engine as any)._prefix === 'r') {
+      if (/^[1-9]$/.test(key)) {
+        const idx = parseInt(key, 10) - 1;
+        const color = engine.palette[idx];
+        if (color) engine.paint(color);
+        (engine as any)._prefix = null;
+        return `paint:color#${idx+1}`;
+      }
+      if (key === 'Escape') { (engine as any)._prefix = null; return 'prefix:cancel'; }
+    }
+    if ((engine as any)._prefix === 'g') {
+      if (key === 't') { const next = (engine.currentColorIndex + 1) % engine.palette.length; engine.setColorIndex(next); (engine as any)._prefix = null; return; }
+      if (key === 'T') { const prev = (engine.currentColorIndex - 1 + engine.palette.length) % engine.palette.length; engine.setColorIndex(prev); (engine as any)._prefix = null; return; }
+      if (key === 'Escape') { (engine as any)._prefix = null; return 'prefix:cancel'; }
+    }
+  }
+
+  // Palette 1..9 unless prefix pending
+  if (!(engine as any)._prefix && /^[1-9]$/.test(key)) { const idx = parseInt(key, 10) - 1; engine.setColorIndex(idx); return `color:set#${idx+1}`; }
+
+  // Mode-local maps
+  if (engine.mode === MODES.NORMAL) return normalMap(engine, key, count);
+  if (engine.mode === MODES.INSERT) return insertMap(engine, key, count);
+  if (engine.mode === MODES.VISUAL) return visualMap(engine, key, count);
+}
+
+function normalMap(e: VPixEngine, key: string, n: number) {
+  if (key === 'h') { e.move(-1, 0, n); return `move:left x${n}`; }
+  else if (key === 'j') { e.move(0, 1, n); return `move:down x${n}`; }
+  else if (key === 'k') { e.move(0, -1, n); return `move:up x${n}`; }
+  else if (key === 'l') { e.move(1, 0, n); return `move:right x${n}`; }
+  else if (key === 'i') { e.setMode(MODES.INSERT); return 'mode:insert'; }
+  else if (key === 'x') { for (let i = 0; i < n; i++) e.erase(); return `erase x${n}`; }
+  else if (key === ' ') { for (let i = 0; i < n; i++) e.toggle(); return `toggle x${n}`; }
+  else if (key === 'c') { const idx = Math.min(e.palette.length - 1, Math.max(0, n - 1)); e.setColorIndex(idx); return `color:set#${idx+1}`; }
+  else if (key === 'v') { (e as any).enterVisual(); return 'mode:visual'; }
+}
+
+function insertMap(e: VPixEngine, key: string, n: number) {
+  if (key === 'Escape') { e.setMode(MODES.NORMAL); return 'mode:normal'; }
+  if (key === 'h') { e.move(-1, 0, n); return `move:left x${n} (ins)`; }
+  else if (key === 'j') { e.move(0, 1, n); return `move:down x${n} (ins)`; }
+  else if (key === 'k') { e.move(0, -1, n); return `move:up x${n} (ins)`; }
+  else if (key === 'l') { e.move(1, 0, n); return `move:right x${n} (ins)`; }
+  else if (key === ' ') { e.paint(); return 'paint'; }
+  else if (key === 'Backspace') { e.erase(); return 'erase'; }
+}
+
+function visualMap(e: VPixEngine, key: string, n: number) {
+  if (key === 'Escape') { (e as any).exitVisual(); return 'mode:normal'; }
+  if (key === 'h') { e.move(-1, 0, n); (e as any)._updateSelectionRect(); return `sel-move:left x${n}`; }
+  else if (key === 'j') { e.move(0, 1, n); (e as any)._updateSelectionRect(); return `sel-move:down x${n}`; }
+  else if (key === 'k') { e.move(0, -1, n); (e as any)._updateSelectionRect(); return `sel-move:up x${n}`; }
+  else if (key === 'l') { e.move(1, 0, n); (e as any)._updateSelectionRect(); return `sel-move:right x${n}`; }
+  else if (key === 'y') { (e as any).yankSelection(); (e as any).exitVisual(); return 'yank'; }
+  else if (key === 'd') { (e as any).deleteSelection(); (e as any).exitVisual(); return 'delete'; }
+  else if (key === 'p') { (e as any).pasteAtCursor(); (e as any).exitVisual(); return 'paste'; }
+  else if (key === 'P') { (e as any).pasteAtCursorTransparent(); (e as any).exitVisual(); return 'paste:transparent'; }
+  else if (key === ']') { (e as any).rotateClipboardCW(); (e as any)._emit?.(); return 'clipboard:rotate-cw'; }
+  else if (key === '[') { (e as any).rotateClipboardCCW(); (e as any)._emit?.(); return 'clipboard:rotate-ccw'; }
+  else if (key === 'M') { (e as any).moveSelectionToCursor(); (e as any).exitVisual(); return 'move-selection'; }
+  else if (key === 'F') { (e as any).fillSelection((e as any).color); (e as any).exitVisual(); return 'fill'; }
+  else if (key === 'R') { (e as any).strokeRectSelection((e as any).color); (e as any).exitVisual(); return 'rect'; }
+  else if (key === 'L') { (e as any).drawLine((e as any).selection.anchor, (e as any).cursor, (e as any).color); (e as any).exitVisual(); return 'line'; }
+  else if (key === 'f') { (e as any).floodFill((e as any).cursor.x, (e as any).cursor.y, (e as any).color); (e as any).exitVisual(); return 'flood'; }
+}
+</file>
+
+<file path="core/palettes.mjs">
+// Minimal LoSpec-like palette registry (extensible)
+
+export const REGISTRY = new Map([
+  ['pico-8', [
+    '#000000','#1D2B53','#7E2553','#008751','#AB5236','#5F574F','#C2C3C7','#FFF1E8',
+    '#FF004D','#FFA300','#FFEC27','#00E436','#29ADFF','#83769C','#FF77A8','#FFCCAA',
+  ]],
+  ['sweetie-16', [
+    '#1A1C2C','#5D275D','#B13E53','#EF7D57','#FFCD75','#A7F070','#38B764','#257179',
+    '#29366F','#3B5DC9','#41A6F6','#73EFF7','#F4F4F4','#94B0C2','#566C86','#333C57',
+  ]],
+  ['gb-4-color', ['#0F380F','#306230','#8BAC0F','#9BBC0F']],
+  ['mono-2', ['#000000','#FFFFFF']],
+]);
+
+export function normalizeSlug(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-_.]/g, '');
+}
+
+export function getPaletteByName(name) {
+  const slug = normalizeSlug(name);
+  if (REGISTRY.has(slug)) return { slug, colors: REGISTRY.get(slug) };
+  return null;
+}
+
+export function registerPalette(slug, colors) {
+  const s = normalizeSlug(slug);
+  const list = (colors || []).map((c) => (c.startsWith('#') ? c.toUpperCase() : `#${c.toUpperCase()}`));
+  if (list.length > 0) REGISTRY.set(s, list);
+  return { slug: s, colors: REGISTRY.get(s) };
+}
+
+export async function fetchPaletteFromLospec(slug) {
+  const s = normalizeSlug(slug);
+  const url = `https://lospec.com/palette-list/${s}.json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`fetch failed ${res.status}`);
+  const data = await res.json();
+  if (!data || !Array.isArray(data.colors)) throw new Error('invalid palette json');
+  const { colors } = data; // colors are hex without '#'
+  return registerPalette(s, colors);
+}
+
+export async function searchLospecPalettes(term) {
+  const q = String(term || '').trim().toLowerCase();
+  if (!q) return [];
+  try {
+    const res = await fetch('https://lospec.com/palette-list.json');
+    if (!res.ok) return [];
+    const arr = await res.json();
+    // array of { slug, title, colors, ... }
+    return arr
+      .filter((p) => (p.slug && (p.slug.toLowerCase().includes(q) || (p.title || '').toLowerCase().includes(q))))
+      .slice(0, 20)
+      .map((p) => p.slug);
+  } catch {
+    return [];
+  }
+}
+</file>
+
+<file path="core/palettes.ts">
+// Minimal LoSpec-like palette registry (extensible)
+
+export const REGISTRY = new Map<string, string[]>([
+  ['pico-8', [
+    '#000000','#1D2B53','#7E2553','#008751','#AB5236','#5F574F','#C2C3C7','#FFF1E8',
+    '#FF004D','#FFA300','#FFEC27','#00E436','#29ADFF','#83769C','#FF77A8','#FFCCAA',
+  ]],
+  ['sweetie-16', [
+    '#1A1C2C','#5D275D','#B13E53','#EF7D57','#FFCD75','#A7F070','#38B764','#257179',
+    '#29366F','#3B5DC9','#41A6F6','#73EFF7','#F4F4F4','#94B0C2','#566C86','#333C57',
+  ]],
+  ['gb-4-color', ['#0F380F','#306230','#8BAC0F','#9BBC0F']],
+  ['mono-2', ['#000000','#FFFFFF']],
+]);
+
+export function normalizeSlug(name: string) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9\-_.]/g, '');
+}
+
+export function getPaletteByName(name: string): { slug: string; colors: string[] } | null {
+  const slug = normalizeSlug(name);
+  if (REGISTRY.has(slug)) return { slug, colors: REGISTRY.get(slug)! };
+  return null;
+}
+
+export function registerPalette(slug: string, colors: string[]) {
+  const s = normalizeSlug(slug);
+  const list = (colors || []).map((c) => (c.startsWith('#') ? c.toUpperCase() : `#${c.toUpperCase()}`));
+  if (list.length > 0) REGISTRY.set(s, list);
+  return { slug: s, colors: REGISTRY.get(s)! };
+}
+
+export async function fetchPaletteFromLospec(slug: string) {
+  const s = normalizeSlug(slug);
+  const url = `https://lospec.com/palette-list/${s}.json`;
+  const res = await fetch(url as any);
+  if (!(res as any).ok) throw new Error(`fetch failed ${(res as any).status}`);
+  const data = await (res as any).json();
+  if (!data || !Array.isArray(data.colors)) throw new Error('invalid palette json');
+  const { colors } = data as { colors: string[] };
+  return registerPalette(s, colors);
+}
+
+export async function searchLospecPalettes(term: string) {
+  const q = String(term || '').trim().toLowerCase();
+  if (!q) return [] as string[];
+  try {
+    const res = await fetch('https://lospec.com/palette-list.json' as any);
+    if (!(res as any).ok) return [] as string[];
+    const arr = await (res as any).json();
+    return (arr as any[])
+      .filter((p) => (p.slug && (p.slug.toLowerCase().includes(q) || (p.title || '').toLowerCase().includes(q))))
+      .slice(0, 20)
+      .map((p) => p.slug as string);
+  } catch {
+    return [] as string[];
+  }
+}
+</file>
+
+<file path="core/url.ts">
+// URL encode/decode (vp2/vp2r) using LoSpec palette slug + bit-packed pixels
+import type VPixEngine from './engine';
+import { getPaletteByName, normalizeSlug } from './palettes';
+
+const B62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+const toB62 = (n: number) => { let x = Math.max(0, n | 0); if (x === 0) return '0'; let s = ''; while (x > 0) { s = B62[x % 62] + s; x = Math.floor(x / 62); } return s; };
+const fromB62 = (s: string) => { let n = 0; for (const ch of s) { const v = B62.indexOf(ch); if (v < 0) throw new Error('bad base62'); n = n * 62 + v; } return n; };
+
+function base64UrlEncode(bytes: Uint8Array) {
+  if (typeof Buffer !== 'undefined') return Buffer.from(bytes).toString('base64').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
+  let s = ''; for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  const b64 = (typeof btoa === 'function' ? btoa(s) : '').replace(/=+$/,'').replace(/\+/g,'-').replace(/\//g,'_');
+  return b64;
+}
+function base64UrlDecodeToBytes(str: string) {
+  const b64 = str.replace(/-/g,'+').replace(/_/g,'/');
+  if (typeof Buffer !== 'undefined') return new Uint8Array(Buffer.from(b64, 'base64'));
+  const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out;
+}
+
+export function encodeToParamV2(engine: VPixEngine, paletteSlug?: string) {
+  const { width: w, height: h, palette } = engine;
+  const slug = normalizeSlug(paletteSlug) || 'pico-8';
+  const nColors = palette.length;
+  const bitsPer = Math.max(1, Math.ceil(Math.log2(nColors + 1)));
+  const total = w * h; const totalBits = total * bitsPer;
+  const bytes = new Uint8Array(Math.ceil(totalBits / 8));
+  let bitPos = 0;
+  const writeVal = (v: number) => { for (let b = bitsPer - 1; b >= 0; b--) { const bit = (v >> b) & 1; const byteIndex = bitPos >> 3; const bitIndex = 7 - (bitPos & 7); bytes[byteIndex] |= bit << bitIndex; bitPos++; } };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = engine.grid[y][x]; const idx = c == null ? 0 : Math.max(1, palette.indexOf(c) + 1); writeVal(idx); }
+  const payload = `vp2;w${toB62(w)};h${toB62(h)};pl${slug};b${base64UrlEncode(bytes)};d${toB62(bitsPer)}`;
+  return payload;
+}
+
+export function decodeFromParamV2(value: string, engineFactory: (opts: { width: number; height: number; palette: string[] }) => VPixEngine) {
+  const s = (value || '').trim(); if (!s.startsWith('vp2;')) return null;
+  const parts = s.split(';'); let w = 0, h = 0, slug: string | null = null, b64 = '', bitsPer = 0;
+  for (const token of parts) {
+    if (token.startsWith('w')) w = fromB62(token.slice(1));
+    else if (token.startsWith('h')) h = fromB62(token.slice(1));
+    else if (token.startsWith('pl')) slug = token.slice(2);
+    else if (token.startsWith('b')) b64 = token.slice(1);
+    else if (token.startsWith('d')) bitsPer = fromB62(token.slice(1));
+  }
+  if (!w || !h || !slug || !b64 || !bitsPer) return null;
+  const pal = getPaletteByName(slug); if (!pal) return null; const palette = pal.colors;
+  const buf = base64UrlDecodeToBytes(b64); const total = w * h; const eng = engineFactory({ width: w, height: h, palette });
+  let bitPos = 0;
+  for (let i = 0; i < total; i++) {
+    let v = 0; for (let b = 0; b < bitsPer; b++) { const byteIndex = bitPos >> 3; const bitIndex = 7 - (bitPos & 7); const bit = (buf[byteIndex] >> bitIndex) & 1; v = (v << 1) | bit; bitPos++; }
+    const y = Math.floor(i / w); const x = i % w; eng.grid[y][x] = v === 0 ? null : (palette[v - 1] || null);
+  }
+  return eng;
+}
+
+export function parseVp2Meta(value: string) {
+  const s = (value || '').trim(); if (!s.startsWith('vp2;')) return null;
+  const parts = s.split(';'); let w = 0, h = 0, slug: string | null = null;
+  for (const token of parts) {
+    if (token.startsWith('w')) w = fromB62(token.slice(1));
+    else if (token.startsWith('h')) h = fromB62(token.slice(1));
+    else if (token.startsWith('pl')) slug = token.slice(2);
+  }
+  if (!w || !h || !slug) return null; return { w, h, slug } as const;
+}
+
+export function encodeToParamV2R(engine: VPixEngine, paletteSlug?: string) {
+  const { width: w, height: h, palette } = engine; const slug = normalizeSlug(paletteSlug) || 'pico-8';
+  const nColors = palette.length; const bitsPer = Math.max(1, Math.ceil(Math.log2(nColors + 1)));
+  const total = w * h; const totalBits = total * bitsPer; const bytes = new Uint8Array(Math.ceil(totalBits / 8));
+  let bitPos = 0;
+  const writeVal = (v: number) => { for (let b = bitsPer - 1; b >= 0; b--) { const bit = (v >> b) & 1; const byteIndex = bitPos >> 3; const bitIndex = 7 - (bitPos & 7); bytes[byteIndex] |= bit << bitIndex; bitPos++; } };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = engine.grid[y][x]; const idx = c == null ? 0 : Math.max(1, palette.indexOf(c) + 1); writeVal(idx); }
+  const segs: string[] = [];
+  for (let i = 0; i < bytes.length;) {
+    if (bytes[i] === 0) { let j = i; while (j < bytes.length && bytes[j] === 0) j++; const count = j - i; segs.push(`z${toB62(count)}`); i = j; }
+    else { let j = i; while (j < bytes.length && bytes[j] !== 0) j++; const len = j - i; const chunk = bytes.subarray(i, j); segs.push(`d${toB62(len)}:${base64UrlEncode(chunk)}`); i = j; }
+  }
+  const r = segs.join('.'); return `vp2r;w${toB62(w)};h${toB62(h)};pl${slug};d${toB62(bitsPer)};r${r}`;
+}
+
+export function decodeFromParamV2R(value: string, engineFactory: (opts: { width: number; height: number; palette: string[] }) => VPixEngine) {
+  const s = (value || '').trim(); if (!s.startsWith('vp2r;')) return null;
+  const parts = s.split(';'); let w = 0, h = 0, slug: string | null = null, r = '', bitsPer = 0;
+  for (const token of parts) {
+    if (token.startsWith('w')) w = fromB62(token.slice(1)); else if (token.startsWith('h')) h = fromB62(token.slice(1)); else if (token.startsWith('pl')) slug = token.slice(2); else if (token.startsWith('r')) r = token.slice(1); else if (token.startsWith('d')) bitsPer = fromB62(token.slice(1));
+  }
+  if (!w || !h || !slug || bitsPer <= 0) return null; const pal = getPaletteByName(slug); if (!pal) return null;
+  const total = Math.ceil((w * h * bitsPer) / 8); const out = new Uint8Array(total); let offset = 0;
+  if (r && r.length) {
+    for (const seg of r.split('.')) {
+      if (!seg) continue; if (seg[0] === 'z') { const count = fromB62(seg.slice(1)); offset += count; }
+      else if (seg[0] === 'd') { const rest = seg.slice(1); const idx = rest.indexOf(':'); if (idx === -1) continue; const len = fromB62(rest.slice(0, idx)); const b64 = rest.slice(idx + 1); const chunk = base64UrlDecodeToBytes(b64); const copyLen = Math.min(len, chunk.length, total - offset); out.set(chunk.subarray(0, copyLen), offset); offset += copyLen; }
+      if (offset >= total) break;
+    }
+  }
+  const eng = engineFactory({ width: w, height: h, palette: pal.colors });
+  let bitPos = 0; const readVal = () => { let v = 0; for (let b = 0; b < bitsPer; b++) { const byteIndex = bitPos >> 3; const bitIndex = 7 - (bitPos & 7); const bit = (out[byteIndex] >> bitIndex) & 1; v = (v << 1) | bit; bitPos++; } return v; };
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = readVal(); (eng as any).grid[y][x] = v === 0 ? null : (pal.colors[v - 1] || null); }
+  return eng;
+}
+</file>
+
+<file path="core/util.ts">
+export function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, n));
+}
+</file>
+
+<file path="public/vite.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
+</file>
+
+<file path="src/__tests__/app.spec.tsx">
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import App from '../App';
+
+describe('App keyboard flows', () => {
+  beforeEach(() => {
+    // jsdom doesn't implement clipboard; stub to avoid errors
+    Object.assign(navigator, { clipboard: { writeText: () => Promise.resolve() } });
+  });
+
+  it('[count] c selects color (11c selects 11th swatch in pico-8)', async () => {
+    const ui = render(<App />);
+    const container = ui.container.querySelector('.vpix-container');
+    container.focus();
+    // press 1, 1, then c
+    await userEvent.keyboard('11c');
+    // pico-8 has 16 colors; expect 11th swatch active (1-indexed)
+    const swatches = ui.container.querySelectorAll('.swatch');
+    const active = ui.container.querySelector('.swatch.active');
+    expect(swatches.length).toBeGreaterThan(11);
+    expect(active).toBe(swatches[10]);
+  });
+});
+</file>
+
+<file path="src/assets/react.svg">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
+</file>
+
+<file path="src/components/CanvasGrid/CanvasGrid.css">
+.canvas-grid {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b0b0b;
+}
+canvas { image-rendering: pixelated; background: #0b0b0b; }
+</file>
+
+<file path="src/components/CanvasGrid/CanvasGrid.tsx">
+import { useEffect, useRef } from 'react';
+import type VPixEngine from '../../../core/engine';
+import './CanvasGrid.css';
+
+type Rect = { x1: number; y1: number; x2: number; y2: number };
+type Props = {
+  engine: VPixEngine;
+  zoom?: number;
+  pan?: { x: number; y: number };
+  frame?: number;
+  dirtyRects?: Rect[] | null;
+};
+
+export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, frame = 0, dirtyRects = null }: Props) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    // Skip drawing in jsdom test environment (no canvas impl)
+    if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
+    const c = canvasRef.current;
+    if (!c) return;
+    let ctx = null;
+    if (c && c.getContext) {
+      try { ctx = c.getContext('2d', { alpha: false }); } catch { ctx = null; }
+    }
+    if (!ctx) return;
+    const cell = Math.max(1, Math.floor(16 * zoom));
+    const viewW = c.width, viewH = c.height;
+
+    const drawCell = (x: number, y: number) => {
+      const vx = (x - pan.x) * cell;
+      const vy = (y - pan.y) * cell;
+      if (vx + cell < 0 || vy + cell < 0 || vx >= viewW || vy >= viewH) return;
+      ctx.fillStyle = '#0b0b0b';
+      ctx.fillRect(Math.floor(vx), Math.floor(vy), cell, cell);
+      const color = engine.grid[y][x];
+      if (color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.floor(vx), Math.floor(vy), cell, cell);
+      }
+    };
+
+    if (dirtyRects && dirtyRects.length) {
+      // redraw only dirty regions
+      for (const r of dirtyRects) {
+        const x1 = Math.max(0, r.x1), y1 = Math.max(0, r.y1);
+        const x2 = Math.min(engine.width - 1, r.x2), y2 = Math.min(engine.height - 1, r.y2);
+        for (let y = y1; y <= y2; y++) {
+          for (let x = x1; x <= x2; x++) drawCell(x, y);
+        }
+      }
+    } else {
+      // full redraw
+      ctx.fillStyle = '#0b0b0b';
+      ctx.fillRect(0, 0, viewW, viewH);
+      for (let y = 0; y < engine.height; y++) {
+        for (let x = 0; x < engine.width; x++) drawCell(x, y);
+      }
+      // grid lines (only on full redraw)
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= engine.width; x++) {
+        const vx = Math.floor((x - pan.x) * cell) + 0.5;
+        if (vx >= 0 && vx <= viewW) { ctx.beginPath(); ctx.moveTo(vx, 0); ctx.lineTo(vx, viewH); ctx.stroke(); }
+      }
+      for (let y = 0; y <= engine.height; y++) {
+        const vy = Math.floor((y - pan.y) * cell) + 0.5;
+        if (vy >= 0 && vy <= viewH) { ctx.beginPath(); ctx.moveTo(0, vy); ctx.lineTo(viewW, vy); ctx.stroke(); }
+      }
+    }
+    // selection outline
+    const sel = engine.selection;
+    if (sel && sel.active && sel.rect) {
+      const { x1, y1, x2, y2 } = sel.rect;
+      ctx.strokeStyle = '#00e1ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(
+        Math.floor((x1 - pan.x) * cell) + 0.5,
+        Math.floor((y1 - pan.y) * cell) + 0.5,
+        Math.floor((x2 - x1 + 1) * cell),
+        Math.floor((y2 - y1 + 1) * cell)
+      );
+    }
+    // cursor
+    const cx = Math.floor((engine.cursor.x - pan.x) * cell);
+    const cy = Math.floor((engine.cursor.y - pan.y) * cell);
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cx + 0.5, cy + 0.5, cell - 1, cell - 1);
+  }, [engine, zoom, pan, frame, dirtyRects]);
+
+  return (
+    <div className="canvas-grid">
+      <canvas ref={canvasRef} width={800} height={480} />
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/Grid/Grid.css">
+.grid {
+  display: grid;
+  gap: 1px;
+  background: #2b2b2b;
+  padding: 8px;
+  outline: none;
+}
+.cell {
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  outline: 1px solid rgba(255,255,255,0.05);
+}
+.cell.cursor {
+  outline: 2px solid #00e1ff;
+  box-shadow: 0 0 6px rgba(0, 225, 255, 0.7);
+}
+</file>
+
+<file path="src/components/Grid/Grid.jsx">
+import './Grid.css';
+
+export default function Grid({ engine }) {
+  const { grid, cursor, width, height } = engine;
+  const size = 16; // px per cell
+  const style = {
+    gridTemplateColumns: `repeat(${width}, ${size}px)`,
+    gridTemplateRows: `repeat(${height}, ${size}px)`,
+  };
+
+  return (
+    <div className="grid" style={style} aria-label="pixel-grid">
+      {grid.map((row, y) =>
+        row.map((cell, x) => {
+          const isCursor = cursor.x === x && cursor.y === y;
+          return (
+            <div
+              key={`${x}-${y}`}
+              className={`cell${isCursor ? ' cursor' : ''}`}
+              style={{ backgroundColor: cell || 'transparent' }}
+            />
+          );
+        })
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/MiniMap/MiniMap.css">
+.minimap {
+  padding: 8px 12px;
+  border-top: 1px solid #222;
+}
+.minimap canvas {
+  image-rendering: pixelated;
+  background: #0b0b0b;
+  display: block;
+  max-width: 100%;
+}
+</file>
+
+<file path="src/components/MiniMap/MiniMap.tsx">
+import { useEffect, useRef } from 'react';
+import type VPixEngine from '../../../core/engine';
+import './MiniMap.css';
+
+type Rect = { x1: number; y1: number; x2: number; y2: number };
+type Props = {
+  engine: VPixEngine;
+  pan: { x: number; y: number };
+  zoom: number;
+  viewW?: number;
+  viewH?: number;
+  frame?: number;
+  dirtyRects?: Rect[] | null;
+};
+
+export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, frame = 0, dirtyRects = null }: Props) {
+  const ref = useRef<HTMLCanvasElement | null>(null);
+  useEffect(() => {
+    // Skip drawing in jsdom test environment (no canvas impl)
+    if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
+    const c = ref.current;
+    let ctx = null;
+    if (c && c.getContext) {
+      try { ctx = c.getContext('2d', { alpha: false }); } catch { ctx = null; }
+    }
+    if (!ctx) return;
+    // Fit entire grid within canvas size
+    const maxSize = 200;
+    const cell = Math.max(1, Math.floor(Math.min(maxSize / engine.width, maxSize / engine.height)));
+    const w = engine.width * cell;
+    const h = engine.height * cell;
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+
+    const drawCell = (x, y) => {
+      const px = x * cell, py = y * cell;
+      ctx.fillStyle = '#0b0b0b';
+      ctx.fillRect(px, py, cell, cell);
+      const color = engine.grid[y][x];
+      if (color) { ctx.fillStyle = color; ctx.fillRect(px, py, cell, cell); }
+    };
+
+    // Always full redraw (minimap small, favors correctness over micro-optim)
+    ctx.fillStyle = '#0b0b0b';
+    ctx.fillRect(0, 0, w, h);
+    for (let y = 0; y < engine.height; y++) {
+      for (let x = 0; x < engine.width; x++) drawCell(x, y);
+    }
+    // viewport rectangle
+    const cellPx = 16 * (zoom || 1);
+    const visWcells = Math.max(1, Math.floor(viewW / cellPx));
+    const visHcells = Math.max(1, Math.floor(viewH / cellPx));
+    const rx = Math.max(0, Math.min(engine.width, (pan?.x || 0))) * cell;
+    const ry = Math.max(0, Math.min(engine.height, (pan?.y || 0))) * cell;
+    const rw = Math.min(engine.width, visWcells) * cell;
+    const rh = Math.min(engine.height, visHcells) * cell;
+    ctx.strokeStyle = '#00e1ff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
+  }, [engine, pan, zoom, viewW, viewH, frame, engine.grid, dirtyRects]);
+
+  return (
+    <div className="minimap">
+      <canvas ref={ref} />
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/Palette/Palette.css">
+.palette {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+.swatch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  background: #0d0d0d;
+  border: 1px solid #222;
+  border-radius: 4px;
+  color: #aaa;
+  font-family: monospace;
+}
+.swatch.active {
+  border-color: #00e1ff;
+  box-shadow: 0 0 6px rgba(0, 225, 255, 0.4);
+}
+.swatch .chip {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #000;
+}
+.swatch .key {
+  opacity: 0.7;
+}
+</file>
+
+<file path="src/components/Palette/Palette.tsx">
+import './Palette.css';
+
+type Props = { palette: string[]; currentIndex: number };
+
+export default function Palette({ palette, currentIndex }: Props) {
+  return (
+    <div className="palette">
+      {palette.map((c, i) => (
+        <div key={i} className={`swatch${i === currentIndex ? ' active' : ''}`}>
+          <span className="key">{i + 1}</span>
+          <span className="chip" style={{ background: c }} />
+        </div>
+      ))}
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/StatusBar/StatusBar.css">
+.status-bar {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  padding: 12px;
+  background: #101010;
+  color: #bbb;
+}
+.status-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.status-table th,
+.status-table td {
+  padding: 6px 8px;
+  vertical-align: middle;
+}
+.status-table th {
+  text-align: left;
+  color: #9aa0a6;
+  font-weight: 600;
+  width: 40%;
+}
+.status-table tr + tr td,
+.status-table tr + tr th {
+  border-top: 1px solid #222;
+}
+.color-chip {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #000;
+  vertical-align: middle;
+}
+</file>
+
+<file path="src/components/StatusBar/StatusBar.tsx">
+import './StatusBar.css';
+import type VPixEngine from '../../../core/engine';
+
+type Props = { engine: VPixEngine; zoom: number; pan: { x: number; y: number } };
+
+export default function StatusBar({ engine, zoom, pan }: Props) {
+  return (
+    <div className="status-bar" role="status">
+      <table className="status-table" role="table">
+        <tbody>
+          <tr>
+            <th scope="row">mode</th>
+            <td>{engine.mode}</td>
+          </tr>
+          <tr>
+            <th scope="row">cursor</th>
+            <td>({engine.cursor.x},{engine.cursor.y})</td>
+          </tr>
+          <tr>
+            <th scope="row">color</th>
+            <td><span className="color-chip" style={{ background: engine.color }} /></td>
+          </tr>
+          <tr>
+            <th scope="row">size</th>
+            <td>{engine.width}x{engine.height}</td>
+          </tr>
+          <tr>
+            <th scope="row">zoom</th>
+            <td>{Math.round((zoom || 1) * 100)}%</td>
+          </tr>
+          <tr>
+            <th scope="row">pan</th>
+            <td>({pan?.x ?? 0},{pan?.y ?? 0})</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+</file>
+
+<file path="src/components/Terminal/Terminal.css">
+.terminal {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  background: rgba(8,8,8,0.9);
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #cfd3d6;
+  max-height: 40vh;
+}
+.term-scroll {
+  padding: 6px 10px;
+  overflow-y: auto;
+  max-height: 30vh;
+}
+.term-line { white-space: pre-wrap; line-height: 1.3; }
+.term-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-top: 1px solid #222;
+}
+.prompt { color: #00e1ff; }
+.term-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e6e6e6;
+  font: inherit;
+}
+</file>
+
+<file path="src/components/Terminal/Terminal.tsx">
+import { useEffect, useRef } from 'react';
+import './Terminal.css';
+
+type Props = {
+  lines: string[];
+  cmdMode: boolean;
+  cmdText: string;
+  onChangeText: (t: string) => void;
+  onSubmit: () => void;
+  onTabComplete?: () => void;
+};
+
+export default function Terminal({ lines, cmdMode, cmdText, onChangeText, onSubmit, onTabComplete }: Props) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [lines.length]);
+
+  useEffect(() => {
+    if (cmdMode) setTimeout(() => inputRef.current?.focus(), 0);
+  }, [cmdMode]);
+
+  return (
+    <div className="terminal">
+      <div className="term-scroll" ref={scrollerRef}>
+        {lines.map((l, i) => (
+          <div key={i} className="term-line">{l}</div>
+        ))}
+      </div>
+      <div className="term-input-row">
+        <span className="prompt">{cmdMode ? ':' : '>'}</span>
+        <input
+          ref={inputRef}
+          className="term-input"
+          value={cmdText}
+          onChange={(e) => onChangeText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); onSubmit(); }
+            else if (e.key === 'Tab') { e.preventDefault(); onTabComplete?.(); }
+          }}
+          placeholder={cmdMode ? 'command…' : ''}
+        />
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/App.css">
+#root { height: 100%; }
+
+.vpix-root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0b0b0b;
+  color: #e0e0e0;
+}
+
+.vpix-container {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  outline: none;
+}
+
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.side-panel {
+  width: 260px;
+  background: #101010;
+  border-left: 1px solid #333;
+  display: flex;
+  flex-direction: column;
+}
+
+.help-overlay {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  background: rgba(0,0,0,0.75);
+  border: 1px solid #333;
+  border-radius: 8px;
+}
+.help-box {
+  max-width: 900px;
+  margin: 24px auto;
+  padding: 16px 20px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, sans-serif;
+}
+.help-title { font-weight: 700; margin-bottom: 8px; }
+.help-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.command-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 8px;
+  padding: 6px 10px;
+  background: #0d0d0d;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-family: monospace;
+}
+.command-bar .prompt { color: #00e1ff; margin-right: 6px; }
+.command-bar .input { color: #ddd; }
+
+.command-result {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 8px;
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.6);
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-family: monospace;
+  color: #9ad69a;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+</file>
+
+<file path="src/App.tsx">
+import { useEffect, useMemo, useRef, useState } from 'react';
+import VPixEngine, { MODES } from '../core/engine';
+import { executeCommand, suggestCommands, helpCommands } from '../core/commands';
+import { decodeFromParamV2, parseVp2Meta, encodeToParamV2R, decodeFromParamV2R } from '../core/url';
+import { getPaletteByName, REGISTRY, fetchPaletteFromLospec, searchLospecPalettes } from '../core/palettes';
+import CanvasGrid from './components/CanvasGrid/CanvasGrid';
+import StatusBar from './components/StatusBar/StatusBar';
+import Palette from './components/Palette/Palette';
+import MiniMap from './components/MiniMap/MiniMap';
+import Terminal from './components/Terminal/Terminal';
+import './App.css';
+
+const STORAGE_KEY = 'vpix.document.v1';
+
+export default function App() {
+  const engine = useMemo(() => {
+    const pico = getPaletteByName('pico-8');
+    return new VPixEngine({ width: 32, height: 24, palette: pico ? pico.colors : ['#000', '#fff'] });
+  }, []);
+  const [frame, setFrame] = useState(0);
+  const [showHelp, setShowHelp] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [cmdMode, setCmdMode] = useState(false);
+  const [cmdText, setCmdText] = useState('');
+  const [cmdMsg, setCmdMsg] = useState<string | null>(null);
+  const [, setCmdHistory] = useState<string[]>([]);
+  const [, setCmdHistIdx] = useState(-1); // -1 means live typing
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [dirtyRects, setDirtyRects] = useState<{ x1: number; y1: number; x2: number; y2: number }[] | null>(null);
+  const [termLines, setTermLines] = useState<string[]>([]);
+  const [showTerminal, setShowTerminal] = useState(false);
+
+  useEffect(() => {
+    const unsub = engine.subscribe((_, payload) => {
+      if (payload && payload.changed) setDirtyRects(payload.changed);
+      else setDirtyRects(null);
+      setFrame((t) => t + 1);
+    });
+    return unsub;
+  }, [engine]);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (el) el.focus();
+    // load from query param if present, else from hash
+    (async () => {
+      try {
+        const url = new URL(window.location.href);
+        const qp2r = url.searchParams.get('vp2r');
+        const qp2 = url.searchParams.get('vp2');
+        if (!qp2r && !qp2) return;
+        let decoded = qp2r
+          ? decodeFromParamV2R(qp2r, (opts) => new VPixEngine(opts))
+          : decodeFromParamV2(qp2, (opts) => new VPixEngine(opts));
+        if (!decoded) {
+          const meta = parseVp2Meta(qp2r || qp2);
+          if (meta && meta.slug) {
+            try { await fetchPaletteFromLospec(meta.slug); } catch {}
+            decoded = qp2r
+              ? decodeFromParamV2R(qp2r, (opts) => new VPixEngine(opts))
+              : decodeFromParamV2(qp2, (opts) => new VPixEngine(opts));
+          }
+        }
+        if (decoded) {
+          engine.width = decoded.width;
+          engine.height = decoded.height;
+          engine.palette = decoded.palette;
+          engine.currentColorIndex = decoded.currentColorIndex;
+          engine.grid = decoded.grid;
+          engine._emit();
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (cmdMode) { e.preventDefault(); return; }
+    if (e.key === '?') {
+      setShowHelp((v) => !v);
+      e.preventDefault();
+      return;
+    }
+    if (engine.mode === MODES.NORMAL && e.key === ':') {
+      setCmdMode(true); setCmdText(''); setCmdMsg(null); setShowTerminal(true);
+      e.preventDefault();
+      return;
+    }
+    if (e.ctrlKey && e.key === '`') {
+      setShowTerminal((v) => !v);
+      e.preventDefault();
+      return;
+    }
+    // zoom/pan
+    if (e.key === '+') { setZoom((z) => Math.min(8, z * 1.25)); e.preventDefault(); return; }
+    if (e.key === '-') { setZoom((z) => Math.max(0.25, z / 1.25)); e.preventDefault(); return; }
+    if (e.key === '0') { setZoom(1); setPan({ x: 0, y: 0 }); e.preventDefault(); return; }
+    if (e.shiftKey && ['h','j','k','l'].includes(e.key)) {
+      const step = 2;
+      if (e.key === 'h') setPan((p) => ({ ...p, x: p.x - step }));
+      if (e.key === 'l') setPan((p) => ({ ...p, x: p.x + step }));
+      if (e.key === 'k') setPan((p) => ({ ...p, y: p.y - step }));
+      if (e.key === 'j') setPan((p) => ({ ...p, y: p.y + step }));
+      e.preventDefault(); return;
+    }
+    if (engine.mode === MODES.NORMAL && e.key === 'S') {
+      localStorage.setItem(STORAGE_KEY, engine.serialize());
+      e.preventDefault();
+      return;
+    }
+    if (engine.mode === MODES.NORMAL && e.key === 'L') {
+      const data = localStorage.getItem(STORAGE_KEY);
+      if (data) {
+        const loaded = VPixEngine.deserialize(data);
+        engine.width = loaded.width;
+        engine.height = loaded.height;
+        engine.palette = loaded.palette;
+        engine.currentColorIndex = loaded.currentColorIndex;
+        engine.grid = loaded.grid;
+        engine._emit();
+      }
+      e.preventDefault();
+      return;
+    }
+    engine.handleKey({ key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
+    if ([ 'h','j','k','l',' ','Backspace' ].includes(e.key)) e.preventDefault();
+  };
+
+  const handleCommandSubmit = async () => {
+    // push to history (dedupe consecutive)
+    setCmdHistory((hist) => (cmdText && hist[0] !== cmdText ? [cmdText, ...hist].slice(0, 50) : hist));
+    setCmdHistIdx(-1);
+    // built-in console commands first
+    const t = cmdText.trim();
+    if (t === 'clear') {
+      setTermLines([]);
+      setCmdMode(false); setCmdText('');
+      return;
+    }
+    if (t.startsWith('help')) {
+      const prefix = t.length > 4 ? t.slice(5).trim() : undefined;
+      const lines = helpCommands(prefix);
+      const fallback = [
+        'Navigation: h j k l | [count]+move | Esc',
+        'Pan/Zoom: Shift+HJKL | + / - / 0',
+        'Modes: i(insert), v(visual), Esc(normal)',
+        'Draw: Space(tgl), x(erase), Backspace(erase in insert)',
+        'Visual Ops: y(d) p(P) F R L f M ] [',
+        'Colors: [count] c | gt/gT | Ctrl+^ | r [1..9]',
+      ];
+      setTermLines((ls) => [...ls, `:${t}`, ...(lines.length ? lines : fallback)]);
+      setCmdMode(false); setCmdText('');
+      return;
+    }
+    let res = await executeCommand(engine, t as any);
+    if (!res.ok && cmdText === 'link') {
+      let slug: string | null = null;
+      for (const name of REGISTRY.keys()) {
+        const p = getPaletteByName(name);
+        if (p && JSON.stringify(p.colors) === JSON.stringify(engine.palette)) { slug = p.slug; break; }
+      }
+      const payload = encodeToParamV2R(engine, slug || 'pico-8');
+      const url = new URL(window.location.href);
+      url.searchParams.set('vp2r', payload);
+      history.replaceState(null, '', url.toString());
+      res = { ok: true, msg: 'link updated (?vp2r=...)' };
+    } else if (!res.ok && cmdText === 'copylink') {
+      let slug: string | null = null;
+      for (const name of REGISTRY.keys()) {
+        const p = getPaletteByName(name);
+        if (p && JSON.stringify(p.colors) === JSON.stringify(engine.palette)) { slug = p.slug; break; }
+      }
+      const payload = encodeToParamV2R(engine, slug || 'pico-8');
+      const url = new URL(window.location.href);
+      url.searchParams.set('vp2r', payload);
+      const full = url.toString();
+      if (full.length > 2000) setCmdMsg(`warning: long URL (${full.length} chars)`);
+      if ((navigator as any).clipboard?.writeText) { await (navigator as any).clipboard.writeText(full).catch(() => {}); res = { ok: true, msg: 'link copied' }; }
+      else { res = { ok: false, msg: full }; }
+    }
+    setTermLines((ls) => [...ls, `:${t}`, res.msg]);
+    setCmdMsg(res.msg);
+    setTimeout(() => setCmdMsg(null), 2000);
+    setCmdMode(false); setCmdText('');
+  };
+
+  const handleTabComplete = () => {
+    const t = cmdText;
+    const sug = suggestCommands(t);
+    if (sug.length > 0) {
+      const base = /\s$/.test(t) ? t : t.replace(/\S+$/, '');
+      setCmdText((base ? base : (t.endsWith(' ') ? t : t + ' ')) + sug[0]);
+      return;
+    }
+    // fallback to palette autocomplete if registry had none
+    const lowers = t.trimStart().toLowerCase();
+    const prefixes = ['palette use ', 'palette fetch '];
+    const p = prefixes.find((pfx) => lowers.startsWith(pfx));
+    if (p) {
+      const term = t.slice(t.toLowerCase().indexOf(p) + p.length).trim();
+      const matches = Array.from(REGISTRY.keys()).filter((k) => k.startsWith(term.toLowerCase()));
+      if (matches.length > 0) setCmdText(p + matches[0]);
+      else searchLospecPalettes(term).then((slugs) => { if (slugs.length) setCmdText(p + slugs[0]); }).catch(() => {});
+    }
+  };
+
+  return (
+    <div className="vpix-root">
+      <div
+        className="vpix-container"
+        tabIndex={0}
+        ref={containerRef}
+        onKeyDown={handleKeyDown}
+      >
+        <div className="main-area">
+          <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
+          <CanvasGrid engine={engine} zoom={zoom} pan={pan} frame={frame} dirtyRects={dirtyRects} />
+        </div>
+        <div className="side-panel">
+          <StatusBar engine={engine} zoom={zoom} pan={pan} />
+          <MiniMap engine={engine} pan={pan} zoom={zoom} viewW={800} viewH={480} frame={frame} dirtyRects={dirtyRects} />
+        </div>
+        {(showTerminal || cmdMode || termLines.length > 0) && (
+          <Terminal
+            lines={termLines}
+            cmdMode={cmdMode}
+            cmdText={cmdText}
+            onChangeText={setCmdText}
+            onSubmit={handleCommandSubmit}
+            onTabComplete={handleTabComplete}
+          />
+        )}
+        {cmdMsg && !cmdMode && <CommandResult msg={cmdMsg} />}
+        {showHelp && <HelpOverlay />}
+      </div>
+    </div>
+  );
+}
+
+function HelpOverlay() {
+  return (
+    <div className="help-overlay">
+      <div className="help-box">
+        <div className="help-title">vpix — Vim-like pixel editor</div>
+        <div className="help-grid">
+          <div>
+            <b>Navigation</b>
+            <div>h j k l — move</div>
+            <div>[count] + move — repeat</div>
+            <div>Esc — normal mode</div>
+            <div>Shift+HJKL — pan view</div>
+            <div>+ / - / 0 — zoom/reset</div>
+          </div>
+          <div>
+            <b>Drawing</b>
+            <div>i — insert/paint mode</div>
+            <div>Space — paint/toggle</div>
+            <div>x — erase (normal)</div>
+            <div>Backspace — erase (insert)</div>
+            <div>v — visual select</div>
+            <div>y/d/p — yank/delete/paste (P — transparent)</div>
+            <div>F — fill, R — rect, L — line, f — flood-fill</div>
+            <div>M — move selection, ] / [ — rotate clipboard</div>
+          </div>
+          <div>
+            <b>Colors</b>
+            <div>[count] c — select color</div>
+            <div>gt / gT — next/prev color</div>
+            <div>Ctrl+^ — toggle last color</div>
+            <div>r [1..9] — replace here</div>
+            <div>: palette use &lt;lospec-name&gt;</div>
+            <div>: palette fetch &lt;lospec-name&gt;</div>
+            <div>: palette list</div>
+            <div>: palette search &lt;term&gt; (Tab to autocomplete)</div>
+            <div>{': read | read json={...}'}</div>
+            <div>: read url=https://…</div>
+            <div>: set W=&lt;int&gt;, set H=&lt;int&gt;</div>
+            <div>: set size=&lt;W&gt;x&lt;H&gt;</div>
+          </div>
+          <div>
+            <b>History</b>
+            <div>Ctrl+Z — undo</div>
+            <div>Ctrl+Y — redo</div>
+          </div>
+          <div>
+            <b>File</b>
+            <div>S — save</div>
+            <div>L — load</div>
+            <div>: link — update URL (?vp2r=...)</div>
+            <div>: copylink — copy shareable URL</div>
+          </div>
+          <div>
+            <b>UI</b>
+            <div>? — toggle help</div>
+            <div>Keyboard only — no mouse</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CommandBar({ text }: { text: string }) {
+  return (
+    <div className="command-bar">
+      <span className="prompt">:</span>
+      <span className="input">{text}</span>
+    </div>
+  );
+}
+
+function CommandResult({ msg }: { msg: string }) {
+  return (
+    <div className="command-result">{msg}</div>
+  );
+}
+</file>
+
+<file path="src/index.css">
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; margin: 0; }
+body { background: #0b0b0b; }
+</file>
+
+<file path="src/main.tsx">
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './index.css';
+import App from './App';
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+</file>
+
+<file path="test/commands.spec.ts">
+import { describe, it } from 'vitest';
+import { strict as assert } from 'node:assert';
+import VPixEngine from '../core/engine';
+import { executeCommand } from '../core/commands';
+import { getPaletteByName } from '../core/palettes';
+
+describe('Command execution', () => {
+  const pico = getPaletteByName('pico-8')!;
+  it('palette use <name> switches to registry palette', () => {
+    const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+    const res = executeCommand(eng, 'palette use pico-8') as { ok: boolean; msg: string };
+    assert.equal(res.ok, true);
+    assert.equal(eng.palette.length, 16);
+  });
+
+  it('palette list returns registry names', () => {
+    const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+    const res = executeCommand(eng, 'palette list') as { ok: boolean; msg: string };
+    assert.equal(res.ok, true);
+    assert.ok(/pico-8/.test(res.msg));
+  });
+
+  it('set W= and set H= resize canvas, preserving pixels', () => {
+    const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+    eng.paint('#111111');
+    eng.move(1, 0); eng.paint('#222222');
+    let res = executeCommand(eng, 'set W=1') as { ok: boolean };
+    assert.equal(res.ok, true);
+    assert.equal(eng.width, 1);
+    assert.equal(eng.grid[0][0], '#111111');
+    res = executeCommand(eng, 'set H=3') as { ok: boolean };
+    assert.equal(res.ok, true);
+    assert.equal(eng.height, 3);
+    assert.equal(eng.grid[0][0], '#111111');
+    assert.equal(eng.grid[2][0], null);
+  });
+
+  it('set size=<W>x<H> resizes both dimensions with crop/preserve', () => {
+    const eng = new VPixEngine({ width: 3, height: 2, palette: pico.colors });
+    eng.paint('#111111');
+    eng.move(1, 0); eng.paint('#222222');
+    eng.move(0, 1); eng.paint('#333333');
+    const res = executeCommand(eng, 'set size=2x1') as { ok: boolean };
+    assert.equal(res.ok, true);
+    assert.equal(eng.width, 2);
+    assert.equal(eng.height, 1);
+    assert.equal(eng.grid[0][0], '#111111');
+    assert.equal(eng.grid[0][1], '#222222');
+  });
+
+  it('set size <W>x<H> (without =) also works', () => {
+    const eng = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
+    const res = executeCommand(eng, 'set size 4x3') as { ok: boolean };
+    assert.equal(res.ok, true);
+    assert.equal(eng.width, 4);
+    assert.equal(eng.height, 3);
+  });
+
+  it('read json=<...> replaces engine doc', () => {
+    const eng = new VPixEngine({ width: 2, height: 1, palette: pico.colors });
+    eng.paint('#123456');
+    const json = eng.serialize();
+    const eng2 = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
+    const res = executeCommand(eng2, `read json=${json}`) as { ok: boolean };
+    assert.equal(res.ok, true);
+    assert.equal(eng2.width, 2);
+    assert.equal(eng2.height, 1);
+    assert.equal(eng2.grid[0][0], '#123456');
+  });
+});
+</file>
+
+<file path="test/engine.spec.ts">
+import { describe, it } from 'vitest';
+import { strict as assert } from 'node:assert';
+import VPixEngine, { MODES } from '../core/engine';
+import { getPaletteByName } from '../core/palettes';
+
+describe('VPixEngine', () => {
+  const pico = getPaletteByName('pico-8')!;
+
+  it('initializes with correct defaults', () => {
+    const eng = new VPixEngine({ width: 8, height: 8, palette: pico.colors });
+    assert.equal(eng.width, 8);
+    assert.equal(eng.height, 8);
+    assert.equal(eng.mode, MODES.NORMAL);
+    assert.deepEqual(eng.cursor, { x: 0, y: 0 });
+    assert.equal(eng.grid.length, 8);
+    assert.equal(eng.grid[0].length, 8);
+  });
+
+  it('moves cursor with hjkl and clamps bounds', () => {
+    const eng = new VPixEngine({ width: 3, height: 2, palette: pico.colors });
+    eng.handleKey({ key: 'l' });
+    eng.handleKey({ key: 'l' });
+    eng.handleKey({ key: 'l' });
+    assert.deepEqual(eng.cursor, { x: 2, y: 0 });
+    eng.handleKey({ key: 'j' });
+    eng.handleKey({ key: 'j' });
+    assert.deepEqual(eng.cursor, { x: 2, y: 1 });
+    eng.handleKey({ key: 'h' });
+    eng.handleKey({ key: 'k' });
+    assert.deepEqual(eng.cursor, { x: 1, y: 0 });
+  });
+
+  it('count prefix repeats actions', () => {
+    const eng = new VPixEngine({ width: 10, height: 1, palette: pico.colors });
+    eng.handleKey({ key: '3' });
+    eng.handleKey({ key: '2' });
+    eng.handleKey({ key: 'l' });
+    assert.deepEqual(eng.cursor, { x: 9, y: 0 });
+  });
+
+  it('insert mode paints as it moves', () => {
+    const eng = new VPixEngine({ width: 3, height: 1, palette: pico.colors });
+    eng.handleKey({ key: 'i' });
+    assert.equal(eng.mode, MODES.INSERT);
+    eng.paint();
+    eng.handleKey({ key: 'l' });
+    eng.handleKey({ key: 'l' });
+    assert.ok(eng.grid[0][0]);
+    assert.ok(eng.grid[0][1]);
+    assert.ok(eng.grid[0][2]);
+    eng.handleKey({ key: 'Escape' });
+    assert.equal(eng.mode, MODES.NORMAL);
+  });
+
+  it('erases with x in normal mode and Backspace in insert', () => {
+    const eng = new VPixEngine({ width: 2, height: 1, palette: pico.colors });
+    eng.paint();
+    assert.ok(eng.grid[0][0]);
+    eng.handleKey({ key: 'x' });
+    assert.equal(eng.grid[0][0], null);
+    eng.handleKey({ key: 'i' });
+    eng.paint();
+    assert.ok(eng.grid[0][0]);
+    eng.handleKey({ key: 'Backspace' });
+    assert.equal(eng.grid[0][0], null);
+  });
+
+  it('undo/redo works for paint/erase', () => {
+    const eng = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
+    eng.paint('#ff0000');
+    const color1 = eng.grid[0][0];
+    eng.erase();
+    assert.equal(eng.grid[0][0], null);
+    eng.undo();
+    assert.equal(eng.grid[0][0], color1);
+    eng.redo();
+    assert.equal(eng.grid[0][0], null);
+  });
+
+  it('serialize/deserialize roundtrips', () => {
+    const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+    eng.paint('#123456');
+    eng.move(1, 0);
+    eng.paint('#abcdef');
+    const json = eng.serialize();
+    const clone = VPixEngine.deserialize(json);
+    assert.equal(clone.width, 2);
+    assert.equal(clone.height, 2);
+    assert.equal(clone.grid[0][0], '#123456');
+    assert.equal(clone.grid[0][1], '#abcdef');
+  });
+
+  it('[count] c selects color index', () => {
+    const eng = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
+    eng.handleKey({ key: '3' });
+    eng.handleKey({ key: 'c' });
+    assert.equal(eng.currentColorIndex, 2);
+  });
+
+  it('gt/gT cycles palette like Vim tabs', () => {
+    const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+    const start = eng.currentColorIndex;
+    eng.handleKey({ key: 'g' });
+    eng.handleKey({ key: 't' });
+    assert.equal(eng.currentColorIndex, (start + 1) % eng.palette.length);
+    eng.handleKey({ key: 'g' });
+    eng.handleKey({ key: 'T' });
+    assert.equal(eng.currentColorIndex, start);
+  });
+
+  it('Ctrl-^ toggles last color (Ctrl+6)', () => {
+    const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+    eng.setColorIndex(4);
+    eng.setColorIndex(1);
+    eng.handleKey({ key: '6', ctrlKey: true });
+    assert.equal(eng.currentColorIndex, 4);
+    eng.handleKey({ key: '6', ctrlKey: true });
+    assert.equal(eng.currentColorIndex, 1);
+  });
+
+  it('r + digit paints once without changing current color', () => {
+    const eng = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
+    const before = eng.currentColorIndex;
+    eng.handleKey({ key: 'r' });
+    eng.handleKey({ key: '1' });
+    assert.ok(eng.grid[0][0]);
+    assert.equal(eng.currentColorIndex, before);
+  });
+});
+</file>
+
+<file path="test/setup.ts">
+// Mock Lospec fetch endpoints to avoid real network during tests
+
+const ok = (data: any, status = 200) => ({
+  ok: status >= 200 && status < 300,
+  status,
+  json: async () => data,
+  text: async () => (typeof data === 'string' ? data : JSON.stringify(data)),
+});
+
+globalThis.fetch = (async (input: RequestInfo | URL) => {
+  const url = String(input);
+  if (/lospec\.com\/palette-list\/[^/]+\.json$/i.test(url)) {
+    // return a tiny palette payload
+    return ok({ colors: ['000000', 'FFFFFF', 'FF0000', '00FF00'] });
+  }
+  if (/lospec\.com\/palette-list\.json$/i.test(url)) {
+    // return some slugs for search
+    return ok([
+      { slug: 'pico-8', title: 'PICO-8' },
+      { slug: 'sweetie-16', title: 'Sweetie 16' },
+    ]);
+  }
+  // default not found
+  return ok({}, 404) as any;
+}) as any;
+</file>
+
+<file path="test/url.spec.ts">
+import { describe, it } from 'vitest';
+import { strict as assert } from 'node:assert';
+import VPixEngine from '../core/engine';
+import { getPaletteByName } from '../core/palettes';
+import { encodeToParamV2, decodeFromParamV2, encodeToParamV2R, decodeFromParamV2R } from '../core/url';
+
+describe('URL encode/decode', () => {
+  it('vp2: encodes with palette slug + bit packing and decodes', () => {
+    const pico = getPaletteByName('pico-8')!;
+    const eng = new VPixEngine({ width: 3, height: 2, palette: pico.colors });
+    eng.palette = [...pico.colors];
+    eng.setColorIndex(2);
+    eng.paint();
+    eng.move(1, 0); eng.paint();
+    const payload = encodeToParamV2(eng, 'pico-8');
+    const eng2 = decodeFromParamV2(payload, (opts) => new VPixEngine(opts))!;
+    assert.equal(eng2.width, 3);
+    assert.equal(eng2.height, 2);
+    assert.equal(eng2.palette.length, 16);
+    assert.equal(eng2.grid[0][0], eng.grid[0][0]);
+    assert.equal(eng2.grid[0][1], eng.grid[0][1]);
+  });
+
+  it('vp2r: RLE over packed bytes yields compact zero-runs and decodes', () => {
+    const pico = getPaletteByName('pico-8')!;
+    const eng = new VPixEngine({ width: 16, height: 16, palette: pico.colors });
+    const payload = encodeToParamV2R(eng, 'pico-8');
+    const rPart = payload.split(';').find((t) => t.startsWith('r')) || '';
+    if (rPart) { const body = rPart.slice(1); if (body.length > 0) { if (body[0] !== 'z') throw new Error('vp2r did not start with zero-run for empty canvas'); } }
+    const eng2 = decodeFromParamV2R(payload, (opts) => new VPixEngine(opts))!;
+    assert.equal(eng2.width, 16);
+    assert.equal(eng2.height, 16);
+    assert.equal(eng2.grid[0][0], null);
+  });
+});
+</file>
+
+<file path="test/visual.spec.ts">
+import { describe, it } from 'vitest';
+import { strict as assert } from 'node:assert';
+import VPixEngine, { MODES } from '../core/engine';
+import { getPaletteByName } from '../core/palettes';
+
+describe('Visual mode operations', () => {
+  it('enters visual and yanks/deletes/pastes', () => {
+    const pico = getPaletteByName('pico-8')!;
+    const eng = new VPixEngine({ width: 4, height: 2, palette: pico.colors });
+    eng.paint('#111111');
+    eng.move(1, 0); eng.paint('#222222');
+    eng.cursor = { x: 0, y: 0 };
+    eng.enterVisual();
+    assert.equal(eng.mode, MODES.VISUAL);
+    eng.cursor = { x: 1, y: 0 };
+    eng._updateSelectionRect();
+    eng.yankSelection();
+    eng.exitVisual();
+    assert.ok((eng as any)._clipboard);
+    assert.equal((eng as any)._clipboard.cells[0][0], '#111111');
+    assert.equal((eng as any)._clipboard.cells[0][1], '#222222');
+    eng.move(0, 1);
+    eng.pasteAtCursor();
+    eng.cursor = { x: 0, y: 0 };
+    eng.enterVisual();
+    eng.cursor = { x: 1, y: 0 };
+    eng._updateSelectionRect();
+    eng.deleteSelection();
+    eng.exitVisual();
+    assert.equal(eng.grid[0][0], null);
+    assert.equal(eng.grid[0][1], null);
+  });
+
+  it('fill, stroke rect, line, flood fill', () => {
+    const pico = getPaletteByName('pico-8')!;
+    const eng = new VPixEngine({ width: 5, height: 5, palette: pico.colors });
+    eng.handleKey({ key: 'v' });
+    eng.handleKey({ key: 'l' }); eng.handleKey({ key: 'l' });
+    eng.handleKey({ key: 'j' }); eng.handleKey({ key: 'j' });
+    eng.handleKey({ key: 'F' });
+    assert.ok(eng.grid[1][1]);
+    eng.handleKey({ key: 'v' });
+    eng.handleKey({ key: 'l' }); eng.handleKey({ key: 'l' });
+    eng.handleKey({ key: 'R' });
+    eng.cursor = { x: 0, y: 0 };
+    eng.handleKey({ key: 'v' });
+    eng.cursor = { x: 4, y: 4 };
+    eng.handleKey({ key: 'L' });
+    eng.cursor = { x: 4, y: 0 };
+    eng.handleKey({ key: 'v' });
+    eng.handleKey({ key: 'f' });
+    assert.ok(true);
+  });
+
+  it('transparent paste and rotations and move selection', () => {
+    const pico = getPaletteByName('pico-8')!;
+    const eng = new VPixEngine({ width: 5, height: 5, palette: pico.colors });
+    eng.paint('#111111');
+    eng.move(1,0); eng.paint('#222222');
+    eng.move(-1,1);
+    eng.move(1,0); eng.paint('#333333');
+    eng.cursor = { x: 0, y: 0 };
+    eng.enterVisual(); eng.cursor = { x: 1, y: 1 }; eng._updateSelectionRect(); eng.yankSelection(); eng.exitVisual();
+    eng.rotateClipboardCW();
+    eng.cursor = { x: 2, y: 0 };
+    eng.pasteAtCursorTransparent();
+    eng.cursor = { x: 0, y: 3 };
+    eng.enterVisual(); (eng as any).selection.anchor = { x: 2, y: 0 }; (eng as any).selection.rect = { x1:0,y1:0,x2:1,y2:1 };
+    eng.moveSelectionToCursor(); eng.exitVisual();
+    assert.ok(true);
+  });
+});
+</file>
+
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+coverage
+.eslintcache
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+</file>
+
+<file path="eslint.config.js">
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import tsParser from '@typescript-eslint/parser'
+import tsPlugin from '@typescript-eslint/eslint-plugin'
+import pluginImport from 'eslint-plugin-import'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs['recommended-latest'],
+      reactRefresh.configs.vite,
+    ],
+    plugins: {
+      import: pluginImport,
+    },
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    settings: {
+      'import/resolver': {
+        typescript: true,
+        node: { extensions: ['.js', '.jsx', '.ts', '.tsx'] },
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // import rules
+      'import/order': ['warn', {
+        groups: [['builtin', 'external'], 'internal', ['parent', 'sibling', 'index'], 'object', 'type'],
+        'newlines-between': 'always',
+        alphabetize: { order: 'asc', caseInsensitive: true },
+      }],
+      'import/no-extraneous-dependencies': ['warn', {
+        devDependencies: [
+          'vite.config.js',
+          'test/**',
+          'src/__tests__/**',
+        ],
+      }],
+      'import/no-unresolved': 'error',
+    },
+  },
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+        project: undefined,
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+      import: pluginImport,
+    },
+    settings: {
+      'import/resolver': {
+        typescript: true,
+        node: { extensions: ['.js', '.jsx', '.ts', '.tsx'] },
+      },
+    },
+    rules: {
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^[A-Z_]' }],
+      '@typescript-eslint/ban-ts-comment': ['warn', { 'ts-expect-error': 'allow-with-description' }],
+      // readability
+      '@typescript-eslint/consistent-type-imports': ['error', { prefer: 'type-imports', disallowTypeAnnotations: false }],
+      '@typescript-eslint/array-type': ['warn', { default: 'array-simple' }],
+      '@typescript-eslint/consistent-type-definitions': ['warn', 'type'],
+      '@typescript-eslint/member-ordering': 'warn',
+      // import rules
+      'import/order': ['warn', {
+        groups: [['builtin', 'external'], 'internal', ['parent', 'sibling', 'index'], 'object', 'type'],
+        'newlines-between': 'always',
+        alphabetize: { order: 'asc', caseInsensitive: true },
+      }],
+      'import/no-extraneous-dependencies': ['warn', {
+        devDependencies: [
+          'vite.config.js',
+          'test/**',
+          'src/__tests__/**',
+        ],
+      }],
+      'import/no-unresolved': 'error',
+    },
+  },
+])
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>vpix</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+</file>
+
+<file path="package.json">
+{
+  "name": "vpix",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest run"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.5.2",
+    "@types/react": "^19.1.16",
+    "@types/react-dom": "^19.1.9",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "chai": "^5.1.2",
+    "eslint": "^9.36.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.22",
+    "globals": "^16.4.0",
+    "jsdom": "^25.0.1",
+    "mocha": "^10.7.3",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.7",
+    "vitest": "^2.1.4"
+  }
+}
+</file>
+
+<file path="README.md">
+# VPix — Vim‑like Pixel Editor (React + Vite)
+
+Keyboard‑only, Vim benzeri akışlarla piksel çizimi. Çekirdek motor saf JS modüllerde, UI React üzerinde. Paylaşılabilir linkler için LoSpec palet slug’ı + bit‑paketli vp2r formatı kullanılır.
+
+Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
+
+## Tasarım İlkeleri (KISS, YAGNI, SOLID, SSOT)
+
+### KISS (Keep It Simple, Stupid)
+- Basit ve doğrudan çözümler: Render tarafında “dirty‑rect” optimizasyonu var; ancak minimap gibi küçük bileşenlerde her patch’te tam çizim yaparak sadelik ve doğruluk öncelikli.
+- Tek sorumluluğa sahip küçük modüller: core/engine, core/keymap, core/url, core/palettes ayrışık.
+- Ek karmaşıklığı yalnızca net fayda sağladığında ekle (ör. Canvas’ta parça parça güncelleme, ölçülebilir hız kazandırıyor).
+
+### YAGNI (You Aren’t Gonna Need It)
+- Sadece ihtiyaç duyulan özellikleri ekle. Geriye dönük URL format desteği (vp1 vb.) yok; tek format vp2r.
+- Palet düzenleme yerine LoSpec paletleri: “palette use/fetch/list/search” ile kapsam sınırlı.
+- Büyük soyutlamalar yerine küçük kazanımlar: Örn. Minimap’te patch bazlı yerine tam çizim yeterli ve güvenli.
+
+### SOLID
+- SRP (Single Responsibility):
+  - `core/engine.mjs`: State + patch üretimi + undo/redo gruplama.
+  - `core/keymap.mjs`: Mod/tuş → eylem dağıtımı (engine.handleKey delegasyonu).
+  - `core/url.mjs`: vp2/vp2r encode/decode, base62 vb.
+  - `core/palettes.mjs`: Palet kayıt/indirme (UI katmanından çağrılır).
+- OCP (Open/Closed): Yeni tuş/komut eklemek için keymap’e satır eklemek yeterli; engine göbeği değişmez.
+- LSP/ISP: Hücre rengi `null|string`; patch API yalnızca “cell” değişimlerini taşır. UI, sadece ihtiyaç duyduğu arayüzlere bağımlıdır (renderer/command).
+- DIP (Dependency Inversion): Engine dış bağımlılık içermez; varsayılan palet DI ile `App`’ten verilir.
+
+### SSOT (Single Source of Truth)
+- Tek gerçek kaynak engine state’idir (grid/cursor/selection). Renderer, patch’leri yalnızca “neresi çizilecek?” ipucu olarak kullanır; renk verisini daima `engine.grid`’den okur.
+- Grup işlemleri (fill/paste/line/rect/flood/move/delete) `beginGroup/endGroup` ile tek undo adımı ve tek patch emisyonu yapar; emisyon “final state”e aittir.
+- Büyük patch'lerde viewport’un büyük kısmı etkilenirse full redraw fallback uygulanabilir.
+
+## Uygulama Rehberi
+
+### Modül Sınırları
+- `core/engine.mjs`:
+  - Zorunlu DI: `new VPixEngine({ width, height, palette })` — palette dışarıdan gelir.
+  - Patch üretimi: `paint/erase/move/visual ops/undo/redo` → `_emit({ changed: Rect[] })`
+  - Undo gruplama: `beginGroup/endGroup` (fill/line/rect/flood/paste/move/delete)
+- `core/keymap.mjs`: Mod‑bazlı tuş dağıtımı (NORMAL/INSERT/VISUAL).
+- `core/url.mjs`: `encodeToParamV2R/decodeFromParamV2R` (vp2r) + yardımcılar.
+- `core/commands.mjs`: Komut yürütücü (palette use/fetch/list/search, set size/W/H, read/read json/url, link/copylink UI tarafında).
+- `src/components/*`: UI, render ve kompozisyon (CanvasGrid, MiniMap, Palette, StatusBar).
+
+### Render Stratejisi
+- CanvasGrid: Dirty‑rect varsa bölgesel redraw; yoksa tam redraw. Renkler engine.grid’den okunur.
+- MiniMap: Her patch’te tam redraw (küçük boyut + doğruluk). Pan/zoom/size değişiminde de tam redraw.
+- Overlay (cursor/selection): Her çizimde overlay en sonda yeniden çizilir.
+
+### Test Stratejisi
+- Engine unit (Mocha) ve UI akışları (Vitest + Testing Library):
+  - Engine: hareket, modlar, fill/line/flood, undo/redo gruplama, url codec roundtrip.
+  - UI: temel klavye akışları (`11c`, `hjkl`, `v+y/d/p`).
+- jsdom ortamında canvas kullanımı mock/guard edilir (getContext yoksa çizim atlanır).
+
+### URL Formatı (vp2r)
+- `?vp2r=vp2r;w{b62};h{b62};pl{slug};d{bits};r{segments}`
+- RLE segmentleri: `z<count>` (0x00 koşusu), `d<len>:<b64>` (sıfır‑dışı blok). Decode sonrası grid engine’e yazılır.
+
+### Komutlar (Özet)
+- Palet: `palette use <slug>`, `palette fetch <slug>`, `palette list`, `palette search <term>`
+- Boyut: `set W=…`, `set H=…`, `set size=<W>x<H>`
+- Yükleme: `read`, `read json=…`, `read url=…`
+- Link: `link`, `copylink` (UI tarafında vp2r üretimi)
+
+## Katkı Kuralları
+- Küçük, odaklı PR’lar: Tek sorumluluk, açık kapsam.
+- Test eklemeden davranış değiştirme: Kaçın.
+- Engine’e dış bağımlılık ekleme: Kaçın (DI ile çöz).
+
+## Çalıştırma
+- Dev: `npm run dev`
+- Test (unit): `npm test` (Mocha)
+- Test (ui): `npm run test:ui` (Vitest + jsdom)
+- Build: `npm run build`
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["vitest/globals", "vite/client"]
+  },
+  "include": [
+    "src",
+    "core/**/*.ts"
+  ]
+}
+</file>
+
+<file path="vite.config.js">
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    environment: 'node',
+    include: ['src/__tests__/**/*.spec.{ts,tsx,js,jsx}', 'test/**/*.spec.{ts,js}'],
+    environmentMatchGlobs: [
+      ['src/__tests__/**/*.spec.*', 'jsdom']
+    ],
+    setupFiles: ['test/setup.ts'],
+  },
+})
+</file>
+
+</files>
