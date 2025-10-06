@@ -1,14 +1,14 @@
 // Minimal word-based command registry with typed params and suggestions
 
-export type Ctx = { engine: any };
+export type Ctx = { engine: any; services?: Record<string, unknown> };
 
 export type ParseResult<T> = { ok: true; value: T } | { ok: false; err?: string };
-export interface ParamType<T> {
+export type ParamType<T> = {
   name: string;
-  parse(token: string): ParseResult<T>;
   placeholder?: string; // for suggest/help
-  suggest?(prefix: string): string[]; // optional, for enums
+  suggest?: (prefix: string) => string[]; // optional, for enums
   greedy?: boolean; // when true and last in pattern, consumes rest-of-line
+  parse: (token: string) => ParseResult<T>;
 }
 
 export type LiteralSpec = { kind: 'lit'; word: string };

@@ -1,7 +1,8 @@
-import { describe, it } from 'vitest';
 import { strict as assert } from 'node:assert';
-import VPixEngine from '../core/engine';
+import { describe, it } from 'vitest';
+
 import { executeCommand } from '../core/commands';
+import VPixEngine from '../core/engine';
 import { getPaletteByName } from '../core/palettes';
 
 describe('Command execution', () => {

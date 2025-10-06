@@ -1,5 +1,6 @@
-import { describe, it } from 'vitest';
 import { strict as assert } from 'node:assert';
+import { describe, it } from 'vitest';
+
 import VPixEngine, { MODES } from '../core/engine';
 import { getPaletteByName } from '../core/palettes';
 
@@ -13,18 +14,17 @@ describe('Visual mode operations', () => {
     eng.enterVisual();
     assert.equal(eng.mode, MODES.VISUAL);
     eng.cursor = { x: 1, y: 0 };
-    eng._updateSelectionRect();
+    eng.updateSelectionRect();
     eng.yankSelection();
     eng.exitVisual();
-    assert.ok((eng as any)._clipboard);
-    assert.equal((eng as any)._clipboard.cells[0][0], '#111111');
-    assert.equal((eng as any)._clipboard.cells[0][1], '#222222');
-    eng.move(0, 1);
+    eng.cursor = { x: 0, y: 1 };
     eng.pasteAtCursor();
+    assert.equal(eng.grid[1][0], '#111111');
+    assert.equal(eng.grid[1][1], '#222222');
     eng.cursor = { x: 0, y: 0 };
     eng.enterVisual();
     eng.cursor = { x: 1, y: 0 };
-    eng._updateSelectionRect();
+    eng.updateSelectionRect();
     eng.deleteSelection();
     eng.exitVisual();
     assert.equal(eng.grid[0][0], null);
@@ -60,13 +60,21 @@ describe('Visual mode operations', () => {
     eng.move(-1,1);
     eng.move(1,0); eng.paint('#333333');
     eng.cursor = { x: 0, y: 0 };
-    eng.enterVisual(); eng.cursor = { x: 1, y: 1 }; eng._updateSelectionRect(); eng.yankSelection(); eng.exitVisual();
+    eng.enterVisual();
+    eng.cursor = { x: 1, y: 1 };
+    eng.updateSelectionRect();
+    eng.yankSelection();
+    eng.exitVisual();
     eng.rotateClipboardCW();
     eng.cursor = { x: 2, y: 0 };
     eng.pasteAtCursorTransparent();
     eng.cursor = { x: 0, y: 3 };
-    eng.enterVisual(); (eng as any).selection.anchor = { x: 2, y: 0 }; (eng as any).selection.rect = { x1:0,y1:0,x2:1,y2:1 };
-    eng.moveSelectionToCursor(); eng.exitVisual();
+    eng.enterVisual();
+    eng.cursor = { x: 1, y: 1 };
+    eng.updateSelectionRect();
+    eng.cursor = { x: 0, y: 3 };
+    eng.moveSelectionToCursor();
+    eng.exitVisual();
     assert.ok(true);
   });
 });

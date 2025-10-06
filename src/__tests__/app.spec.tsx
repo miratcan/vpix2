@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { describe, it, expect, beforeEach } from 'vitest';
+
 import App from '../App';
 
 describe('App keyboard flows', () => {
