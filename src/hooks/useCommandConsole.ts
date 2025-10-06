@@ -53,9 +53,21 @@ export function useCommandConsole({ engine, services, paletteService }: CommandC
     setCmdMode(false);
     setCmdText('');
     const res = await executeCommand(engine, trimmed, services);
-    appendLines([`:${trimmed}`, res.msg]);
-    setMessage(res.msg);
-  }, [appendLines, cmdText, engine, services]);
+    const extraLines = res.meta?.lines ?? [];
+    if (res.meta?.silent) {
+      if (extraLines.length) appendLines(extraLines);
+      if (res.meta?.closeTerminal) setShowTerminal(false);
+      setMessage(null);
+      return;
+    }
+    const lines = [`:${trimmed}`];
+    if (res.msg) lines.push(res.msg);
+    if (extraLines.length) lines.push(...extraLines);
+    appendLines(lines);
+    if (res.msg) setMessage(res.msg);
+    else setMessage(null);
+    if (res.meta?.closeTerminal) setShowTerminal(false);
+  }, [appendLines, cmdText, engine, services, setShowTerminal]);
 
   const handleTabComplete = useCallback(() => {
     const t = cmdText;

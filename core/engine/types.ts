@@ -9,7 +9,7 @@ export type Mode = typeof MODES[keyof typeof MODES];
 export type Point = { x: number; y: number };
 export type Rect = { x1: number; y1: number; x2: number; y2: number };
 
-export type EngineChangePayload = { changed?: Rect[] };
+export type EngineChangePayload = { changed?: Rect[]; revision?: number };
 
 export type EngineSnapshot = {
   width: number;

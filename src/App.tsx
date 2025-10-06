@@ -136,7 +136,7 @@ export default function App() {
           <StatusBar engine={engine} zoom={zoom} pan={pan} />
           <MiniMap engine={engine} pan={pan} zoom={zoom} viewW={800} viewH={480} frame={frame} dirtyRects={dirtyRects} />
         </div>
-        {(showTerminal || cmdMode || termLines.length > 0) && (
+        {(showTerminal || cmdMode) && (
           <Terminal
             lines={termLines}
             cmdMode={cmdMode}

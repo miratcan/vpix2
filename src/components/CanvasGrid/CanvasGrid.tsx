@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import type VPixEngine from '../../../core/engine';
 import './CanvasGrid.css';
@@ -13,86 +13,151 @@ type Props = {
 };
 
 export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, frame = 0, dirtyRects = null }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const baseRef = useRef<HTMLCanvasElement | null>(null);
+  const overlayRef = useRef<HTMLCanvasElement | null>(null);
+  const panX = pan?.x ?? 0;
+  const panY = pan?.y ?? 0;
+  const cellSize = useMemo(() => Math.max(1, Math.floor(16 * (zoom || 1))), [zoom]);
 
   useEffect(() => {
-    // Skip drawing in jsdom test environment (no canvas impl)
     if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
-    const c = canvasRef.current;
-    if (!c) return;
-    let ctx = null;
-    if (c && c.getContext) {
-      try { ctx = c.getContext('2d', { alpha: false }); } catch { ctx = null; }
+    const canvas = baseRef.current;
+    if (!canvas) return;
+    let ctx: CanvasRenderingContext2D | null = null;
+    if (canvas.getContext) {
+      try {
+        ctx = canvas.getContext('2d', { alpha: false });
+      } catch {
+        ctx = null;
+      }
     }
     if (!ctx) return;
-    const cell = Math.max(1, Math.floor(16 * zoom));
-    const viewW = c.width, viewH = c.height;
+
+    const cell = cellSize;
+    const viewW = canvas.width;
+    const viewH = canvas.height;
+    const offsetX = -panX * cell;
+    const offsetY = -panY * cell;
 
     const drawCell = (x: number, y: number) => {
-      const vx = (x - pan.x) * cell;
-      const vy = (y - pan.y) * cell;
+      const vx = Math.floor(offsetX + x * cell);
+      const vy = Math.floor(offsetY + y * cell);
       if (vx + cell < 0 || vy + cell < 0 || vx >= viewW || vy >= viewH) return;
       ctx.fillStyle = '#0b0b0b';
-      ctx.fillRect(Math.floor(vx), Math.floor(vy), cell, cell);
+      ctx.fillRect(vx, vy, cell, cell);
       const color = engine.grid[y][x];
       if (color) {
         ctx.fillStyle = color;
-        ctx.fillRect(Math.floor(vx), Math.floor(vy), cell, cell);
+        ctx.fillRect(vx, vy, cell, cell);
       }
     };
 
     if (dirtyRects && dirtyRects.length) {
-      // redraw only dirty regions
       for (const r of dirtyRects) {
-        const x1 = Math.max(0, r.x1), y1 = Math.max(0, r.y1);
-        const x2 = Math.min(engine.width - 1, r.x2), y2 = Math.min(engine.height - 1, r.y2);
+        const x1 = Math.max(0, r.x1);
+        const y1 = Math.max(0, r.y1);
+        const x2 = Math.min(engine.width - 1, r.x2);
+        const y2 = Math.min(engine.height - 1, r.y2);
         for (let y = y1; y <= y2; y++) {
           for (let x = x1; x <= x2; x++) drawCell(x, y);
         }
       }
     } else {
-      // full redraw
       ctx.fillStyle = '#0b0b0b';
       ctx.fillRect(0, 0, viewW, viewH);
       for (let y = 0; y < engine.height; y++) {
         for (let x = 0; x < engine.width; x++) drawCell(x, y);
       }
-      // grid lines (only on full redraw)
+    }
+  }, [cellSize, dirtyRects, engine, panX, panY, frame]);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
+    const canvas = overlayRef.current;
+    if (!canvas) return;
+    let ctx: CanvasRenderingContext2D | null = null;
+    if (canvas.getContext) {
+      try {
+        ctx = canvas.getContext('2d');
+      } catch {
+        ctx = null;
+      }
+    }
+    if (!ctx) return;
+
+    const cell = cellSize;
+    const viewW = canvas.width;
+    const viewH = canvas.height;
+    const offsetX = -panX * cell;
+    const offsetY = -panY * cell;
+    const gridLeft = offsetX;
+    const gridTop = offsetY;
+    const gridRight = offsetX + engine.width * cell;
+    const gridBottom = offsetY + engine.height * cell;
+
+    ctx.clearRect(0, 0, viewW, viewH);
+
+    const clipLeft = Math.max(0, Math.floor(gridLeft));
+    const clipRight = Math.min(viewW, Math.ceil(gridRight));
+    const clipTop = Math.max(0, Math.floor(gridTop));
+    const clipBottom = Math.min(viewH, Math.ceil(gridBottom));
+
+    if (clipRight > clipLeft && clipBottom > clipTop) {
       ctx.strokeStyle = 'rgba(255,255,255,0.05)';
       ctx.lineWidth = 1;
       for (let x = 0; x <= engine.width; x++) {
-        const vx = Math.floor((x - pan.x) * cell) + 0.5;
-        if (vx >= 0 && vx <= viewW) { ctx.beginPath(); ctx.moveTo(vx, 0); ctx.lineTo(vx, viewH); ctx.stroke(); }
+        const vx = Math.floor(offsetX + x * cell) + 0.5;
+        if (vx < 0 || vx > viewW) continue;
+        const startY = Math.max(0, clipTop) + 0.5;
+        const endY = Math.min(viewH, clipBottom) - 0.5;
+        if (startY > endY) continue;
+        ctx.beginPath();
+        ctx.moveTo(vx, startY);
+        ctx.lineTo(vx, endY);
+        ctx.stroke();
       }
       for (let y = 0; y <= engine.height; y++) {
-        const vy = Math.floor((y - pan.y) * cell) + 0.5;
-        if (vy >= 0 && vy <= viewH) { ctx.beginPath(); ctx.moveTo(0, vy); ctx.lineTo(viewW, vy); ctx.stroke(); }
+        const vy = Math.floor(offsetY + y * cell) + 0.5;
+        if (vy < 0 || vy > viewH) continue;
+        const startX = Math.max(0, clipLeft) + 0.5;
+        const endX = Math.min(viewW, clipRight) - 0.5;
+        if (startX > endX) continue;
+        ctx.beginPath();
+        ctx.moveTo(startX, vy);
+        ctx.lineTo(endX, vy);
+        ctx.stroke();
       }
     }
-    // selection outline
+
     const sel = engine.selection;
     if (sel && sel.active && sel.rect) {
       const { x1, y1, x2, y2 } = sel.rect;
-      ctx.strokeStyle = '#00e1ff';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(
-        Math.floor((x1 - pan.x) * cell) + 0.5,
-        Math.floor((y1 - pan.y) * cell) + 0.5,
-        Math.floor((x2 - x1 + 1) * cell),
-        Math.floor((y2 - y1 + 1) * cell)
-      );
+      const sx = offsetX + x1 * cell;
+      const sy = offsetY + y1 * cell;
+      const sw = (x2 - x1 + 1) * cell;
+      const sh = (y2 - y1 + 1) * cell;
+      if (sx + sw >= 0 && sy + sh >= 0 && sx <= viewW && sy <= viewH) {
+        ctx.strokeStyle = '#00e1ff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(Math.floor(sx) + 0.5, Math.floor(sy) + 0.5, Math.floor(sw), Math.floor(sh));
+      }
     }
-    // cursor
-    const cx = Math.floor((engine.cursor.x - pan.x) * cell);
-    const cy = Math.floor((engine.cursor.y - pan.y) * cell);
-    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(cx + 0.5, cy + 0.5, cell - 1, cell - 1);
-  }, [engine, zoom, pan, frame, dirtyRects]);
+
+    const cx = offsetX + engine.cursor.x * cell;
+    const cy = offsetY + engine.cursor.y * cell;
+    if (cx + cell >= 0 && cy + cell >= 0 && cx <= viewW && cy <= viewH) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(Math.floor(cx) + 0.5, Math.floor(cy) + 0.5, Math.max(1, cell - 1), Math.max(1, cell - 1));
+    }
+  }, [cellSize, engine, frame, panX, panY]);
 
   return (
     <div className="canvas-grid">
-      <canvas ref={canvasRef} width={800} height={480} />
+      <div className="canvas-layer-stack">
+        <canvas ref={baseRef} className="canvas-base" width={800} height={480} />
+        <canvas ref={overlayRef} className="canvas-overlay" width={800} height={480} />
+      </div>
     </div>
   );
 }

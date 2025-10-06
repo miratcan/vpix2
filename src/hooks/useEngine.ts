@@ -14,7 +14,7 @@ export function useEngine({ factory }: EngineHookConfig) {
 
   useEffect(() => {
     const unsub = engine.subscribe((_, payload) => {
-      setFrame((t) => t + 1);
+      setFrame((prev) => (payload?.revision ?? prev + 1));
       setDirtyRects(payload?.changed ?? null);
     });
     return unsub;

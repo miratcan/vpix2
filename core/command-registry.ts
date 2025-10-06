@@ -18,6 +18,12 @@ export type PatternEl = LiteralSpec | ParamSpec<any>;
 export function literal(word: string): LiteralSpec { return { kind: 'lit', word }; }
 export function param<T>(name: string, type: ParamType<T>): ParamSpec<T> { return { kind: 'param', name, type }; }
 
+export type CommandMeta = {
+  silent?: boolean;
+  closeTerminal?: boolean;
+  lines?: string[];
+};
+
 export function int(min: number, max: number): ParamType<number> {
   return {
     name: `int(${min}..${max})`, placeholder: '<int>',
@@ -65,6 +71,37 @@ export function slug(): ParamType<string> {
 
 type Registered = { pattern: PatternEl[]; handler: (ctx: Ctx, args: Record<string, unknown>) => any; help?: string };
 
+export type CommandExecutionResult = { matched: boolean; ok: boolean; msg: string; meta?: CommandMeta };
+
+function normalizeHandlerResult(ret: any): { ok: boolean; msg: string; meta?: CommandMeta } {
+  if (ret == null) return { ok: true, msg: '' };
+  if (typeof ret === 'string') return { ok: true, msg: ret };
+  if (typeof ret === 'object') {
+    const ok = typeof (ret as any).ok === 'boolean' ? Boolean((ret as any).ok) : true;
+    const msg = 'msg' in ret ? String((ret as any).msg ?? '') : '';
+    const baseMeta = buildMeta(ret);
+    return { ok, msg, meta: baseMeta };
+  }
+  return { ok: true, msg: String(ret) };
+}
+
+function buildMeta(source: any): CommandMeta | undefined {
+  if (!source || typeof source !== 'object') return undefined;
+  const meta: CommandMeta = {};
+  if (source.meta && typeof source.meta === 'object') {
+    Object.assign(meta, source.meta);
+  }
+  if ('silent' in source && source.silent != null) meta.silent = Boolean(source.silent);
+  if ('closeTerminal' in source && source.closeTerminal != null) meta.closeTerminal = Boolean(source.closeTerminal);
+  if ('lines' in source && source.lines != null) {
+    const lines = Array.isArray(source.lines)
+      ? source.lines.map((ln: unknown) => String(ln))
+      : [String(source.lines)];
+    meta.lines = lines;
+  }
+  return Object.keys(meta).length ? meta : undefined;
+}
+
 export function createRegistry() {
   const cmds: Registered[] = [];
   return {
@@ -75,7 +112,7 @@ export function createRegistry() {
       const compiled = compilePatternDSL(pattern);
       cmds.push({ pattern: compiled, handler, help: opts?.help });
     },
-    execute(input: string, ctx: Ctx): { matched: boolean; ok: boolean; msg: string } | Promise<{ matched: boolean; ok: boolean; msg: string }> {
+    execute(input: string, ctx: Ctx): CommandExecutionResult | Promise<CommandExecutionResult> {
       const tokens = tokenize(input);
       let usageOnPrefix: string | null = null;
       for (const c of cmds) {
@@ -85,10 +122,14 @@ export function createRegistry() {
             const ret = c.handler(ctx, res.args!);
             if (ret && typeof (ret as any).then === 'function') {
               return (ret as Promise<any>)
-                .then((out) => ({ matched: true, ok: true, msg: String(out ?? '') }))
+                .then((out) => {
+                  const norm = normalizeHandlerResult(out);
+                  return { matched: true, ok: norm.ok, msg: norm.msg, meta: norm.meta } as CommandExecutionResult;
+                })
                 .catch(() => ({ matched: true, ok: false, msg: 'command failed' }));
             }
-            return { matched: true, ok: true, msg: String(ret ?? '') };
+            const norm = normalizeHandlerResult(ret);
+            return { matched: true, ok: norm.ok, msg: norm.msg, meta: norm.meta };
           } catch {
             return { matched: true, ok: false, msg: 'command failed' };
           }

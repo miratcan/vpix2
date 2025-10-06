@@ -1,7 +1,7 @@
 // Simple command executor for VPix
 // Disabled direct palette color edits; rely on LoSpec palettes
 
-import { createRegistry } from './command-registry';
+import { createRegistry, type CommandExecutionResult, type CommandMeta } from './command-registry';
 import VPixEngine from './engine';
 import { DocumentRepository } from './services/document-repository';
 import { PaletteService } from './services/palette-service';
@@ -35,23 +35,25 @@ function resolveServices(services?: CommandServices): RuntimeServices {
   };
 }
 
+export type CommandResult = { ok: boolean; msg: string; meta?: CommandMeta };
+
 export function executeCommand(
   engine: VPixEngine,
   input: string,
   services?: CommandServices,
-): { ok: boolean; msg: string } | Promise<{ ok: boolean; msg: string }> {
+): CommandResult | Promise<CommandResult> {
   const cmd = (input || '').trim();
   if (!cmd) return { ok: false, msg: 'Empty command' };
   ensureRegistry();
   const runtime = resolveServices(services);
-  const out = (_registry as any).execute(cmd, { engine, services: runtime });
+  const out = (_registry as any).execute(cmd, { engine, services: runtime }) as CommandExecutionResult | Promise<CommandExecutionResult>;
   if (out && typeof (out as any).then === 'function') {
-    return (out as Promise<any>).then(({ matched, ok, msg }) =>
-      matched ? { ok, msg } : { ok: false, msg: `Unknown command: ${cmd}` },
+    return (out as Promise<CommandExecutionResult>).then(({ matched, ok, msg, meta }) =>
+      matched ? { ok, msg, meta } : { ok: false, msg: `Unknown command: ${cmd}` },
     );
   }
-  const { matched, ok, msg } = out as { matched: boolean; ok: boolean; msg: string };
-  return matched ? { ok, msg } : { ok: false, msg: `Unknown command: ${cmd}` };
+  const { matched, ok, msg, meta } = out as CommandExecutionResult;
+  return matched ? { ok, msg, meta } : { ok: false, msg: `Unknown command: ${cmd}` };
 }
 
 // ---- Registry (incremental): set W/H/size/palette ----
@@ -65,7 +67,7 @@ function ensureRegistry() {
     'set W {value:int[1..256]}',
     (ctx: any, { value }: any) => {
       (ctx.engine as VPixEngine).setWidth(value as number);
-      return `W=${value}`;
+      return { msg: '', meta: { silent: true, closeTerminal: true } };
     },
     { help: 'set W <int(1..256)>' },
   );
@@ -73,7 +75,7 @@ function ensureRegistry() {
     'set H {value:int[1..256]}',
     (ctx: any, { value }: any) => {
       (ctx.engine as VPixEngine).setHeight(value as number);
-      return `H=${value}`;
+      return { msg: '', meta: { silent: true, closeTerminal: true } };
     },
     { help: 'set H <int(1..256)>' },
   );
@@ -81,7 +83,7 @@ function ensureRegistry() {
     'set size {size:size}',
     (ctx: any, { size: s }: any) => {
       (ctx.engine as VPixEngine).setSize(s.w, s.h);
-      return `size=${s.w}x${s.h}`;
+      return { msg: '', meta: { silent: true, closeTerminal: true } };
     },
     { help: 'set size <WxH>' },
   );
@@ -91,7 +93,8 @@ function ensureRegistry() {
       const { palettes } = ctx.services as RuntimeServices;
       const eng = ctx.engine as VPixEngine;
       const applied = palettes.applyPalette(eng, String(slug));
-      return applied ? `palette: ${String(slug)}` : `unknown palette: ${slug}`;
+      if (!applied) return `unknown palette: ${slug}`;
+      return { msg: '', meta: { silent: true, closeTerminal: true } };
     },
     { help: 'set palette <slug>' },
   );
@@ -103,7 +106,8 @@ function ensureRegistry() {
       const { palettes } = ctx.services as RuntimeServices;
       const eng = ctx.engine as VPixEngine;
       const applied = palettes.applyPalette(eng, String(slug));
-      return applied ? `palette: ${String(slug)}` : `unknown palette: ${slug}`;
+      if (!applied) return `unknown palette: ${slug}`;
+      return { msg: '', meta: { silent: true, closeTerminal: true } };
     },
     { help: 'palette use <slug>' },
   );

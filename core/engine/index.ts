@@ -15,6 +15,7 @@ export type { Mode, Rect, EngineSnapshot } from './types';
 
 export default class VPixEngine {
   private readonly events = new EngineEvents<VPixEngine>();
+  private revision = 0;
   private gridState: GridState;
   private history: HistoryManager;
   private readonly clipboard = new ClipboardBuffer();
@@ -43,7 +44,9 @@ export default class VPixEngine {
   }
 
   private emit(payload?: EngineChangePayload) {
-    this.events.emit(this, payload);
+    this.revision += 1;
+    const nextPayload: EngineChangePayload = { ...(payload ?? {}), revision: this.revision };
+    this.events.emit(this, nextPayload);
   }
 
   get width() {

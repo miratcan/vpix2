@@ -57,7 +57,7 @@ export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, f
     ctx.strokeStyle = '#00e1ff';
     ctx.lineWidth = 2;
     ctx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
-  }, [engine, pan, zoom, viewW, viewH, frame, engine.grid, dirtyRects]);
+  }, [engine, pan, zoom, viewW, viewH, frame]);
 
   return (
     <div className="minimap">
