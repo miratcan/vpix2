@@ -50,6 +50,8 @@ export default function App() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [trail, setTrail] = useState<Array<{ x: number; y: number; ts: number }>>([]);
+  const lastCursorRef = useRef<{ x: number; y: number } | null>(null);
 
   // Keep cursor visible by adjusting pan to follow it.
   useEffect(() => {
@@ -89,6 +91,43 @@ export default function App() {
       }
     })();
   }, [documents, engine, shareLinks]);
+
+  // Cursor trail: sample intermediate cells on large jumps and timestamp them
+  useEffect(() => {
+    const now = performance.now ? performance.now() : Date.now();
+    const cur = engine.cursor;
+    const prev = lastCursorRef.current;
+    lastCursorRef.current = { x: cur.x, y: cur.y };
+    if (!prev) return;
+    const dx = Math.abs(cur.x - prev.x);
+    const dy = Math.abs(cur.y - prev.y);
+    if (dx + dy <= 1) return; // only trail when skipping more than one cell
+    // Bresenham-like sampling between prev and cur inclusive
+    const points: Array<{ x: number; y: number; ts: number }> = [];
+    let x = prev.x, y = prev.y;
+    const sx = cur.x > prev.x ? 1 : -1;
+    const sy = cur.y > prev.y ? 1 : -1;
+    let err = (dx > dy ? dx : -dy) / 2;
+    const limit = 2048; // safety
+    let guard = 0;
+    while (true) {
+      points.push({ x, y, ts: now });
+      if (x === cur.x && y === cur.y) break;
+      const e2 = err;
+      if (e2 > -dx) { err -= dy; x += sx; }
+      if (e2 < dy) { err += dx; y += sy; }
+      if (++guard > limit) break;
+    }
+    setTrail((prevTrail) => {
+      const next = prevTrail.concat(points);
+      // prune old points by time window and length cap
+      const L = 500; // ms visible window
+      const cutoff = now - L;
+      const pruned = next.filter((p) => p.ts >= cutoff);
+      const MAX = 400;
+      return pruned.length > MAX ? pruned.slice(pruned.length - MAX) : pruned;
+    });
+  }, [engine, engine.cursor.x, engine.cursor.y]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
     if (cmdMode) {
@@ -153,7 +192,7 @@ export default function App() {
       >
         <div className="main-area">
           <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
-          <CanvasGrid engine={engine} zoom={zoom} pan={pan} frame={frame} />
+          <CanvasGrid engine={engine} zoom={zoom} pan={pan} frame={frame} trail={trail} />
         </div>
         <div className="side-panel">
           <StatusBar engine={engine} zoom={zoom} pan={pan} />

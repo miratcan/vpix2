@@ -9,9 +9,10 @@ type Props = {
   zoom?: number;
   pan?: { x: number; y: number };
   frame?: number;
+  trail?: Array<{ x: number; y: number; ts: number }>;
 };
 
-export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, frame = 0 }: Props) {
+export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, frame = 0, trail = [] }: Props) {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const overlayRef = useRef<HTMLCanvasElement | null>(null);
   const panX = pan?.x ?? 0;
@@ -136,6 +137,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
       }
     }
 
+    // Selection overlay
     const cx = offsetX + engine.cursor.x * cell;
     const cy = offsetY + engine.cursor.y * cell;
     if (cx + cell >= 0 && cy + cell >= 0 && cx <= viewW && cy <= viewH) {
@@ -144,6 +146,40 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
       ctx.strokeRect(Math.floor(cx) + 0.5, Math.floor(cy) + 0.5, Math.max(1, cell - 1), Math.max(1, cell - 1));
     }
   }, [cellSize, engine, frame, panX, panY]);
+
+  // Draw trail on overlay: after selection, before cursor
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
+    const canvas = overlayRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const cell = cellSize;
+    const viewW = canvas.width;
+    const viewH = canvas.height;
+    const offsetX = -panX * cell;
+    const offsetY = -panY * cell;
+
+    const now = performance.now ? performance.now() : Date.now();
+    const L = 500; // ms window
+
+    // We redraw full overlay in the other effect; here just paint trail on top
+    for (let i = 0; i < trail.length; i++) {
+      const p = trail[i];
+      if (p.ts < (now - L)) continue;
+      const alpha = Math.max(0, Math.min(1, (p.ts - (now - L)) / L));
+      const px = offsetX + p.x * cell;
+      const py = offsetY + p.y * cell;
+      if (px + cell < 0 || py + cell < 0 || px > viewW || py > viewH) continue;
+      ctx.save();
+      ctx.globalAlpha = 0.6 * alpha;
+      ctx.strokeStyle = cursorHighlight;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(Math.floor(px) + 0.5, Math.floor(py) + 0.5, Math.max(1, cell - 1), Math.max(1, cell - 1));
+      ctx.restore();
+    }
+  }, [cellSize, panX, panY, trail, frame]);
 
   return (
     <div className={gridClassName}>
