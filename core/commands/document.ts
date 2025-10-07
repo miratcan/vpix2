@@ -185,12 +185,20 @@ export const documentCommands: CommandDefinition[] = [
                 }
                 ctx.drawImage(img, 0, 0);
                 const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const palette = engine.palette.slice();
+                const paletteFromImage: string[] = [];
                 const colorMap = new Map<string, number>();
-                palette.forEach((color, idx) => {
-                  const normalized = normalizeHex(color);
-                  if (normalized) colorMap.set(normalized, idx);
-                });
+                const ensureColorIndex = (hex: string) => {
+                  const existing = colorMap.get(hex);
+                  if (existing != null) return existing;
+                  if (paletteFromImage.length >= 256) {
+                    colorMap.set(hex, 0);
+                    return 0;
+                  }
+                  const index = paletteFromImage.length;
+                  paletteFromImage.push(hex);
+                  colorMap.set(hex, index);
+                  return index;
+                };
                 const grid = Array.from({ length: height }, (_, y) => {
                   const row: Array<number | null> = [];
                   for (let x = 0; x < width; x += 1) {
@@ -205,16 +213,7 @@ export const documentCommands: CommandDefinition[] = [
                       row.push(null);
                       continue;
                     }
-                    let colorIndex = colorMap.get(hex);
-                    if (colorIndex == null) {
-                      if (palette.length >= 256) {
-                        colorIndex = 0;
-                      } else {
-                        palette.push(hex);
-                        colorIndex = palette.length - 1;
-                        colorMap.set(hex, colorIndex);
-                      }
-                    }
+                    const colorIndex = ensureColorIndex(hex);
                     row.push(colorIndex);
                   }
                   return row;
@@ -224,8 +223,10 @@ export const documentCommands: CommandDefinition[] = [
                 snapshot.width = width;
                 snapshot.height = height;
                 snapshot.grid = grid;
-                snapshot.palette = palette;
-                const paletteCount = palette.length > 0 ? palette.length : 1;
+                const nextPalette =
+                  paletteFromImage.length > 0 ? paletteFromImage : engine.palette.slice();
+                snapshot.palette = nextPalette;
+                const paletteCount = nextPalette.length > 0 ? nextPalette.length : 1;
                 snapshot.currentColorIndex = Math.min(snapshot.currentColorIndex, paletteCount - 1);
                 engine.loadSnapshot(snapshot);
 
