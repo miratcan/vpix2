@@ -18,6 +18,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
   const panX = pan?.x ?? 0;
   const panY = pan?.y ?? 0;
   const cellSize = useMemo(() => Math.max(1, Math.floor(16 * (zoom || 1))), [zoom]);
+  const showGridLines = (zoom || 1) > 2;
   const axis = engine.axis;
   const axisClass = axis === 'vertical' ? 'axis-vertical' : 'axis-horizontal';
   const gridClassName = `canvas-grid ${axisClass}`;
@@ -94,7 +95,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
       const clipTop = Math.max(0, Math.floor(gridTop));
       const clipBottom = Math.min(viewH, Math.ceil(gridBottom));
 
-      if (clipRight > clipLeft && clipBottom > clipTop) {
+      if (showGridLines && clipRight > clipLeft && clipBottom > clipTop) {
         ctx.strokeStyle = gridLine;
         ctx.lineWidth = 1;
         for (let x = 0; x <= engine.width; x++) {
@@ -170,7 +171,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
     };
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [cellSize, engine, panX, panY, trail]);
+  }, [cellSize, engine, panX, panY, showGridLines, trail]);
 
   return (
     <div className={gridClassName}>
