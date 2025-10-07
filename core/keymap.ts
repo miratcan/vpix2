@@ -60,7 +60,10 @@ function matchKeySpec(spec: string, evt: EventLike): boolean {
     }
   }
   if (requireCtrl !== Boolean(evt.ctrlKey)) return false;
-  if (requireShift !== Boolean(evt.shiftKey)) return false;
+  // Interpret uppercase single-letter keys from evt as implying shift.
+  const evtIsUpperAlpha = evt.key.length === 1 && /[A-Z]/.test(evt.key);
+  const effectiveShift = Boolean(evt.shiftKey) || evtIsUpperAlpha;
+  if (requireShift !== effectiveShift) return false;
 
   const key = requireCtrl && evt.key.length === 1 ? evt.key.toLowerCase() : evt.key;
   if (/^\[[^\]]+\]$/.test(base)) {
@@ -70,6 +73,10 @@ function matchKeySpec(spec: string, evt: EventLike): boolean {
   }
   if (base === 'Space') return evt.key === ' ';
   if (requireCtrl) return key === base.toLowerCase();
+  // If spec requires shift, compare uppercase; else compare exact
+  if (requireShift && base.length === 1 && /[a-z]/i.test(base)) {
+    return evt.key === base.toUpperCase();
+  }
   return evt.key === base;
 }
 

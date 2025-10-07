@@ -91,3 +91,10 @@ Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
 ## Notlar
 - VPix, Vim benzeri klavye-odaklı bir editördür; mouse etkileşimleri (drag, wheel vb.) tasarım gereği desteklenmez.
 - Pan davranışı: Viewport, imleci (cursor) otomatik takip eder. Büyük tuvallerde `hjkl` ile imleci hareket ettirdiğinizde görüntü kenara yaklaşınca kayar; ayrıca ayrı bir pan modu yoktur.
+
+## Geliştirme Kuralları (Kısayollar)
+- Tek yol ilkesi: Bir eylemin tek ve net bir kısayolu olmalıdır; aynı işlemi birden fazla tuşa bağlamayız.
+- Harf tuşları case‑sensitive kabul edilir:
+  - Küçük harf: Shift gerektirmez (ör. `c`).
+  - Büyük harf: Shift zorunludur ve binding’te açıkça `shift+<harf>` yazılır (ör. `shift+c`).
+- Modifier’lar açıkça belirtilmelidir (`ctrl+z`, `shift+g` gibi). Otomatik case normalizasyonu veya fallback yapılmaz.
