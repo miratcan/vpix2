@@ -3,6 +3,8 @@ import { defineConfig } from 'vite'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Set base path for GitHub Pages deployment under /vpix2/
+  base: '/vpix2/',
   plugins: [react()],
   test: {
     environment: 'node',
