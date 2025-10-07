@@ -18,6 +18,9 @@ import './App.css';
 const STORAGE_KEY = 'vpix.document.v1';
 const HELP_SHOWN_KEY = 'vpix.help.shown';
 const IS_TEST_ENV = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
+const BASE_CELL_SIZE = 16;
+const VIEW_WIDTH = 800;
+const VIEW_HEIGHT = 480;
 
 export default function App() {
   const paletteService = useMemo(() => new PaletteService(), []);
@@ -68,6 +71,28 @@ export default function App() {
   const [cmdFeed, setCmdFeed] = useState<Array<{ id: string; display: string }>>([]);
   const lastCursorRef = useRef<{ x: number; y: number } | null>(null);
 
+  const getVisibleCellCounts = useCallback(() => {
+    const cellPx = BASE_CELL_SIZE * (zoom || 1);
+    const visWcells = Math.max(1, Math.floor(VIEW_WIDTH / cellPx));
+    const visHcells = Math.max(1, Math.floor(VIEW_HEIGHT / cellPx));
+    return { visWcells, visHcells };
+  }, [zoom]);
+
+  const scrollPanBy = useCallback(
+    (dx: number, dy: number) => {
+      const { visWcells, visHcells } = getVisibleCellCounts();
+      setPan((prev) => {
+        const maxX = Math.max(0, engine.width - visWcells);
+        const maxY = Math.max(0, engine.height - visHcells);
+        const nextX = Math.min(maxX, Math.max(0, prev.x + dx));
+        const nextY = Math.min(maxY, Math.max(0, prev.y + dy));
+        if (nextX === prev.x && nextY === prev.y) return prev;
+        return { x: nextX, y: nextY };
+      });
+    },
+    [engine, getVisibleCellCounts],
+  );
+
   // Show help modal on first visit
   useEffect(() => {
     if (IS_TEST_ENV) return;
@@ -80,12 +105,7 @@ export default function App() {
 
   // Keep cursor visible by adjusting pan to follow it.
   useEffect(() => {
-    // Visible cell size in pixels
-    const cellPx = 16 * (zoom || 1);
-    const viewW = 800;
-    const viewH = 480;
-    const visWcells = Math.max(1, Math.floor(viewW / cellPx));
-    const visHcells = Math.max(1, Math.floor(viewH / cellPx));
+    const { visWcells, visHcells } = getVisibleCellCounts();
     const margin = 2; // start scrolling a bit before the edge
     const cur = engine.cursor;
 
@@ -101,7 +121,7 @@ export default function App() {
       if (nx !== prev.x || ny !== prev.y) return { x: nx, y: ny };
       return prev;
     });
-  }, [engine, engine.cursor.x, engine.cursor.y, zoom]);
+  }, [engine, engine.cursor.x, engine.cursor.y, getVisibleCellCounts, zoom]);
 
   useEffect(() => {
     focusContainer();
@@ -190,6 +210,35 @@ export default function App() {
       return;
     }
 
+    if (e.ctrlKey && !e.metaKey && !e.altKey) {
+      const { visWcells, visHcells } = getVisibleCellCounts();
+      const halfW = Math.max(1, Math.floor(visWcells / 2));
+      const halfH = Math.max(1, Math.floor(visHcells / 2));
+      switch (e.key) {
+        case 'd':
+        case 'D':
+        case 'ArrowDown':
+          scrollPanBy(0, halfH);
+          e.preventDefault();
+          return;
+        case 'u':
+        case 'U':
+        case 'ArrowUp':
+          scrollPanBy(0, -halfH);
+          e.preventDefault();
+          return;
+        case 'ArrowRight':
+          scrollPanBy(halfW, 0);
+          e.preventDefault();
+          return;
+        case 'ArrowLeft':
+          scrollPanBy(-halfW, 0);
+          e.preventDefault();
+          return;
+        default:
+          break;
+      }
+    }
     if (e.key === '?') {
       setShowHelp(true);
       e.preventDefault();
@@ -201,7 +250,7 @@ export default function App() {
       return;
     }
     if (e.key === '+') { setZoom((z) => Math.min(8, z * 1.25)); e.preventDefault(); return; }
-    if (e.key === '-') { setZoom((z) => Math.max(0.25, z / 1.25)); e.preventDefault(); return; }
+    if (e.key === '-') { setZoom((z) => Math.max(1, z / 1.25)); e.preventDefault(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === '0') {
       setZoom(1);
       setPan({ x: 0, y: 0 });
