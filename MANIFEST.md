@@ -94,6 +94,8 @@ Kararlarda, bir persona’ya fayda diğerine verdiği zarardan ağır basmalıd�
 # Uygulama Notları (Bugünkü Durum)
 
 - Klavye akışı: NORMAL/INSERT/VISUAL (Vim benzeri); terminal “:” ile açılır.
+- Kısayol ilkesi (Tek Yol): Bir eylemin tek ve net bir kısayolu olmalıdır; aynı işlemi birden fazla tuşa bağlamayız.
+- Kısayol politikası: Harf tuşları case‑sensitive’dir. Küçük harf Shift gerektirmez; büyük harf Shift zorunludur ve binding’te `shift+<harf>` olarak açıkça yazılır. Otomatik case normalizasyonu yoktur.
 - Paylaşım: vp2r link; palette slug; decode sırasında gerekirse LoSpec fetch.
 - Komut Sistemi: kelime‑bazlı DSL (registerS), tür doğrulayıcıları (int, size, slug, oneof, url, json, rest), autocomplete + help.
 - Terminal: komut/çıktı aynı panelde; “exit” ile kapanır; “clear” ile temizlenir.
