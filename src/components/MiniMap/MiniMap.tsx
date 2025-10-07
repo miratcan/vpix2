@@ -11,9 +11,18 @@ type Props = {
   viewW?: number;
   viewH?: number;
   frame?: number;
+  cellSize?: number;
 };
 
-export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, frame = 0 }: Props) {
+export default function MiniMap({
+  engine,
+  pan,
+  zoom,
+  viewW = 800,
+  viewH = 480,
+  frame = 0,
+  cellSize,
+}: Props) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   const { canvasBackground, accent } = GRID_THEME;
   useEffect(() => {
@@ -50,7 +59,7 @@ export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, f
       for (let x = 0; x < engine.width; x++) drawCell(x, y);
     }
     // viewport rectangle
-    const cellPx = 16 * (zoom || 1);
+    const cellPx = Math.max(1, cellSize || Math.round(16 * (zoom || 1)));
     const visWcells = Math.max(1, Math.floor(viewW / cellPx));
     const visHcells = Math.max(1, Math.floor(viewH / cellPx));
     const rx = Math.max(0, Math.min(engine.width, (pan?.x || 0))) * cell;
@@ -60,7 +69,7 @@ export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, f
     ctx.strokeStyle = accent;
     ctx.lineWidth = 2;
     ctx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);
-  }, [engine, pan, zoom, viewW, viewH, frame]);
+  }, [engine, pan, zoom, viewW, viewH, frame, cellSize]);
 
   return (
     <div className="minimap">
