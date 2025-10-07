@@ -22,7 +22,7 @@ Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
 - SRP (Single Responsibility):
   - `core/engine/`: GridState, HistoryManager, SelectionManager, EngineEvents ile orkestrasyon yapan `VPixEngine`.
   - `core/keymap.ts`: Mod/tuş → eylem dağıtımı (`engine.handleKey` delegasyonu).
-  - `core/url.ts`: vp2/vp2r encode/decode, base62 vb.
+- `core/url.ts`: vp2r encode/decode, base62 vb.
   - `core/services/*`: Paylaşımlı servisler (`DocumentRepository`, `ShareLinkService`, `PaletteService`).
   - `core/palettes.ts`: Palet kayıt/indirme (UI katmanından çağrılır).
 - OCP (Open/Closed): Yeni tuş/komut eklemek için keymap’e satır eklemek yeterli; engine göbeği değişmez.

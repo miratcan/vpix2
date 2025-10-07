@@ -59,7 +59,7 @@ Legend priority: P0 (now), P1 (next), P2 (later)
 ## P1 — Link Paste‑to‑Open
 - Rationale: “Sürtünmesiz Paylaşım”
 - Scope:
-  - Detect a pasted `vp2`/`vp2r` payload in terminal input and decode.
+  - Detect a pasted `vp2r` payload in terminal input and decode.
 - Acceptance:
   - Pasting a full share URL or just `vp2r;...` loads the canvas; prints a success message.
 

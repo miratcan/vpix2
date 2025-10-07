@@ -1,4 +1,4 @@
-// URL encode/decode (vp2/vp2r) using LoSpec palette slug + bit-packed pixels
+// URL encode/decode (vp2r only) using LoSpec palette slug + bit-packed pixels
 import { getPaletteByName, normalizeSlug } from './palettes';
 import { base64UrlDecodeToBytes, base64UrlEncode } from './url/base64url';
 import { fromB62, toB62 } from './url/base62';
@@ -6,7 +6,7 @@ import { fromB62, toB62 } from './url/base62';
 import type VPixEngine from './engine';
 
 export function parseVp2Meta(value: string) {
-  const s = (value || '').trim(); if (!s.startsWith('vp2;')) return null;
+  const s = (value || '').trim(); if (!s.startsWith('vp2r;')) return null;
   const parts = s.split(';'); let w = 0, h = 0, slug: string | null = null;
   for (const token of parts) {
     if (token.startsWith('w')) w = fromB62(token.slice(1));
@@ -53,3 +53,6 @@ export function decodeFromParamV2R(value: string, engineClass: new (opts: { widt
   return eng;
 }
 
+// Legacy decoder for older links using the non-run-length encoded 'vp2' format.
+// Format: vp2;w<w>;h<h>;pl<slug>;d<bitsPer>;c<currentColorIndex>;b<base64url-bytes>
+// Note: legacy 'vp2' decoder intentionally not exported. No backwards compatibility.

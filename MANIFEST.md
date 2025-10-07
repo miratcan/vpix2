@@ -8,7 +8,7 @@ Bu manifesto, VPix (Vim‑benzeri piksel editörü) için karar alma pusulasıd�
 - Öğrenme için “:help” ve “:tutorial 60s” gibi rehberler terminalde, ek modal gerektirmeden sunulur.
 
 ## 2. Sürtünmesiz Paylaşım
-- Eser paylaşımı tek bir link ile yapılır (vp2r param’ı). Alıcı, sadece linke gider ve görüntüler.
+- Eser paylaşımı tek bir link ile yapılır (yalnızca `vp2r` param’ı). Alıcı, sadece linke gider ve görüntüler.
 - “copylink”/“link” ile URL güncelleme ve panoya kopyalama akışları temel birinci sınıf özelliktir.
 - (Opsiyonel) “copy png(+link)” ile görsel + gömülü/ilişik link paylaşımı.
 
@@ -104,4 +104,3 @@ Kararlarda, bir persona’ya fayda diğerine verdiği zarardan ağır basmalıd�
 - vp2r meta: app/engine sürüm kimliği
 - “copy png(+link)” ve link paste‑to‑open
 - slug autocomplete’e lospec araması fallback’i
-

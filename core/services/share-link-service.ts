@@ -1,4 +1,4 @@
-import { decodeFromParamV2, decodeFromParamV2R, encodeToParamV2R, parseVp2Meta } from '../url';
+import { decodeFromParamV2R, encodeToParamV2R, parseVp2Meta } from '../url';
 import { PaletteService, type IPaletteService } from './palette-service';
 import VPixEngine from '../engine';
 
@@ -79,14 +79,15 @@ export class ShareLinkService implements IShareLinkService {
     if (qp2r) {
 decoded = decodeFromParamV2R(qp2r, VPixEngine);
     } else if (qp2) {
-decoded = decodeFromParamV2(qp2, VPixEngine);
+      // No backwards compatibility: ignore legacy 'vp2' param
+      return false;
     }
     if (!decoded) {
       const meta = parseVp2Meta(qp2r || qp2 || '');
       if (meta?.slug) {
         await this.palettes.fetchPalette(meta.slug);
 if (qp2r) decoded = decodeFromParamV2R(qp2r, VPixEngine);
-        else if (qp2) decoded = decodeFromParamV2(qp2, VPixEngine);
+        else if (qp2) return false;
       }
     }
     if (!decoded) return false;
