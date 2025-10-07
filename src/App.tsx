@@ -17,6 +17,7 @@ import './App.css';
 
 const STORAGE_KEY = 'vpix.document.v1';
 const HELP_SHOWN_KEY = 'vpix.help.shown';
+const IS_TEST_ENV = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
 
 export default function App() {
   const paletteService = useMemo(() => new PaletteService(), []);
@@ -53,6 +54,14 @@ export default function App() {
   });
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const focusContainer = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const el = containerRef.current;
+    if (!el) return;
+    if (document.activeElement !== el) {
+      el.focus();
+    }
+  }, []);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [trail, setTrail] = useState<Array<{ x: number; y: number; ts: number }>>([]);
@@ -61,6 +70,7 @@ export default function App() {
 
   // Show help modal on first visit
   useEffect(() => {
+    if (IS_TEST_ENV) return;
     const seen = localStorage.getItem(HELP_SHOWN_KEY);
     if (!seen) {
       setShowHelp(true);
@@ -94,8 +104,8 @@ export default function App() {
   }, [engine, engine.cursor.x, engine.cursor.y, zoom]);
 
   useEffect(() => {
-    containerRef.current?.focus();
-  }, []);
+    focusContainer();
+  }, [focusContainer]);
 
   useEffect(() => {
     (async () => {
@@ -215,6 +225,18 @@ export default function App() {
     if (['h', 'j', 'k', 'l', ' ', 'Backspace', 'Tab'].includes(e.key)) e.preventDefault();
   }, [cmdMode, documents, engine, openCommand, showHelp]);
 
+  useEffect(() => {
+    if (!cmdMode && !showHelp) {
+      if (typeof window === 'undefined') {
+        focusContainer();
+        return;
+      }
+      const handle = window.setTimeout(() => focusContainer(), 0);
+      return () => window.clearTimeout(handle);
+    }
+    return undefined;
+  }, [cmdMode, showHelp, focusContainer]);
+
   return (
     <div className="vpix-root">
       <div
@@ -234,22 +256,8 @@ export default function App() {
         </div>
 
         {cmdMode && (
-          <div
-            style={{
-              position: 'fixed',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              background: 'var(--color-background)',
-              borderTop: '2px solid var(--color-accent)',
-              padding: '0.5rem 1rem',
-              zIndex: 100,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-            }}
-          >
-            <span style={{ color: 'var(--color-accent)', fontFamily: 'monospace', fontSize: '1rem' }}>:</span>
+          <div className="vpix-command-bar">
+            <span className="vpix-command-prompt">:</span>
             <input
               type="text"
               value={cmdText}
@@ -267,15 +275,7 @@ export default function App() {
                 }
               }}
               autoFocus
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: 'var(--color-text)',
-                fontFamily: 'monospace',
-                fontSize: '1rem',
-              }}
+              className="vpix-command-input"
               placeholder="help"
             />
           </div>

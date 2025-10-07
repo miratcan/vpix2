@@ -24,7 +24,7 @@
 .side-panel {
   width: 260px;
   background: var(--color-background);
-  border-left: 1px solid var(--color-border);
+  border-left: var(--border-width) solid var(--color-border);
   display: flex;
   flex-direction: column;
   padding: var(--spacing-l);
@@ -66,4 +66,34 @@
 
 .read-the-docs {
   color: var(--color-text-muted);
+}
+
+.vpix-command-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-background);
+  border-top: var(--border-width-strong) solid var(--color-accent);
+  padding: 0.5rem 1rem;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.vpix-command-prompt {
+  color: var(--color-accent);
+  font-family: monospace;
+  font-size: 1rem;
+}
+
+.vpix-command-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-text);
+  font-family: monospace;
+  font-size: 1rem;
 }

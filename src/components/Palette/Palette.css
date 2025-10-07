@@ -3,7 +3,7 @@
   gap: var(--spacing-s);
   padding: var(--spacing-s) var(--spacing-m);
   background: var(--color-background);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: var(--border-width) solid var(--color-border);
 }
 .swatch {
   display: flex;
@@ -11,7 +11,7 @@
   gap: var(--spacing-xs);
   padding: var(--spacing-xs) var(--spacing-s);
   background: var(--color-background);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--spacing-xs);
   color: var(--color-text-muted);
 }
@@ -22,7 +22,7 @@
 .swatch .chip {
   width: 18px;
   height: 18px;
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
 }
 .swatch .key {
   opacity: 0.7;

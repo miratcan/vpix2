@@ -152,6 +152,19 @@ export const modeCommands: CommandDefinition[] = [
     hidden: true,
   },
   {
+    id: 'operator.delete.line',
+    summary: 'Delete entire axis line',
+    handler: ({ engine }, { count }) => {
+      const times = ensureCount(count);
+      engine.deleteAxisLines(times);
+      engine.clearPendingOperator();
+      engine.clearPrefix();
+      return times > 1 ? `Deleted ${times} lines` : 'Deleted line';
+    },
+    patterns: [],
+    hidden: true,
+  },
+  {
     id: 'operator.change.to-end',
     summary: 'Change to line end respecting axis',
     handler: ({ engine }, { count }) => {

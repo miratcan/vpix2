@@ -169,10 +169,12 @@ export const selectionCommands: CommandDefinition[] = [
   },
   {
     id: 'selection.flood-fill',
-    summary: 'Flood fill selection area',
+    summary: 'Flood fill from cursor',
     handler: ({ engine }) => {
+      const sel = engine.selection;
+      const hadSelection = Boolean(sel?.active && sel?.rect);
       engine.floodFill(engine.cursor.x, engine.cursor.y);
-      engine.exitVisual();
+      if (hadSelection) engine.exitVisual();
       engine.clearPrefix();
       return 'Flood filled';
     },

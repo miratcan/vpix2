@@ -76,19 +76,44 @@ export default function HelpModal({ onClose, onDontShowAgain }: Props) {
               <h3 className="help-modal-section-title">
                 {categoryNames[category] || category}
               </h3>
-              <div className="help-modal-commands">
-                {cmds.map((cmd) => (
-                  <div key={cmd.id} className="help-modal-command">
-                    <span className="help-modal-command-name">{cmd.name}</span>
-                    <span className="help-modal-command-summary">{cmd.summary}</span>
-                  </div>
-                ))}
+              <div className="help-modal-table-wrapper">
+                <table className="help-modal-table">
+                  <thead>
+                    <tr>
+                      <th>Command</th>
+                      <th>Summary</th>
+                      <th>Keys</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cmds.map((cmd) => (
+                      <tr key={cmd.id}>
+                        <td>{cmd.name}</td>
+                        <td>{cmd.summary}</td>
+                        <td>
+                          {cmd.keys.length ? (
+                            cmd.keys.map((key, idx) => (
+                              <span key={`${cmd.id}-key-${idx}`} className="help-modal-key-badge">
+                                {key}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="help-modal-no-keys">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           ))}
         </div>
 
         <div className="help-modal-footer">
+          <a href="https://github.com/vpix/vpix2" target="_blank" rel="noreferrer">
+            GitHub’da proje sayfası
+          </a>
           <label className="help-modal-checkbox-label">
             <input
               type="checkbox"

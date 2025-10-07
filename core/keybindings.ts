@@ -187,6 +187,14 @@ export const KEYBINDINGS: KeyBinding[] = [
   },
   {
     scope: 'normal',
+    key: 'f',
+    command: 'selection.flood-fill',
+    when: 'no-prefix',
+    description: 'Flood fill from cursor',
+    tips: ['Press f to bucket fill from cursor'],
+  },
+  {
+    scope: 'normal',
     key: 'p',
     command: 'clipboard.paste',
     when: 'no-prefix',

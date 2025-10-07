@@ -1,6 +1,6 @@
 .status-bar {
   color: var(--color-text-muted);
-  border-top: 1px solid var(--color-border);
+  border-top: var(--border-width) solid var(--color-border);
 }
 .status-table {
   width: 100%;
@@ -19,12 +19,12 @@
 }
 .status-table tr + tr td,
 .status-table tr + tr th {
-  border-top: 1px solid var(--color-border);
+  border-top: var(--border-width) solid var(--color-border);
 }
 .color-chip {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   vertical-align: middle;
 }

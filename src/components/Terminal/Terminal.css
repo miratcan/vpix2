@@ -4,7 +4,7 @@
   right: var(--spacing-m);
   bottom: var(--spacing-m);
   background: var(--color-background);
-  border: 1px solid var(--color-border);
+  border: var(--border-width) solid var(--color-border);
   border-radius: var(--spacing-s);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: var(--font-size-m);
@@ -22,7 +22,7 @@
   align-items: center;
   gap: var(--spacing-s);
   padding: var(--spacing-s) var(--spacing-m);
-  border-top: 1px solid var(--color-border);
+  border-top: var(--border-width) solid var(--color-border);
 }
 .prompt { color: var(--color-accent); }
 .term-input {

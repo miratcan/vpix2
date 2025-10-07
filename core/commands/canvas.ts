@@ -36,7 +36,7 @@ export const canvasCommands: CommandDefinition[] = [
     handler: ({ engine }, { size }) => {
       const dims = size as { w: number; h: number };
       engine.setSize(dims.w, dims.h);
-      return { msg: `${dims.w}×${dims.h}`, meta: { closeTerminal: true } };
+      return { msg: '', meta: { closeTerminal: true, silent: true } };
     },
     patterns: [{ pattern: 'set size {size:size}', help: 'set size <WxH>' }],
   },
