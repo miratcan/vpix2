@@ -134,18 +134,24 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
         }
       }
 
-      // Trail (filled cells)
+      // Trail (filled cells) — fade from tail to head (staggered)
       const now = performance.now ? performance.now() : Date.now();
       const L = 500;
-      for (let i = 0; i < (trail?.length || 0); i++) {
+      const N = trail?.length || 0;
+      const per = N > 0 ? L / N : L;
+      for (let i = 0; i < N; i++) {
         const p = trail![i];
+        const tStart = (now - L) + i * per; // older entries start fading earlier
         if (p.ts < (now - L)) continue;
-        const alpha = Math.max(0, Math.min(1, (p.ts - (now - L)) / L));
+        const span = Math.max(1, L - i * per);
+        const alpha = Math.max(0, Math.min(1, (p.ts - tStart) / span));
         const px = offsetX + p.x * cell;
         const py = offsetY + p.y * cell;
         if (px + cell < 0 || py + cell < 0 || px > viewW || py > viewH) continue;
         ctx.save();
-        ctx.globalAlpha = 0.5 * alpha;
+        // Slightly boost newer samples
+        const posBoost = 0.8 + 0.2 * (i / Math.max(1, N - 1));
+        ctx.globalAlpha = 0.5 * alpha * posBoost;
         ctx.fillStyle = cursorHighlight;
         ctx.fillRect(Math.floor(px), Math.floor(py), Math.max(1, cell), Math.max(1, cell));
         ctx.restore();
