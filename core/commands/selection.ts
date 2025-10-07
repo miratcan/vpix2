@@ -118,6 +118,26 @@ export const selectionCommands: CommandDefinition[] = [
     patterns: [{ pattern: 'selection stroke', help: 'selection stroke' }],
   },
   {
+    id: 'selection.stroke-circle',
+    summary: 'Stroke selection circle',
+    handler: ({ engine }) => {
+      engine.strokeCircleSelection();
+      engine.exitVisual();
+      engine.clearPrefix();
+    },
+    patterns: [{ pattern: 'selection stroke-circle', help: 'selection stroke-circle' }],
+  },
+  {
+    id: 'selection.fill-circle',
+    summary: 'Fill selection circle',
+    handler: ({ engine }) => {
+      engine.fillCircleSelection();
+      engine.exitVisual();
+      engine.clearPrefix();
+    },
+    patterns: [{ pattern: 'selection fill-circle', help: 'selection fill-circle' }],
+  },
+  {
     id: 'selection.draw-line',
     summary: 'Draw line between selection anchor and cursor',
     handler: ({ engine }) => {

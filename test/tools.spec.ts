@@ -5,6 +5,7 @@ import { floodFill } from '../core/tools/flood-fill';
 import { fillRect } from '../core/tools/fill-rect';
 import { drawLine } from '../core/tools/line';
 import { strokeRect } from '../core/tools/stroke-rect';
+import { fillEllipse, strokeEllipse } from '../core/tools/circle';
 
 const makeReader = (grid: Array<Array<number | null>>) => (x: number, y: number) => grid[y]?.[x] ?? null;
 
@@ -45,6 +46,24 @@ describe('tool algorithms', () => {
     for (let i = 0; i < ops.length; i += 1) {
       assert.deepEqual(ops[i], { x: i, y: i, value: 3 });
     }
+  });
+
+  it('fillEllipse returns the full set of ellipse cells', () => {
+    const grid = Array.from({ length: 5 }, () => Array(5).fill(null));
+    const ops = fillEllipse({ x1: 0, y1: 0, x2: 4, y2: 4 }, 2, makeReader(grid));
+    assert.ok(ops.length > 0);
+    assert.ok(ops.some((op) => op.x === 2 && op.y === 2));
+    assert.ok(ops.some((op) => op.x === 0 && op.y === 2));
+  });
+
+  it('strokeEllipse returns only border cells', () => {
+    const grid = Array.from({ length: 7 }, () => Array(7).fill(null));
+    const ops = strokeEllipse({ x1: 0, y1: 0, x2: 6, y2: 6 }, 1, makeReader(grid));
+    const keySet = new Set(ops.map((op) => `${op.x}:${op.y}`));
+    assert.equal(keySet.size, ops.length);
+    assert.ok(ops.some((op) => op.x === 0 && op.y === 3));
+    assert.ok(ops.some((op) => op.x === 3 && op.y === 0));
+    assert.ok(!keySet.has('3:3'));
   });
 
   it('floodFill respects bounds and target value', () => {
