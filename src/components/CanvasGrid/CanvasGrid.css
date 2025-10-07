@@ -13,13 +13,13 @@
 
 /* Axis indicator borders */
 .canvas-grid.axis-vertical .canvas-layer-stack {
-  border-left: 2px solid var(--color-accent);
-  border-right: 2px solid var(--color-accent);
+  border-left: var(--border-width-strong) solid var(--color-accent);
+  border-right: var(--border-width-strong) solid var(--color-accent);
 }
 
 .canvas-grid.axis-horizontal .canvas-layer-stack {
-  border-top: 2px solid var(--color-accent);
-  border-bottom: 2px solid var(--color-accent);
+  border-top: var(--border-width-strong) solid var(--color-accent);
+  border-bottom: var(--border-width-strong) solid var(--color-accent);
 }
 
 .canvas-layer-stack .canvas-base {

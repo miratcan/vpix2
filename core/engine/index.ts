@@ -40,6 +40,24 @@ export type { MotionResolution };
 export type { AxisSegment };
 export type { MotionKind };
 
+function rotateMatrixCW(matrix: Array<Array<number | null>>): Array<Array<number | null>> {
+  const height = matrix.length;
+  const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
+  if (height === 0 || width === 0) return [];
+  return Array.from({ length: width }, (_, y) =>
+    Array.from({ length: height }, (_, x) => matrix[height - 1 - x]?.[y] ?? null),
+  );
+}
+
+function rotateMatrixCCW(matrix: Array<Array<number | null>>): Array<Array<number | null>> {
+  const height = matrix.length;
+  const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
+  if (height === 0 || width === 0) return [];
+  return Array.from({ length: width }, (_, y) =>
+    Array.from({ length: height }, (_, x) => matrix[x]?.[width - 1 - y] ?? null),
+  );
+}
+
 export default class VPixEngine {
   private readonly events = new EngineEvents<VPixEngine>();
   private revision = 0;
@@ -309,6 +327,64 @@ export default class VPixEngine {
     else this.erase();
   }
 
+  deleteAxisLines(count = 1) {
+    const total = Math.max(1, count | 0);
+    const axis = this._axis;
+    const maxLines = axis === 'horizontal' ? this.height : this.width;
+    if (maxLines <= 0) return;
+    const startIndex = axis === 'horizontal' ? this.cursor.y : this.cursor.x;
+    const ordered = Array.from({ length: total }, (_, i) => clamp(startIndex + i, 0, maxLines - 1))
+      .filter((value, index, arr) => arr.indexOf(value) === index)
+      .sort((a, b) => a - b);
+    if (!ordered.length) return;
+
+    if (axis === 'horizontal') {
+      const rows = ordered.map((y) => Array.from({ length: this.width }, (_, x) => this.gridState.getCell(x, y)));
+      if (rows.length) this.clipboard.store({ w: this.width, h: rows.length, cells: rows });
+    } else {
+      const cols = Array.from({ length: this.height }, (_, y) =>
+        ordered.map((x) => this.gridState.getCell(x, y))
+      );
+      if (cols.length) this.clipboard.store({ w: ordered.length, h: cols.length, cells: cols });
+    }
+
+    this.beginGroup('deleteLines');
+    let changed = false;
+    if (axis === 'horizontal') {
+      for (const y of ordered) {
+        for (let x = 0; x < this.width; x += 1) {
+          const prev = this.gridState.getCell(x, y);
+          if (prev == null) continue;
+          changed = true;
+          this.recordCell({ type: 'cell', x, y, prev, next: null });
+          this.gridState.writeCell(x, y, null);
+        }
+      }
+    } else {
+      for (const x of ordered) {
+        for (let y = 0; y < this.height; y += 1) {
+          const prev = this.gridState.getCell(x, y);
+          if (prev == null) continue;
+          changed = true;
+          this.recordCell({ type: 'cell', x, y, prev, next: null });
+          this.gridState.writeCell(x, y, null);
+        }
+      }
+    }
+    this.endGroup();
+
+    if (axis === 'horizontal') {
+      const nextY = ordered[0] ?? this.cursor.y;
+      this.cursor = { x: 0, y: nextY };
+    } else {
+      const nextX = ordered[0] ?? this.cursor.x;
+      this.cursor = { x: nextX, y: 0 };
+    }
+
+    if (changed) this.recordLastAction((eng) => eng.deleteAxisLines(ordered.length));
+    else this.recordLastAction(null);
+  }
+
   beginGroup(label = '') {
     this.history.beginGroup(label);
   }
@@ -470,6 +546,77 @@ export default class VPixEngine {
   rotateClipboardCCW() {
     this.clipboard.rotateCCW();
     this.emit();
+  }
+
+  private applySelectionRotation(direction: 'cw' | 'ccw') {
+    const sel = this.selection;
+    if (!sel || !sel.active || !sel.rect) return false;
+    const rect = sel.rect;
+    const width = rect.x2 - rect.x1 + 1;
+    const height = rect.y2 - rect.y1 + 1;
+    if (width <= 0 || height <= 0) return false;
+    const source = Array.from({ length: height }, (_, row) =>
+      Array.from({ length: width }, (_, col) => this.gridState.getCell(rect.x1 + col, rect.y1 + row)),
+    );
+    const rotated = direction === 'cw' ? rotateMatrixCW(source) : rotateMatrixCCW(source);
+    const newHeight = rotated.length;
+    const newWidth = rotated.reduce((max, row) => Math.max(max, row.length), 0);
+    if (newHeight === 0 || newWidth === 0) return false;
+    let baseX = clamp(rect.x1, 0, Math.max(0, this.width - newWidth));
+    let baseY = clamp(rect.y1, 0, Math.max(0, this.height - newHeight));
+    const newRect = {
+      x1: baseX,
+      y1: baseY,
+      x2: baseX + newWidth - 1,
+      y2: baseY + newHeight - 1,
+    };
+    const union = {
+      x1: Math.min(rect.x1, newRect.x1),
+      y1: Math.min(rect.y1, newRect.y1),
+      x2: Math.max(rect.x2, newRect.x2),
+      y2: Math.max(rect.y2, newRect.y2),
+    };
+
+    this.beginGroup(direction === 'cw' ? 'rotateSelectionCW' : 'rotateSelectionCCW');
+    let changed = false;
+    for (let y = union.y1; y <= union.y2; y += 1) {
+      for (let x = union.x1; x <= union.x2; x += 1) {
+        let next: number | null = null;
+        if (x >= newRect.x1 && x <= newRect.x2 && y >= newRect.y1 && y <= newRect.y2) {
+          const rx = x - newRect.x1;
+          const ry = y - newRect.y1;
+          next = rotated[ry]?.[rx] ?? null;
+        }
+        const prev = this.gridState.getCell(x, y);
+        if (prev === next) continue;
+        changed = true;
+        this.recordCell({ type: 'cell', x, y, prev, next });
+        this.gridState.writeCell(x, y, next);
+      }
+    }
+    this.endGroup();
+
+    this.selectionManager.enter({ x: newRect.x1, y: newRect.y1 });
+    this.selectionManager.update({ x: newRect.x2, y: newRect.y2 });
+    this.cursor = { x: newRect.x1, y: newRect.y1 };
+
+    if (changed) {
+      if (direction === 'cw') this.recordLastAction((eng) => eng.rotateSelectionCW());
+      else this.recordLastAction((eng) => eng.rotateSelectionCCW());
+    } else {
+      this.recordLastAction(null);
+    }
+    return true;
+  }
+
+  rotateSelectionCW() {
+    const applied = this.applySelectionRotation('cw');
+    if (!applied) this.rotateClipboardCW();
+  }
+
+  rotateSelectionCCW() {
+    const applied = this.applySelectionRotation('ccw');
+    if (!applied) this.rotateClipboardCCW();
   }
 
   moveSelectionToCursor() {

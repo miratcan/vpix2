@@ -9,9 +9,9 @@
   width: var(--spacing-l);
   height: var(--spacing-l);
   background: transparent;
-  outline: 1px solid var(--color-border);
+  outline: var(--border-width) solid var(--color-border);
 }
 .cell.cursor {
-  outline: 2px solid var(--color-accent);
+  outline: var(--border-width-strong) solid var(--color-accent);
   box-shadow: 0 0 6px rgba(0, 225, 255, 0.7);
 }

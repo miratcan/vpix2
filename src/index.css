@@ -12,6 +12,10 @@
   --color-text-muted: rgba(255, 255, 255, 0.4);
   --color-border: rgba(255, 255, 255, 0.1);
 
+  /* Border widths */
+  --border-width: 1px;
+  --border-width-strong: 2px;
+
   /* Font Boyutları */
   --font-size-s: 12px;
   --font-size-m: 14px;

@@ -63,7 +63,11 @@ function matchKeySpec(spec: string, evt: EventLike): boolean {
   // Interpret uppercase single-letter keys from evt as implying shift.
   const evtIsUpperAlpha = evt.key.length === 1 && /[A-Z]/.test(evt.key);
   const effectiveShift = Boolean(evt.shiftKey) || evtIsUpperAlpha;
-  if (requireShift !== effectiveShift) return false;
+  if (requireShift !== effectiveShift) {
+    const baseIsSymbol = base.length === 1 && !/[a-z0-9]/i.test(base);
+    const allowSymbolWithShift = !requireShift && effectiveShift && baseIsSymbol;
+    if (!allowSymbolWithShift) return false;
+  }
 
   const key = requireCtrl && evt.key.length === 1 ? evt.key.toLowerCase() : evt.key;
   if (/^\[[^\]]+\]$/.test(base)) {
@@ -149,6 +153,18 @@ export function dispatchKey(engine: VPixEngine, evt: EventLike) {
   const binding = findBinding(scope, engine, evt, prefix, count);
   if (binding) {
     if (binding.command === 'prefix.set') shouldClearCount = false;
+    if (pendingOperator && binding.command === 'operator.set') {
+      const key = evt.key.toLowerCase();
+      if (pendingOperator.op === 'delete' && key === 'd') {
+        const total = engine.countValue() || pendingOperator.count;
+        const result = runCommand(engine, 'operator.delete.line', { count: total });
+        if (result && typeof (result as any).then === 'function') {
+          (result as Promise<unknown>).catch(() => {});
+        }
+        engine.clearCount();
+        return 'operator.delete.line';
+      }
+    }
     if (pendingOperator && binding.command.startsWith('motion.')) {
       const ctx: BindingContext = { engine, event: evt, prefix, count };
       const args = binding.args ? binding.args(ctx) ?? {} : {};

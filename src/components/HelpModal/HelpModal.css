@@ -11,7 +11,7 @@
 
 .help-modal {
   background: var(--color-background);
-  border: 2px solid var(--color-accent);
+  border: var(--border-width-strong) solid var(--color-accent);
   max-width: 800px;
   max-height: 80vh;
   width: 100%;
@@ -22,7 +22,7 @@
 
 .help-modal-header {
   padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: var(--border-width) solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -78,36 +78,72 @@
   letter-spacing: 0.05em;
 }
 
-.help-modal-commands {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.help-modal-table-wrapper {
+  overflow-x: auto;
 }
 
-.help-modal-command {
-  display: flex;
-  gap: 1rem;
+.help-modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.help-modal-table th,
+.help-modal-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: var(--border-width) solid var(--color-border);
+  vertical-align: top;
+}
+
+.help-modal-table th {
+  text-align: left;
+  color: var(--color-text);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.help-modal-table td:first-child {
   font-family: monospace;
-  font-size: 0.9rem;
-  line-height: 1.4;
-}
-
-.help-modal-command-name {
   color: var(--color-accent);
-  min-width: 200px;
+  white-space: nowrap;
 }
 
-.help-modal-command-summary {
-  color: var(--color-text-dim);
-  flex: 1;
+.help-modal-table td:nth-child(2) {
+  color: var(--color-text-muted);
+}
+
+.help-modal-table td:last-child {
+  font-family: monospace;
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.help-modal-key-badge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  margin: 0 0.25rem 0.25rem 0;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--spacing-xs);
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .help-modal-footer {
   padding: 1rem 1.5rem;
-  border-top: 1px solid var(--color-border);
+  border-top: var(--border-width) solid var(--color-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.help-modal-footer a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.help-modal-footer a:hover {
+  text-decoration: underline;
 }
 
 .help-modal-checkbox-label {
@@ -116,9 +152,13 @@
   gap: 0.5rem;
   cursor: pointer;
   font-size: 0.9rem;
-  color: var(--color-text-dim);
+  color: var(--color-text-muted);
 }
 
 .help-modal-checkbox-label input {
   cursor: pointer;
+}
+
+.help-modal-no-keys {
+  color: var(--color-text-muted);
 }

@@ -29,18 +29,18 @@ export const clipboardCommands: CommandDefinition[] = [
   },
   {
     id: 'selection.rotate-cw',
-    summary: 'Rotate clipboard clockwise',
+    summary: 'Rotate selection clockwise',
     handler: ({ engine }) => {
-      engine.rotateClipboardCW();
+      engine.rotateSelectionCW();
       return 'Rotated ↻';
     },
     patterns: [{ pattern: 'selection rotate-cw', help: 'selection rotate-cw' }],
   },
   {
     id: 'selection.rotate-ccw',
-    summary: 'Rotate clipboard counterclockwise',
+    summary: 'Rotate selection counterclockwise',
     handler: ({ engine }) => {
-      engine.rotateClipboardCCW();
+      engine.rotateSelectionCCW();
       return 'Rotated ↺';
     },
     patterns: [{ pattern: 'selection rotate-ccw', help: 'selection rotate-ccw' }],
