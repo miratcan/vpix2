@@ -1,4 +1,4 @@
-export const COLOR_THEME = {
+export const GRID_THEME = {
   canvasBackground: '#0b0b0b',
   accent: '#00e1ff',
   gridLine: 'rgba(255, 255, 255, 0.05)',

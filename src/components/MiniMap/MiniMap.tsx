@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import type VPixEngine from '../../../core/engine';
-import { COLOR_THEME } from '../../theme/colors';
+import { GRID_THEME } from '../../theme/colors';
 import './MiniMap.css';
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
 
 export default function MiniMap({ engine, pan, zoom, viewW = 800, viewH = 480, frame = 0 }: Props) {
   const ref = useRef<HTMLCanvasElement | null>(null);
-  const { canvasBackground, accent } = COLOR_THEME;
+  const { canvasBackground, accent } = GRID_THEME;
   useEffect(() => {
     // Skip drawing in jsdom test environment (no canvas impl)
     if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;

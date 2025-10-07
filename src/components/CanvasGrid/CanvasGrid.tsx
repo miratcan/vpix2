@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import type VPixEngine from '../../../core/engine';
-import { COLOR_THEME } from '../../theme/colors';
+import { GRID_THEME } from '../../theme/colors';
 import './CanvasGrid.css';
 
 type Props = {
@@ -18,7 +18,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
   const panY = pan?.y ?? 0;
   const cellSize = useMemo(() => Math.max(1, Math.floor(16 * (zoom || 1))), [zoom]);
   const gridClassName = 'canvas-grid';
-  const { canvasBackground, gridLine, accent, cursorHighlight } = COLOR_THEME;
+  const { canvasBackground, gridLine, accent, cursorHighlight } = GRID_THEME;
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
