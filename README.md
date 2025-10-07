@@ -89,4 +89,5 @@ Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
 - Build: `npm run build`
 
 ## Notlar
-- VPix, Vim benzeri klavye-odaklı bir editördür; mouse etkileşimleri (drag, wheel vb.) tasarım gereği desteklenmez. Pan/zoom ve tüm komutlar klavye kısayollarıyla gerçekleştirilir.
+- VPix, Vim benzeri klavye-odaklı bir editördür; mouse etkileşimleri (drag, wheel vb.) tasarım gereği desteklenmez.
+- Pan davranışı: Viewport, imleci (cursor) otomatik takip eder. Büyük tuvallerde `hjkl` ile imleci hareket ettirdiğinizde görüntü kenara yaklaşınca kayar; ayrıca ayrı bir pan modu yoktur.

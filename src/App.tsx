@@ -51,6 +51,31 @@ export default function App() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Keep cursor visible by adjusting pan to follow it.
+  useEffect(() => {
+    // Visible cell size in pixels
+    const cellPx = 16 * (zoom || 1);
+    const viewW = 800;
+    const viewH = 480;
+    const visWcells = Math.max(1, Math.floor(viewW / cellPx));
+    const visHcells = Math.max(1, Math.floor(viewH / cellPx));
+    const margin = 2; // start scrolling a bit before the edge
+    const cur = engine.cursor;
+
+    setPan((prev) => {
+      let nx = prev.x;
+      let ny = prev.y;
+      // horizontal
+      if (cur.x < prev.x + margin) nx = Math.max(0, cur.x - margin);
+      else if (cur.x >= prev.x + visWcells - margin) nx = Math.min(engine.width - visWcells, cur.x - (visWcells - 1 - margin));
+      // vertical
+      if (cur.y < prev.y + margin) ny = Math.max(0, cur.y - margin);
+      else if (cur.y >= prev.y + visHcells - margin) ny = Math.min(engine.height - visHcells, cur.y - (visHcells - 1 - margin));
+      if (nx !== prev.x || ny !== prev.y) return { x: nx, y: ny };
+      return prev;
+    });
+  }, [engine, engine.cursor.x, engine.cursor.y, zoom]);
+
   useEffect(() => {
     containerRef.current?.focus();
   }, []);
@@ -96,15 +121,7 @@ export default function App() {
       e.preventDefault();
       return;
     }
-    if (e.shiftKey && ['h', 'j', 'k', 'l'].includes(e.key)) {
-      const step = 2;
-      if (e.key === 'h') setPan((p) => ({ ...p, x: p.x - step }));
-      if (e.key === 'l') setPan((p) => ({ ...p, x: p.x + step }));
-      if (e.key === 'k') setPan((p) => ({ ...p, y: p.y - step }));
-      if (e.key === 'j') setPan((p) => ({ ...p, y: p.y + step }));
-      e.preventDefault();
-      return;
-    }
+    // Remove manual pan shortcuts; viewport follows cursor automatically.
     if (engine.mode === MODES.NORMAL && e.key === 'S') {
       const ok = documents.save(engine.toSnapshot());
       appendLines([':save', ok ? 'document saved' : 'save failed']);
