@@ -27,7 +27,7 @@ export class ModeManager {
   }
 
   set(mode: Mode) {
-    if (mode !== MODES.NORMAL && mode !== MODES.INSERT && mode !== MODES.VISUAL) return false;
+    if (mode !== MODES.NORMAL && mode !== MODES.VISUAL) return false;
     if (this.value === mode) return false;
     this.value = mode;
     return true;

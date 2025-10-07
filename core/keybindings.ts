@@ -1,6 +1,6 @@
 import type VPixEngine from './engine';
 
-export type BindingScope = 'global' | 'normal' | 'insert' | 'visual';
+export type BindingScope = 'global' | 'normal' | 'visual';
 export type BindingCondition = 'always' | 'no-prefix' | 'prefix:any' | 'prefix:g' | 'prefix:r';
 
 export type BindingContext = {
@@ -87,13 +87,6 @@ export const KEYBINDINGS: KeyBinding[] = [
     when: 'no-prefix',
     args: ({ count }) => ({ count: clampCount(count) }),
     description: 'Move to end of run',
-  },
-  {
-    scope: 'normal',
-    key: 'i',
-    command: 'mode.insert',
-    when: 'no-prefix',
-    description: 'Switch to insert mode',
   },
   {
     scope: 'normal',
@@ -286,55 +279,6 @@ export const KEYBINDINGS: KeyBinding[] = [
     when: 'prefix:r',
     args: ({ event }) => ({ index: parseInt(event.key, 10) }),
     description: 'Paint using palette color by index',
-  },
-
-  // Insert mode bindings
-  {
-    scope: 'insert',
-    key: 'Escape',
-    command: 'mode.normal',
-    description: 'Return to normal mode',
-  },
-  {
-    scope: 'insert',
-    key: 'h',
-    command: 'cursor.move-left',
-    args: ({ count }) => ({ count: clampCount(count) }),
-    description: 'Move cursor left',
-  },
-  {
-    scope: 'insert',
-    key: 'j',
-    command: 'cursor.move-down',
-    args: ({ count }) => ({ count: clampCount(count) }),
-    description: 'Move cursor down',
-  },
-  {
-    scope: 'insert',
-    key: 'k',
-    command: 'cursor.move-up',
-    args: ({ count }) => ({ count: clampCount(count) }),
-    description: 'Move cursor up',
-  },
-  {
-    scope: 'insert',
-    key: 'l',
-    command: 'cursor.move-right',
-    args: ({ count }) => ({ count: clampCount(count) }),
-    description: 'Move cursor right',
-  },
-  {
-    scope: 'insert',
-    key: ' ',
-    command: 'paint.apply',
-    description: 'Paint current cell',
-  },
-  {
-    scope: 'insert',
-    key: 'Backspace',
-    command: 'paint.erase',
-    args: () => ({ count: 1 }),
-    description: 'Erase current cell',
   },
 
   // Visual mode bindings

@@ -39,30 +39,11 @@ describe('VPixEngine', () => {
     assert.deepEqual(eng.cursor, { x: 9, y: 0 });
   });
 
-  it('insert mode paints as it moves', () => {
-    const eng = new VPixEngine({ width: 3, height: 1, palette: pico.colors });
-    eng.handleKey({ key: 'i' });
-    assert.equal(eng.mode, MODES.INSERT);
-    eng.paint();
-    eng.handleKey({ key: 'l' });
-    eng.handleKey({ key: 'l' });
-    assert.ok(eng.grid[0][0] != null);
-    assert.ok(eng.grid[0][1] != null);
-    assert.ok(eng.grid[0][2] != null);
-    eng.handleKey({ key: 'Escape' });
-    assert.equal(eng.mode, MODES.NORMAL);
-  });
-
-  it('erases with x in normal mode and Backspace in insert', () => {
+  it('erases with x in normal mode', () => {
     const eng = new VPixEngine({ width: 2, height: 1, palette: pico.colors });
     eng.paint();
     assert.ok(eng.grid[0][0] != null);
     eng.handleKey({ key: 'x' });
-    assert.equal(eng.grid[0][0], null);
-    eng.handleKey({ key: 'i' });
-    eng.paint();
-    assert.ok(eng.grid[0][0] != null);
-    eng.handleKey({ key: 'Backspace' });
     assert.equal(eng.grid[0][0], null);
   });
 
@@ -218,7 +199,6 @@ describe('VPixEngine', () => {
     engChange.handleKey({ key: 'c' });
     engChange.handleKey({ key: 'w' });
     assert.deepEqual(rowChange.slice(0, 4), [null, null, 4, 4]);
-    assert.equal(engChange.mode, MODES.INSERT);
 
     const engDeleteToEnd = new VPixEngine({ width: 4, height: 1, palette: pico.colors });
     const rowEnd = engDeleteToEnd.grid[0];

@@ -54,26 +54,19 @@ const applyOperator = (
       eng.cursor.x = repeatCursor.x;
       eng.cursor.y = repeatCursor.y;
       const changedAgain = eng.deleteSegment(repeatSegment);
-      if (op === 'change') {
-        eng.setMode(MODES.INSERT);
-      } else if (!changedAgain) {
+      if (!changedAgain) {
         eng.emit();
       }
     });
   };
 
   const changed = applyDelete();
-  if (op === 'change') {
-    engine.setMode(MODES.INSERT);
-  }
 
   if (changed) {
     recordRepeat();
   } else {
     engine.recordLastAction(null);
-    if (op !== 'change') {
-      engine.emit();
-    }
+    engine.emit();
   }
 };
 
@@ -89,18 +82,6 @@ const applyPendingOperator = (engine: CommandContext['engine'], motion: MotionKi
 };
 
 export const modeCommands: CommandDefinition[] = [
-  {
-    id: 'mode.insert',
-    summary: 'Switch to insert mode',
-    handler: ({ engine }) => {
-      engine.setMode(MODES.INSERT);
-      engine.clearPrefix();
-    },
-    patterns: [
-      { pattern: 'mode insert', help: 'mode insert' },
-      { pattern: 'insert', help: 'insert' },
-    ],
-  },
   {
     id: 'mode.normal',
     summary: 'Switch to normal mode',

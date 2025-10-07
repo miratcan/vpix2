@@ -135,7 +135,7 @@ describe('Visual mode operations', () => {
     assert.equal(eng.grid[4][4], null); // outside selection
     assert.equal(eng.grid[4][0], null); // outside selection
 
-    // Move cursor and verify it doesn't paint (not in insert mode)
+    // Move cursor and verify it doesn't paint while moving in normal mode
     eng.cursor = { x: 0, y: 0 };
     eng.move(1, 0); // move right
     assert.equal(eng.grid[0][0], null); // should still be null

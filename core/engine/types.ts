@@ -1,6 +1,5 @@
 export const MODES = {
   NORMAL: 'normal',
-  INSERT: 'insert',
   VISUAL: 'visual',
 } as const;
 

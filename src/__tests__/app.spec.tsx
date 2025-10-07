@@ -141,7 +141,7 @@ describe('App keyboard flows', () => {
     await userEvent.keyboard(' ');
     await userEvent.keyboard('l ');
     await userEvent.keyboard('0cw');
-    expect(engine.mode).toBe('insert');
+    expect(engine.mode).toBe('normal');
     expect(engine.grid[0][0]).toBeNull();
   });
 

@@ -24,7 +24,7 @@ function buildLookup(bindings: KeyBinding[]): BindingLookup {
       acc[binding.scope].push(binding);
       return acc;
     },
-    { global: [], normal: [], insert: [], visual: [] } as BindingLookup,
+    { global: [], normal: [], visual: [] } as BindingLookup,
   );
 }
 
@@ -107,7 +107,6 @@ function runBinding(
 
 function scopeForMode(mode: number): BindingScope {
   if (mode === MODES.NORMAL) return 'normal';
-  if (mode === MODES.INSERT) return 'insert';
   return 'visual';
 }
 
