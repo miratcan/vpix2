@@ -87,3 +87,6 @@ Bu dosya, projenin tasarım kurallarını ve uygulanmış ilkeleri özetler.
 - Test: `npm test` (Vitest)
 - Test (watch): `npm run test:watch`
 - Build: `npm run build`
+
+## Notlar
+- VPix, Vim benzeri klavye-odaklı bir editördür; mouse etkileşimleri (drag, wheel vb.) tasarım gereği desteklenmez. Pan/zoom ve tüm komutlar klavye kısayollarıyla gerçekleştirilir.
