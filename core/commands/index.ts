@@ -171,9 +171,10 @@ export function runCommand(
         .then((value) => {
           const normalized = normalizeCommandResult(value);
           try {
-            // announce executed command (id + description) for UI feeds
-            const label = (KEYBINDINGS.find((b) => b.command === id)?.description) || def.summary || id;
-            (engine as any).emit({ cmd: { id, display: label } });
+            // Only emit if we have a message
+            if (normalized.msg) {
+              (engine as any).emit({ cmd: { id, display: normalized.msg, ok: normalized.ok } });
+            }
           } catch {}
           return normalized;
         })
@@ -181,8 +182,10 @@ export function runCommand(
     }
     const out = normalizeCommandResult(result);
     try {
-      const label = (KEYBINDINGS.find((b) => b.command === id)?.description) || def.summary || id;
-      (engine as any).emit({ cmd: { id, display: label } });
+      // Only emit if we have a message (skip empty void returns)
+      if (out.msg) {
+        (engine as any).emit({ cmd: { id, display: out.msg, ok: out.ok } });
+      }
     } catch {}
     return out;
   } catch {

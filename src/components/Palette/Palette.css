@@ -1,31 +1,29 @@
 .palette {
   display: flex;
-  gap: 8px;
-  padding: 8px 12px;
-  background: #1a1a1a;
-  border-bottom: 1px solid #333;
+  gap: var(--spacing-s);
+  padding: var(--spacing-s) var(--spacing-m);
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
 }
 .swatch {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 2px 6px;
-  background: #0d0d0d;
-  border: 1px solid #222;
-  border-radius: 4px;
-  color: #aaa;
-  font-family: monospace;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-s);
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--spacing-xs);
+  color: var(--color-text-muted);
 }
 .swatch.active {
-  border-color: #00e1ff;
+  border-color: var(--color-accent);
   box-shadow: 0 0 6px rgba(0, 225, 255, 0.4);
 }
 .swatch .chip {
   width: 18px;
   height: 18px;
-  border: 1px solid #000;
+  border: 1px solid var(--color-border);
 }
 .swatch .key {
   opacity: 0.7;
 }
-

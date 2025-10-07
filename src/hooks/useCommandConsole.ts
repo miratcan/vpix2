@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { executeCommand, suggestCommands, type CommandServices } from '../../core/commands';
 import { PaletteService } from '../../core/services/palette-service';
@@ -9,27 +9,13 @@ export type CommandConsoleOptions = {
   engine: VPixEngine;
   services?: CommandServices;
   paletteService?: PaletteService;
+  onHelp?: () => void;
 };
 
-export function useCommandConsole({ engine, services, paletteService }: CommandConsoleOptions) {
+export function useCommandConsole({ engine, services, paletteService, onHelp }: CommandConsoleOptions) {
   const palettes = useMemo(() => paletteService ?? services?.palettes ?? new PaletteService(), [paletteService, services?.palettes]);
-  const [showTerminal, setShowTerminal] = useState(false);
   const [cmdMode, setCmdMode] = useState(false);
   const [cmdText, setCmdText] = useState('');
-  const [termLines, setTermLines] = useState<string[]>([]);
-  const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!message) return;
-    const id = setTimeout(() => setMessage(null), 2000);
-    return () => clearTimeout(id);
-  }, [message]);
-
-  const appendLines = useCallback((lines: string[]) => {
-    if (!lines.length) return;
-    setShowTerminal(true);
-    setTermLines((prev) => [...prev, ...lines]);
-  }, []);
 
   const submit = useCallback(async () => {
     const trimmed = cmdText.trim();
@@ -38,36 +24,19 @@ export function useCommandConsole({ engine, services, paletteService }: CommandC
       setCmdText('');
       return;
     }
-    if (trimmed === 'exit') {
-      setCmdMode(false);
-      setShowTerminal(false);
-      setCmdText('');
-      return;
-    }
-    if (trimmed === 'clear') {
-      setTermLines([]);
+
+    // Handle help command specially
+    if (trimmed === 'help') {
       setCmdMode(false);
       setCmdText('');
+      if (onHelp) onHelp();
       return;
     }
+
     setCmdMode(false);
     setCmdText('');
-    const res = await executeCommand(engine, trimmed, services);
-    const extraLines = res.meta?.lines ?? [];
-    if (res.meta?.silent) {
-      if (extraLines.length) appendLines(extraLines);
-      if (res.meta?.closeTerminal) setShowTerminal(false);
-      setMessage(null);
-      return;
-    }
-    const lines = [`:${trimmed}`];
-    if (res.msg) lines.push(res.msg);
-    if (extraLines.length) lines.push(...extraLines);
-    appendLines(lines);
-    if (res.msg) setMessage(res.msg);
-    else setMessage(null);
-    if (res.meta?.closeTerminal) setShowTerminal(false);
-  }, [appendLines, cmdText, engine, services, setShowTerminal]);
+    await executeCommand(engine, trimmed, services);
+  }, [cmdText, engine, services, onHelp]);
 
   const handleTabComplete = useCallback(() => {
     const t = cmdText;
@@ -95,7 +64,6 @@ export function useCommandConsole({ engine, services, paletteService }: CommandC
   }, [cmdText, palettes]);
 
   const openCommand = useCallback(() => {
-    setShowTerminal(true);
     setCmdMode(true);
     setCmdText('');
   }, []);
@@ -105,23 +73,13 @@ export function useCommandConsole({ engine, services, paletteService }: CommandC
     setCmdText('');
   }, []);
 
-  const toggleTerminal = useCallback(() => {
-    setShowTerminal((v) => !v);
-  }, []);
-
   return {
-    showTerminal,
-    setShowTerminal,
     cmdMode,
     cmdText,
     setCmdText,
-    termLines,
-    appendLines,
     submit,
     handleTabComplete,
     openCommand,
     closeCommand,
-    toggleTerminal,
-    message,
   } as const;
 }

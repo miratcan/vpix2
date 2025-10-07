@@ -8,6 +8,7 @@ export const selectionCommands: CommandDefinition[] = [
     handler: ({ engine }) => {
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Exit visual';
     },
     patterns: [{ pattern: 'visual exit', help: 'visual exit' }],
   },
@@ -15,8 +16,10 @@ export const selectionCommands: CommandDefinition[] = [
     id: 'selection.move-left',
     summary: 'Adjust selection to the left',
     handler: ({ engine }, { count }) => {
-      engine.move(-1, 0, ensureCount(count));
+      const c = ensureCount(count);
+      engine.move(-1, 0, c);
       engine.updateSelectionRect();
+      return `← ${c}`;
     },
     patterns: [{ pattern: 'selection move-left {count:int[1..512]}', help: 'selection move-left <count>' }],
   },
@@ -24,8 +27,10 @@ export const selectionCommands: CommandDefinition[] = [
     id: 'selection.move-right',
     summary: 'Adjust selection to the right',
     handler: ({ engine }, { count }) => {
-      engine.move(1, 0, ensureCount(count));
+      const c = ensureCount(count);
+      engine.move(1, 0, c);
       engine.updateSelectionRect();
+      return `→ ${c}`;
     },
     patterns: [{ pattern: 'selection move-right {count:int[1..512]}', help: 'selection move-right <count>' }],
   },
@@ -33,8 +38,10 @@ export const selectionCommands: CommandDefinition[] = [
     id: 'selection.move-up',
     summary: 'Adjust selection upward',
     handler: ({ engine }, { count }) => {
-      engine.move(0, -1, ensureCount(count));
+      const c = ensureCount(count);
+      engine.move(0, -1, c);
       engine.updateSelectionRect();
+      return `↑ ${c}`;
     },
     patterns: [{ pattern: 'selection move-up {count:int[1..512]}', help: 'selection move-up <count>' }],
   },
@@ -42,8 +49,10 @@ export const selectionCommands: CommandDefinition[] = [
     id: 'selection.move-down',
     summary: 'Adjust selection downward',
     handler: ({ engine }, { count }) => {
-      engine.move(0, 1, ensureCount(count));
+      const c = ensureCount(count);
+      engine.move(0, 1, c);
       engine.updateSelectionRect();
+      return `↓ ${c}`;
     },
     patterns: [{ pattern: 'selection move-down {count:int[1..512]}', help: 'selection move-down <count>' }],
   },
@@ -54,6 +63,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.yankSelection();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Yanked';
     },
     patterns: [{ pattern: 'selection yank', help: 'selection yank' }],
   },
@@ -64,6 +74,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.deleteSelection();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Deleted';
     },
     patterns: [{ pattern: 'selection delete', help: 'selection delete' }],
   },
@@ -74,6 +85,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.pasteAtCursor();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Pasted';
     },
     patterns: [{ pattern: 'selection paste', help: 'selection paste' }],
   },
@@ -84,6 +96,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.pasteAtCursorTransparent();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Pasted transparent';
     },
     patterns: [{ pattern: 'selection paste-transparent', help: 'selection paste-transparent' }],
   },
@@ -94,6 +107,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.moveSelectionToCursor();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Moved';
     },
     patterns: [{ pattern: 'selection move-to-cursor', help: 'selection move-to-cursor' }],
   },
@@ -104,6 +118,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.fillSelection();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Filled';
     },
     patterns: [{ pattern: 'selection fill', help: 'selection fill' }],
   },
@@ -114,6 +129,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.strokeRectSelection();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Stroked rect';
     },
     patterns: [{ pattern: 'selection stroke', help: 'selection stroke' }],
   },
@@ -124,6 +140,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.strokeCircleSelection();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Stroked circle';
     },
     patterns: [{ pattern: 'selection stroke-circle', help: 'selection stroke-circle' }],
   },
@@ -134,6 +151,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.fillCircleSelection();
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Filled circle';
     },
     patterns: [{ pattern: 'selection fill-circle', help: 'selection fill-circle' }],
   },
@@ -145,6 +163,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.drawLine(snapshot.anchor, engine.cursor);
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Line drawn';
     },
     patterns: [{ pattern: 'selection line', help: 'selection line' }],
   },
@@ -155,6 +174,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.floodFill(engine.cursor.x, engine.cursor.y);
       engine.exitVisual();
       engine.clearPrefix();
+      return 'Flood filled';
     },
     patterns: [{ pattern: 'selection flood', help: 'selection flood' }],
   },

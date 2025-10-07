@@ -1,16 +1,27 @@
-.command-feed {
+.command-feed-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  font-size: 12px;
-  line-height: 1.2;
-  min-height: 5.6em;
-  color: #eee;
-}
-.command-feed .feed-line {
-  transition: opacity 120ms linear;
-  white-space: nowrap;
+  justify-content: flex-end;
+  flex: 1 1 0;
+  min-height: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
+.command-feed-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; /* Align items to the bottom */
+  gap: var(--spacing-xs);
+  font-size: var(--font-size-m);
+  line-height: 1.2;
+  color: var(--color-text);
+}
+
+.feed-line {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.feed-line-tip {
+  color: var(--color-accent);
+}

@@ -56,6 +56,14 @@ export class GridState {
     return this._cells.map((row) => row.slice());
   }
 
+  clear() {
+    for (let y = 0; y < this._height; y++) {
+      for (let x = 0; x < this._width; x++) {
+        this._cells[y][x] = null;
+      }
+    }
+  }
+
   load(snapshot: { width: number; height: number; grid: Array<Array<number | null>> }) {
     const { width, height, grid } = snapshot;
     const w = clamp(width | 0, 1, 256);

@@ -10,6 +10,7 @@ export const clipboardCommands: CommandDefinition[] = [
         eng.pasteAtCursor();
       });
       engine.clearPrefix();
+      return 'Pasted';
     },
     patterns: [{ pattern: 'paste', help: 'paste' }],
   },
@@ -22,6 +23,7 @@ export const clipboardCommands: CommandDefinition[] = [
         eng.pasteAtCursorTransparent();
       });
       engine.clearPrefix();
+      return 'Pasted transparent';
     },
     patterns: [{ pattern: 'paste transparent', help: 'paste transparent' }],
   },
@@ -30,6 +32,7 @@ export const clipboardCommands: CommandDefinition[] = [
     summary: 'Rotate clipboard clockwise',
     handler: ({ engine }) => {
       engine.rotateClipboardCW();
+      return 'Rotated ↻';
     },
     patterns: [{ pattern: 'selection rotate-cw', help: 'selection rotate-cw' }],
   },
@@ -38,6 +41,7 @@ export const clipboardCommands: CommandDefinition[] = [
     summary: 'Rotate clipboard counterclockwise',
     handler: ({ engine }) => {
       engine.rotateClipboardCCW();
+      return 'Rotated ↺';
     },
     patterns: [{ pattern: 'selection rotate-ccw', help: 'selection rotate-ccw' }],
   },

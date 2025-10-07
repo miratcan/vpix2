@@ -18,7 +18,9 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
   const panX = pan?.x ?? 0;
   const panY = pan?.y ?? 0;
   const cellSize = useMemo(() => Math.max(1, Math.floor(16 * (zoom || 1))), [zoom]);
-  const gridClassName = 'canvas-grid';
+  const axis = engine.axis;
+  const axisClass = axis === 'vertical' ? 'axis-vertical' : 'axis-horizontal';
+  const gridClassName = `canvas-grid ${axisClass}`;
   const { canvasBackground, gridLine, accent, cursorHighlight } = GRID_THEME;
 
   useEffect(() => {
@@ -134,24 +136,22 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
         }
       }
 
-      // Trail (filled cells) — fade from tail to head (staggered)
+      // Trail (filled cells) — fade from start to end
       const now = performance.now ? performance.now() : Date.now();
       const L = 500;
       const N = trail?.length || 0;
-      const per = N > 0 ? L / N : L;
       for (let i = 0; i < N; i++) {
         const p = trail![i];
-        const tStart = (now - L) + i * per; // older entries start fading earlier
         if (p.ts < (now - L)) continue;
-        const span = Math.max(1, L - i * per);
-        const alpha = Math.max(0, Math.min(1, (p.ts - tStart) / span));
+        const age = now - p.ts;
+        const baseAlpha = Math.max(0, 1 - age / L);
         const px = offsetX + p.x * cell;
         const py = offsetY + p.y * cell;
         if (px + cell < 0 || py + cell < 0 || px > viewW || py > viewH) continue;
         ctx.save();
-        // Slightly boost newer samples
-        const posBoost = 0.8 + 0.2 * (i / Math.max(1, N - 1));
-        ctx.globalAlpha = 0.5 * alpha * posBoost;
+        // Fade from start (i=0, old/faint) to end (i=N-1, new/bright near cursor)
+        const positionFactor = i / Math.max(1, N - 1);
+        ctx.globalAlpha = 0.5 * baseAlpha * positionFactor;
         ctx.fillStyle = cursorHighlight;
         ctx.fillRect(Math.floor(px), Math.floor(py), Math.max(1, cell), Math.max(1, cell));
         ctx.restore();

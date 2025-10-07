@@ -14,6 +14,7 @@ import { HistoryManager, type HistoryCell, type HistoryGroup } from './history';
 import { SelectionManager } from './selection';
 import { CountBuffer, CursorManager, ModeManager, PrefixManager } from './state';
 import { MODES } from './types';
+import { KEYBINDINGS } from '../keybindings';
 
 import type { Axis, EngineChangePayload, EngineSnapshot, Mode, Point } from './types';
 
@@ -235,6 +236,29 @@ export default class VPixEngine {
     this.setSize(this.width, height);
   }
 
+  clearCanvas() {
+    const snapshot = this.gridState.cloneGrid();
+    const cells: Array<{ type: 'cell'; x: number; y: number; prev: number | null; next: null }> = [];
+
+    // Collect only non-empty cells for history
+    for (let y = 0; y < snapshot.length; y++) {
+      for (let x = 0; x < snapshot[y].length; x++) {
+        const prev = snapshot[y][x];
+        if (prev !== null) {
+          cells.push({ type: 'cell', x, y, prev, next: null });
+        }
+      }
+    }
+
+    this.gridState.clear();
+
+    if (cells.length > 0) {
+      this.history.record({ type: 'group', cells });
+    }
+
+    this.emit();
+  }
+
   move(dx: number, dy: number, count = 1) {
     const steps = Math.max(1, count);
     let moved = false;
@@ -397,6 +421,7 @@ export default class VPixEngine {
         this.gridState.writeCell(x, y, null);
       }
     }
+    this.cursorManager.setPosition(this.selection.rect.x1, this.selection.rect.y1);
     this.endGroup();
   }
 
@@ -814,5 +839,20 @@ export default class VPixEngine {
       this.gridState.writeCell(it.x, it.y, (it as any)[key] ?? null);
     }
     this.emit();
+  }
+
+  getRandomTip(): string | null {
+    const allTips: string[] = [];
+
+    for (const binding of KEYBINDINGS) {
+      if (binding.tips && binding.tips.length > 0) {
+        allTips.push(...binding.tips);
+      }
+    }
+
+    if (allTips.length === 0) return null;
+
+    const randomIndex = Math.floor(Math.random() * allTips.length);
+    return allTips[randomIndex];
   }
 }

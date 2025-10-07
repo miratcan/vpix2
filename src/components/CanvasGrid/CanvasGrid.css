@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0b0b0b;
+  background: var(--color-background);
   box-sizing: border-box;
 }
 .canvas-layer-stack {
@@ -11,10 +11,21 @@
   line-height: 0;
 }
 
+/* Axis indicator borders */
+.canvas-grid.axis-vertical .canvas-layer-stack {
+  border-left: 2px solid var(--color-accent);
+  border-right: 2px solid var(--color-accent);
+}
+
+.canvas-grid.axis-horizontal .canvas-layer-stack {
+  border-top: 2px solid var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
+}
+
 .canvas-layer-stack .canvas-base {
   display: block;
   image-rendering: pixelated;
-  background: #0b0b0b;
+  background: var(--color-background);
 }
 
 .canvas-layer-stack .canvas-overlay {
@@ -26,4 +37,3 @@
   pointer-events: none;
   background: transparent;
 }
-

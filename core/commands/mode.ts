@@ -88,6 +88,7 @@ export const modeCommands: CommandDefinition[] = [
     handler: ({ engine }) => {
       engine.setMode(MODES.NORMAL);
       engine.clearPrefix();
+      return 'Normal mode';
     },
     patterns: [
       { pattern: 'mode normal', help: 'mode normal' },
@@ -99,6 +100,7 @@ export const modeCommands: CommandDefinition[] = [
     summary: 'Enter visual mode',
     handler: ({ engine }) => {
       engine.enterVisual();
+      return 'Visual mode';
     },
     patterns: [
       { pattern: 'mode visual', help: 'mode visual' },
@@ -112,6 +114,7 @@ export const modeCommands: CommandDefinition[] = [
       const op = String(value) as OperatorKind;
       if (op === 'delete' || op === 'yank' || op === 'change') {
         engine.setPendingOperator(op, ensureCount(count));
+        return `${op}`;
       }
     },
     patterns: [{ pattern: 'operator set {value:oneof[delete|yank|change]} {count:int[1..512]}', help: 'operator set <op> <count>' }],
@@ -123,6 +126,7 @@ export const modeCommands: CommandDefinition[] = [
     handler: ({ engine }) => {
       engine.clearPendingOperator();
       engine.clearPrefix();
+      return 'Cleared';
     },
     patterns: [{ pattern: 'operator clear', help: 'operator clear' }],
     hidden: true,
@@ -132,6 +136,7 @@ export const modeCommands: CommandDefinition[] = [
     summary: 'Apply pending operator using motion',
     handler: ({ engine }, { motionId, count }) => {
       applyPendingOperator(engine, String(motionId) as MotionKind, Number(count ?? 1));
+      return 'Applied';
     },
     patterns: [],
     hidden: true,
@@ -141,6 +146,7 @@ export const modeCommands: CommandDefinition[] = [
     summary: 'Delete to line end respecting axis',
     handler: ({ engine }, { count }) => {
       applyOperator(engine, 'delete', 'line-end', 1, Number(count ?? 1));
+      return 'Deleted to end';
     },
     patterns: [{ pattern: 'operator delete-to-end {count:int[1..512]}', help: 'operator delete-to-end <count>' }],
     hidden: true,
@@ -150,6 +156,7 @@ export const modeCommands: CommandDefinition[] = [
     summary: 'Change to line end respecting axis',
     handler: ({ engine }, { count }) => {
       applyOperator(engine, 'change', 'line-end', 1, Number(count ?? 1));
+      return 'Changed to end';
     },
     patterns: [{ pattern: 'operator change-to-end {count:int[1..512]}', help: 'operator change-to-end <count>' }],
     hidden: true,
@@ -159,6 +166,7 @@ export const modeCommands: CommandDefinition[] = [
     summary: 'Repeat last modifying action',
     handler: ({ engine }) => {
       engine.repeatLastAction();
+      return 'Repeated';
     },
     patterns: [{ pattern: 'repeat last', help: 'repeat last' }],
     hidden: true,
@@ -168,7 +176,10 @@ export const modeCommands: CommandDefinition[] = [
     summary: 'Set pending prefix',
     handler: ({ engine }, { value }) => {
       const val = String(value);
-      if (val === 'g' || val === 'r') engine.setPrefix(val as 'g' | 'r');
+      if (val === 'g' || val === 'r') {
+        engine.setPrefix(val as 'g' | 'r');
+        return `Prefix ${val}`;
+      }
     },
     patterns: [{ pattern: 'prefix set {value:oneof[g|r]}', help: 'prefix set <g|r>' }],
   },
@@ -177,6 +188,7 @@ export const modeCommands: CommandDefinition[] = [
     summary: 'Clear pending prefix',
     handler: ({ engine }) => {
       engine.clearPrefix();
+      return 'Cleared prefix';
     },
     patterns: [{ pattern: 'prefix clear', help: 'prefix clear' }],
   },

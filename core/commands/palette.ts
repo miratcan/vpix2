@@ -53,6 +53,7 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'Swap with previously used palette color',
     handler: ({ engine }) => {
       engine.swapToLastColor();
+      return `Swapped color`;
     },
     patterns: [{ pattern: 'palette swap-last', help: 'palette swap-last' }],
   },
@@ -61,10 +62,11 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'Select palette color by index',
     handler: ({ engine }, { index }) => {
       const paletteLength = engine.palette.length;
-      if (!paletteLength) return;
+      if (!paletteLength) return 'No palette';
       const idx = Math.min(paletteLength, Math.max(1, Number(index ?? 1)));
       engine.setColorIndex(idx - 1);
       engine.clearPrefix();
+      return `Color ${idx}`;
     },
     patterns: [{ pattern: 'palette select {index:int[1..512]}', help: 'palette select <index>' }],
   },
@@ -80,6 +82,7 @@ export const paletteCommands: CommandDefinition[] = [
         });
       }
       engine.clearPrefix();
+      return `Painted #${Number(index)}`;
     },
     patterns: [{ pattern: 'paint color {index:int[1..512]}', help: 'paint color <index>' }],
   },
@@ -87,10 +90,11 @@ export const paletteCommands: CommandDefinition[] = [
     id: 'palette.cycle-next',
     summary: 'Select next palette color',
     handler: ({ engine }) => {
-      if (!engine.palette.length) return;
+      if (!engine.palette.length) return 'No palette';
       const next = (engine.currentColorIndex + 1) % engine.palette.length;
       engine.setColorIndex(next);
       engine.clearPrefix();
+      return `Color ${next + 1}`;
     },
     patterns: [{ pattern: 'palette next', help: 'palette next' }],
   },
@@ -98,10 +102,11 @@ export const paletteCommands: CommandDefinition[] = [
     id: 'palette.cycle-previous',
     summary: 'Select previous palette color',
     handler: ({ engine }) => {
-      if (!engine.palette.length) return;
+      if (!engine.palette.length) return 'No palette';
       const prev = (engine.currentColorIndex - 1 + engine.palette.length) % engine.palette.length;
       engine.setColorIndex(prev);
       engine.clearPrefix();
+      return `Color ${prev + 1}`;
     },
     patterns: [{ pattern: 'palette prev', help: 'palette prev' }],
   },

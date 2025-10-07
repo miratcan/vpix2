@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { helpCommands } from '../core/commands';
 import VPixEngine, { MODES } from '../core/engine';
 import { DocumentRepository } from '../core/services/document-repository';
 import { PaletteService } from '../core/services/palette-service';
@@ -10,13 +9,14 @@ import MiniMap from './components/MiniMap/MiniMap';
 import Palette from './components/Palette/Palette';
 import StatusBar from './components/StatusBar/StatusBar';
 import CommandFeed from './components/CommandFeed/CommandFeed';
-import Terminal from './components/Terminal/Terminal';
+import HelpModal from './components/HelpModal/HelpModal';
 import { useCommandConsole } from './hooks/useCommandConsole';
 import { useEngine } from './hooks/useEngine';
 import { FALLBACK_PALETTE } from './theme/colors';
 import './App.css';
 
 const STORAGE_KEY = 'vpix.document.v1';
+const HELP_SHOWN_KEY = 'vpix.help.shown';
 
 export default function App() {
   const paletteService = useMemo(() => new PaletteService(), []);
@@ -35,18 +35,22 @@ export default function App() {
     [documents, shareLinks, paletteService],
   );
 
+  const [showHelp, setShowHelp] = useState(false);
+
   const {
-    showTerminal,
     cmdMode,
     cmdText,
     setCmdText,
-    termLines,
-    appendLines,
     submit,
     handleTabComplete,
     openCommand,
-    toggleTerminal,
-  } = useCommandConsole({ engine, services: commandServices, paletteService });
+    closeCommand,
+  } = useCommandConsole({
+    engine,
+    services: commandServices,
+    paletteService,
+    onHelp: () => setShowHelp(true),
+  });
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -54,6 +58,15 @@ export default function App() {
   const [trail, setTrail] = useState<Array<{ x: number; y: number; ts: number }>>([]);
   const [cmdFeed, setCmdFeed] = useState<Array<{ id: string; display: string }>>([]);
   const lastCursorRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Show help modal on first visit
+  useEffect(() => {
+    const seen = localStorage.getItem(HELP_SHOWN_KEY);
+    if (!seen) {
+      setShowHelp(true);
+      localStorage.setItem(HELP_SHOWN_KEY, 'seen');
+    }
+  }, []);
 
   // Keep cursor visible by adjusting pan to follow it.
   useEffect(() => {
@@ -101,7 +114,9 @@ export default function App() {
       if (anyPayload && anyPayload.cmd) {
         const { id, display } = anyPayload.cmd as { id: string; display: string };
         setCmdFeed((prev) => {
-          const next = [...prev, { id, display }];
+          // Create a truly unique ID for each event to ensure it's always added to the feed.
+          const uniqueId = `${id}-${Date.now()}-${Math.random()}`;
+          const next = [...prev, { id: uniqueId, display }];
           const MAX = 50;
           return next.length > MAX ? next.slice(next.length - MAX) : next;
         });
@@ -129,6 +144,7 @@ export default function App() {
     const limit = 2048; // safety
     let guard = 0;
     while (true) {
+      // All points get the same timestamp - render code handles the fade
       points.push({ x, y, ts: now });
       if (x === cur.x && y === cur.y) break;
       const e2 = err;
@@ -148,25 +164,29 @@ export default function App() {
   }, [engine, engine.cursor.x, engine.cursor.y]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    // If help modal is open, ignore keys (modal handles ESC)
+    if (showHelp) {
+      return;
+    }
+
+    // If command mode input is focused, let it handle keys
+    if (cmdMode && (e.target as HTMLElement).tagName === 'INPUT') {
+      return;
+    }
+
+    // Ignore other keys when command mode is active
     if (cmdMode) {
-      const target = e.target as HTMLElement | null;
-      if (target && target.closest('.term-input')) return;
       e.preventDefault();
       return;
     }
+
     if (e.key === '?') {
-      const lines = helpCommands();
-      appendLines([':help', ...(lines.length ? lines : ['no commands'])]);
+      setShowHelp(true);
       e.preventDefault();
       return;
     }
     if (engine.mode === MODES.NORMAL && e.key === ':') {
       openCommand();
-      e.preventDefault();
-      return;
-    }
-    if (e.ctrlKey && e.key === '`') {
-      toggleTerminal();
       e.preventDefault();
       return;
     }
@@ -178,10 +198,8 @@ export default function App() {
       e.preventDefault();
       return;
     }
-    // Remove manual pan shortcuts; viewport follows cursor automatically.
     if (engine.mode === MODES.NORMAL && e.key === 'S') {
-      const ok = documents.save(engine.toSnapshot());
-      appendLines([':save', ok ? 'document saved' : 'save failed']);
+      documents.save(engine.toSnapshot());
       e.preventDefault();
       return;
     }
@@ -189,16 +207,13 @@ export default function App() {
       const data = documents.load();
       if (data) {
         engine.loadSnapshot(data);
-        appendLines([':load', 'document loaded']);
-      } else {
-        appendLines([':load', 'no saved document']);
       }
       e.preventDefault();
       return;
     }
     engine.handleKey({ key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
     if (['h', 'j', 'k', 'l', ' ', 'Backspace', 'Tab'].includes(e.key)) e.preventDefault();
-  }, [appendLines, cmdMode, documents, engine, openCommand, toggleTerminal]);
+  }, [cmdMode, documents, engine, openCommand, showHelp]);
 
   return (
     <div className="vpix-root">
@@ -213,18 +228,63 @@ export default function App() {
           <CanvasGrid engine={engine} zoom={zoom} pan={pan} frame={frame} trail={trail} />
         </div>
         <div className="side-panel">
-          <CommandFeed items={cmdFeed} rows={5} />
-          <StatusBar engine={engine} zoom={zoom} pan={pan} />
           <MiniMap engine={engine} pan={pan} zoom={zoom} viewW={800} viewH={480} frame={frame} />
+          <StatusBar engine={engine} zoom={zoom} pan={pan} />
+          <CommandFeed items={cmdFeed} engine={engine} />
         </div>
-        {(showTerminal || cmdMode) && (
-          <Terminal
-            lines={termLines}
-            cmdMode={cmdMode}
-            cmdText={cmdText}
-            onChangeText={setCmdText}
-            onSubmit={submit}
-            onTabComplete={handleTabComplete}
+
+        {cmdMode && (
+          <div
+            style={{
+              position: 'fixed',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: 'var(--color-background)',
+              borderTop: '2px solid var(--color-accent)',
+              padding: '0.5rem 1rem',
+              zIndex: 100,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+            }}
+          >
+            <span style={{ color: 'var(--color-accent)', fontFamily: 'monospace', fontSize: '1rem' }}>:</span>
+            <input
+              type="text"
+              value={cmdText}
+              onChange={(e) => setCmdText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  submit();
+                  e.preventDefault();
+                } else if (e.key === 'Escape') {
+                  closeCommand();
+                  e.preventDefault();
+                } else if (e.key === 'Tab') {
+                  handleTabComplete();
+                  e.preventDefault();
+                }
+              }}
+              autoFocus
+              style={{
+                flex: 1,
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                color: 'var(--color-text)',
+                fontFamily: 'monospace',
+                fontSize: '1rem',
+              }}
+              placeholder="help"
+            />
+          </div>
+        )}
+
+        {showHelp && (
+          <HelpModal
+            onClose={() => setShowHelp(false)}
+            onDontShowAgain={() => localStorage.setItem(HELP_SHOWN_KEY, 'dont-show')}
           />
         )}
       </div>

@@ -1,11 +1,6 @@
-.minimap {
-  padding: 8px 12px;
-  border-top: 1px solid #222;
-}
 .minimap canvas {
   image-rendering: pixelated;
-  background: #0b0b0b;
+  background: var(--color-background);
   display: block;
   max-width: 100%;
 }
-

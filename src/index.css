@@ -1,7 +1,36 @@
 :root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
   color-scheme: dark;
+
+  /* Renkler */
   --color-background: #0b0b0b;
   --color-accent: #00e1ff;
+  --color-text: rgba(255, 255, 255, 0.87);
+  --color-text-muted: rgba(255, 255, 255, 0.4);
+  --color-border: rgba(255, 255, 255, 0.1);
+
+  /* Font Boyutları */
+  --font-size-s: 12px;
+  --font-size-m: 14px;
+  --font-size-l: 16px;
+
+  /* Boşluklar (Spacing) */
+  --spacing-xs: 4px;
+  --spacing-s: 8px;
+  --spacing-m: 12px;
+  --spacing-l: 16px;
+  --spacing-xl: 24px;
+
+  /* Command Feed */
+  --command-feed-height: 100px;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--color-background); }

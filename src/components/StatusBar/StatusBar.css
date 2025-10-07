@@ -1,32 +1,30 @@
 .status-bar {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  padding: 12px;
-  background: #101010;
-  color: #bbb;
+  color: var(--color-text-muted);
+  border-top: 1px solid var(--color-border);
 }
 .status-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: var(--font-size-m);
 }
 .status-table th,
 .status-table td {
-  padding: 6px 8px;
+  padding: var(--spacing-xs) var(--spacing-s);
   vertical-align: middle;
 }
 .status-table th {
   text-align: left;
-  color: #9aa0a6;
-  font-weight: 600;
+  color: var(--color-text);
   width: 40%;
 }
 .status-table tr + tr td,
 .status-table tr + tr th {
-  border-top: 1px solid #222;
+  border-top: 1px solid var(--color-border);
 }
 .color-chip {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 1px solid #000;
+  border: 1px solid var(--color-border);
   vertical-align: middle;
 }
