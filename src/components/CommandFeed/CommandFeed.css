@@ -1,0 +1,16 @@
+.command-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  line-height: 1.2;
+  min-height: 5.6em;
+  color: #eee;
+}
+.command-feed .feed-line {
+  transition: opacity 120ms linear;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+

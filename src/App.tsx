@@ -9,6 +9,7 @@ import CanvasGrid from './components/CanvasGrid/CanvasGrid';
 import MiniMap from './components/MiniMap/MiniMap';
 import Palette from './components/Palette/Palette';
 import StatusBar from './components/StatusBar/StatusBar';
+import CommandFeed from './components/CommandFeed/CommandFeed';
 import Terminal from './components/Terminal/Terminal';
 import { useCommandConsole } from './hooks/useCommandConsole';
 import { useEngine } from './hooks/useEngine';
@@ -51,6 +52,7 @@ export default function App() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [trail, setTrail] = useState<Array<{ x: number; y: number; ts: number }>>([]);
+  const [cmdFeed, setCmdFeed] = useState<Array<{ id: string; display: string }>>([]);
   const lastCursorRef = useRef<{ x: number; y: number } | null>(null);
 
   // Keep cursor visible by adjusting pan to follow it.
@@ -91,6 +93,22 @@ export default function App() {
       }
     })();
   }, [documents, engine, shareLinks]);
+
+  // Subscribe to engine events to capture executed command labels
+  useEffect(() => {
+    const unsub = engine.subscribe((_, payload) => {
+      const anyPayload = payload as any;
+      if (anyPayload && anyPayload.cmd) {
+        const { id, display } = anyPayload.cmd as { id: string; display: string };
+        setCmdFeed((prev) => {
+          const next = [...prev, { id, display }];
+          const MAX = 50;
+          return next.length > MAX ? next.slice(next.length - MAX) : next;
+        });
+      }
+    });
+    return unsub;
+  }, [engine]);
 
   // Cursor trail: sample intermediate cells on large jumps and timestamp them
   useEffect(() => {
@@ -195,6 +213,7 @@ export default function App() {
           <CanvasGrid engine={engine} zoom={zoom} pan={pan} frame={frame} trail={trail} />
         </div>
         <div className="side-panel">
+          <CommandFeed items={cmdFeed} rows={5} />
           <StatusBar engine={engine} zoom={zoom} pan={pan} />
           <MiniMap engine={engine} pan={pan} zoom={zoom} viewW={800} viewH={480} frame={frame} />
         </div>

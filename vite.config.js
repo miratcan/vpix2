@@ -6,6 +6,9 @@ export default defineConfig({
   // Set base path for GitHub Pages deployment under /vpix2/
   base: '/vpix2/',
   plugins: [react()],
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '0.0.0'),
+  },
   test: {
     environment: 'node',
     include: [

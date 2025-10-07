@@ -40,6 +40,10 @@ export default function StatusBar({ engine, zoom, pan }: Props) {
             <th scope="row">pan</th>
             <td>({pan?.x ?? 0},{pan?.y ?? 0})</td>
           </tr>
+          <tr>
+            <th scope="row">version</th>
+            <td>{__APP_VERSION__}</td>
+          </tr>
         </tbody>
       </table>
     </div>

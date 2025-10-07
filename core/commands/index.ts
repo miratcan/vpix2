@@ -168,10 +168,23 @@ export function runCommand(
     const result = def.handler({ engine, services: runtime }, args ?? {});
     if (result && typeof (result as any).then === 'function') {
       return (result as Promise<any>)
-        .then((value) => normalizeCommandResult(value))
+        .then((value) => {
+          const normalized = normalizeCommandResult(value);
+          try {
+            // announce executed command (id + description) for UI feeds
+            const label = (KEYBINDINGS.find((b) => b.command === id)?.description) || def.summary || id;
+            (engine as any).emit({ cmd: { id, display: label } });
+          } catch {}
+          return normalized;
+        })
         .catch(() => ({ ok: false, msg: 'command failed' }));
     }
-    return normalizeCommandResult(result);
+    const out = normalizeCommandResult(result);
+    try {
+      const label = (KEYBINDINGS.find((b) => b.command === id)?.description) || def.summary || id;
+      (engine as any).emit({ cmd: { id, display: label } });
+    } catch {}
+    return out;
   } catch {
     return { ok: false, msg: 'command failed' };
   }
