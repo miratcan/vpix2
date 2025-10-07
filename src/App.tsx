@@ -18,6 +18,9 @@ import './App.css';
 const STORAGE_KEY = 'vpix.document.v1';
 const HELP_SHOWN_KEY = 'vpix.help.shown';
 const IS_TEST_ENV = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
+const DEFAULT_VIEW_WIDTH = 800;
+const DEFAULT_VIEW_HEIGHT = 480;
+const MIN_DYNAMIC_ZOOM = 0.01;
 
 export default function App() {
   const paletteService = useMemo(() => new PaletteService(), []);
@@ -67,6 +70,50 @@ export default function App() {
   const [trail, setTrail] = useState<Array<{ x: number; y: number; ts: number }>>([]);
   const [cmdFeed, setCmdFeed] = useState<Array<{ id: string; display: string }>>([]);
   const lastCursorRef = useRef<{ x: number; y: number } | null>(null);
+  const [viewSize, setViewSize] = useState<{ width: number; height: number }>({
+    width: DEFAULT_VIEW_WIDTH,
+    height: DEFAULT_VIEW_HEIGHT,
+  });
+
+  const baseCellSize = useMemo(() => {
+    const widthScale = viewSize.width / engine.width;
+    const heightScale = viewSize.height / engine.height;
+    const fitted = Math.min(widthScale, heightScale);
+    return Math.max(1, Math.floor(fitted));
+  }, [engine.height, engine.width, viewSize.height, viewSize.width]);
+
+  const minZoom = useMemo(() => {
+    const inverse = baseCellSize > 0 ? 1 / baseCellSize : 1;
+    return Math.min(1, Math.max(MIN_DYNAMIC_ZOOM, inverse));
+  }, [baseCellSize]);
+
+  const cellPixelSize = useMemo(() => Math.max(1, Math.round(baseCellSize * (zoom || 1))), [baseCellSize, zoom]);
+
+  useEffect(() => {
+    setZoom((z) => (z < minZoom ? minZoom : z));
+  }, [minZoom]);
+
+  const getVisibleCellCounts = useCallback(() => {
+    const cellPx = cellPixelSize;
+    const visWcells = Math.max(1, Math.floor(viewSize.width / cellPx));
+    const visHcells = Math.max(1, Math.floor(viewSize.height / cellPx));
+    return { visWcells, visHcells };
+  }, [cellPixelSize, viewSize.height, viewSize.width]);
+
+  const scrollPanBy = useCallback(
+    (dx: number, dy: number) => {
+      const { visWcells, visHcells } = getVisibleCellCounts();
+      setPan((prev) => {
+        const maxX = Math.max(0, engine.width - visWcells);
+        const maxY = Math.max(0, engine.height - visHcells);
+        const nextX = Math.min(maxX, Math.max(0, prev.x + dx));
+        const nextY = Math.min(maxY, Math.max(0, prev.y + dy));
+        if (nextX === prev.x && nextY === prev.y) return prev;
+        return { x: nextX, y: nextY };
+      });
+    },
+    [engine, getVisibleCellCounts],
+  );
 
   // Show help modal on first visit
   useEffect(() => {
@@ -80,12 +127,7 @@ export default function App() {
 
   // Keep cursor visible by adjusting pan to follow it.
   useEffect(() => {
-    // Visible cell size in pixels
-    const cellPx = 16 * (zoom || 1);
-    const viewW = 800;
-    const viewH = 480;
-    const visWcells = Math.max(1, Math.floor(viewW / cellPx));
-    const visHcells = Math.max(1, Math.floor(viewH / cellPx));
+    const { visWcells, visHcells } = getVisibleCellCounts();
     const margin = 2; // start scrolling a bit before the edge
     const cur = engine.cursor;
 
@@ -101,7 +143,7 @@ export default function App() {
       if (nx !== prev.x || ny !== prev.y) return { x: nx, y: ny };
       return prev;
     });
-  }, [engine, engine.cursor.x, engine.cursor.y, zoom]);
+  }, [engine, engine.cursor.x, engine.cursor.y, getVisibleCellCounts, zoom]);
 
   useEffect(() => {
     focusContainer();
@@ -190,6 +232,35 @@ export default function App() {
       return;
     }
 
+    if (e.ctrlKey && !e.metaKey && !e.altKey) {
+      const { visWcells, visHcells } = getVisibleCellCounts();
+      const halfW = Math.max(1, Math.floor(visWcells / 2));
+      const halfH = Math.max(1, Math.floor(visHcells / 2));
+      switch (e.key) {
+        case 'd':
+        case 'D':
+        case 'ArrowDown':
+          scrollPanBy(0, halfH);
+          e.preventDefault();
+          return;
+        case 'u':
+        case 'U':
+        case 'ArrowUp':
+          scrollPanBy(0, -halfH);
+          e.preventDefault();
+          return;
+        case 'ArrowRight':
+          scrollPanBy(halfW, 0);
+          e.preventDefault();
+          return;
+        case 'ArrowLeft':
+          scrollPanBy(-halfW, 0);
+          e.preventDefault();
+          return;
+        default:
+          break;
+      }
+    }
     if (e.key === '?') {
       setShowHelp(true);
       e.preventDefault();
@@ -201,7 +272,7 @@ export default function App() {
       return;
     }
     if (e.key === '+') { setZoom((z) => Math.min(8, z * 1.25)); e.preventDefault(); return; }
-    if (e.key === '-') { setZoom((z) => Math.max(0.25, z / 1.25)); e.preventDefault(); return; }
+    if (e.key === '-') { setZoom((z) => Math.max(minZoom, z / 1.25)); e.preventDefault(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === '0') {
       setZoom(1);
       setPan({ x: 0, y: 0 });
@@ -223,7 +294,7 @@ export default function App() {
     }
     engine.handleKey({ key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
     if (['h', 'j', 'k', 'l', ' ', 'Backspace', 'Tab'].includes(e.key)) e.preventDefault();
-  }, [cmdMode, documents, engine, openCommand, showHelp]);
+  }, [cmdMode, documents, engine, minZoom, openCommand, showHelp]);
 
   useEffect(() => {
     if (!cmdMode && !showHelp) {
@@ -247,10 +318,26 @@ export default function App() {
       >
         <div className="main-area">
           <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
-          <CanvasGrid engine={engine} zoom={zoom} pan={pan} frame={frame} trail={trail} />
+          <CanvasGrid
+            engine={engine}
+            zoom={zoom}
+            pan={pan}
+            frame={frame}
+            trail={trail}
+            cellSize={cellPixelSize}
+            onViewSizeChange={setViewSize}
+          />
         </div>
         <div className="side-panel">
-          <MiniMap engine={engine} pan={pan} zoom={zoom} viewW={800} viewH={480} frame={frame} />
+          <MiniMap
+            engine={engine}
+            pan={pan}
+            zoom={zoom}
+            viewW={viewSize.width}
+            viewH={viewSize.height}
+            frame={frame}
+            cellSize={cellPixelSize}
+          />
           <StatusBar engine={engine} zoom={zoom} pan={pan} />
           <CommandFeed items={cmdFeed} engine={engine} />
         </div>

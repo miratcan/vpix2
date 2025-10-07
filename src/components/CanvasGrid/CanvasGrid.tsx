@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 import type VPixEngine from '../../../core/engine';
 import { GRID_THEME } from '../../theme/colors';
@@ -10,18 +10,73 @@ type Props = {
   pan?: { x: number; y: number };
   frame?: number;
   trail?: Array<{ x: number; y: number; ts: number }>;
+  cellSize: number;
+  onViewSizeChange?: (size: { width: number; height: number }) => void;
 };
 
-export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, frame = 0, trail = [] }: Props) {
+export default function CanvasGrid({
+  engine,
+  zoom = 1,
+  pan = { x: 0, y: 0 },
+  frame = 0,
+  trail = [],
+  cellSize,
+  onViewSizeChange,
+}: Props) {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const overlayRef = useRef<HTMLCanvasElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const panX = pan?.x ?? 0;
   const panY = pan?.y ?? 0;
-  const cellSize = useMemo(() => Math.max(1, Math.floor(16 * (zoom || 1))), [zoom]);
+  const showGridLines = (zoom || 1) > 2;
   const axis = engine.axis;
   const axisClass = axis === 'vertical' ? 'axis-vertical' : 'axis-horizontal';
   const gridClassName = `canvas-grid ${axisClass}`;
   const { canvasBackground, gridLine, accent, cursorHighlight } = GRID_THEME;
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    let lastWidth = 0;
+    let lastHeight = 0;
+    const applySize = (width: number, height: number) => {
+      const targetWidth = Math.max(1, Math.floor(width));
+      const targetHeight = Math.max(1, Math.floor(height));
+      if (targetWidth === lastWidth && targetHeight === lastHeight) return;
+      lastWidth = targetWidth;
+      lastHeight = targetHeight;
+      const baseCanvas = baseRef.current;
+      const overlayCanvas = overlayRef.current;
+      if (baseCanvas) {
+        if (baseCanvas.width !== targetWidth) baseCanvas.width = targetWidth;
+        if (baseCanvas.height !== targetHeight) baseCanvas.height = targetHeight;
+      }
+      if (overlayCanvas) {
+        if (overlayCanvas.width !== targetWidth) overlayCanvas.width = targetWidth;
+        if (overlayCanvas.height !== targetHeight) overlayCanvas.height = targetHeight;
+      }
+      if (onViewSizeChange) {
+        onViewSizeChange({ width: targetWidth, height: targetHeight });
+      }
+    };
+
+    if (typeof ResizeObserver === 'undefined') {
+      applySize(wrapper.clientWidth, wrapper.clientHeight);
+      return;
+    }
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        applySize(width, height);
+      }
+    });
+    applySize(wrapper.clientWidth, wrapper.clientHeight);
+    ro.observe(wrapper);
+    return () => {
+      ro.disconnect();
+    };
+  }, [onViewSizeChange]);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && /jsdom/i.test((navigator as any).userAgent || '')) return;
@@ -94,7 +149,7 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
       const clipTop = Math.max(0, Math.floor(gridTop));
       const clipBottom = Math.min(viewH, Math.ceil(gridBottom));
 
-      if (clipRight > clipLeft && clipBottom > clipTop) {
+      if (showGridLines && clipRight > clipLeft && clipBottom > clipTop) {
         ctx.strokeStyle = gridLine;
         ctx.lineWidth = 1;
         for (let x = 0; x <= engine.width; x++) {
@@ -170,10 +225,10 @@ export default function CanvasGrid({ engine, zoom = 1, pan = { x: 0, y: 0 }, fra
     };
     rafId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(rafId);
-  }, [cellSize, engine, panX, panY, trail]);
+  }, [cellSize, engine, panX, panY, showGridLines, trail]);
 
   return (
-    <div className={gridClassName}>
+    <div className={gridClassName} ref={wrapperRef}>
       <div className="canvas-layer-stack">
         <canvas ref={baseRef} className="canvas-base" width={800} height={480} />
         <canvas ref={overlayRef} className="canvas-overlay" width={800} height={480} />
