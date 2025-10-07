@@ -1,9 +1,15 @@
 .palette {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--spacing-s);
   padding: var(--spacing-s) var(--spacing-m);
   background: var(--color-background);
   border-bottom: var(--border-width) solid var(--color-border);
+  width: 100%;
+  box-sizing: border-box;
+  max-height: 200px;
+  overflow-y: auto;
+  align-content: flex-start;
 }
 .swatch {
   display: flex;

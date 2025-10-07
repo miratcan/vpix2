@@ -185,12 +185,23 @@ export const documentCommands: CommandDefinition[] = [
                 }
                 ctx.drawImage(img, 0, 0);
                 const { data, width, height } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const palette = engine.palette.slice();
+                const originalPalette = engine.palette.slice();
+                const palette: string[] = [];
                 const colorMap = new Map<string, number>();
-                palette.forEach((color, idx) => {
-                  const normalized = normalizeHex(color);
-                  if (normalized) colorMap.set(normalized, idx);
-                });
+
+                const registerColor = (hex: string) => {
+                  const normalized = normalizeHex(hex);
+                  if (!normalized) return null;
+                  const existing = colorMap.get(normalized);
+                  if (existing != null) return existing;
+                  if (palette.length >= 256) {
+                    return palette.length > 0 ? 0 : null;
+                  }
+                  palette.push(normalized);
+                  const idx = palette.length - 1;
+                  colorMap.set(normalized, idx);
+                  return idx;
+                };
                 const grid = Array.from({ length: height }, (_, y) => {
                   const row: Array<number | null> = [];
                   for (let x = 0; x < width; x += 1) {
@@ -200,20 +211,11 @@ export const documentCommands: CommandDefinition[] = [
                       row.push(null);
                       continue;
                     }
-                    const hex = normalizeHex(rgbaToHex(data[offset], data[offset + 1], data[offset + 2]));
-                    if (!hex) {
+                    const hex = rgbaToHex(data[offset], data[offset + 1], data[offset + 2]);
+                    const colorIndex = registerColor(hex);
+                    if (colorIndex == null) {
                       row.push(null);
                       continue;
-                    }
-                    let colorIndex = colorMap.get(hex);
-                    if (colorIndex == null) {
-                      if (palette.length >= 256) {
-                        colorIndex = 0;
-                      } else {
-                        palette.push(hex);
-                        colorIndex = palette.length - 1;
-                        colorMap.set(hex, colorIndex);
-                      }
                     }
                     row.push(colorIndex);
                   }
@@ -224,9 +226,11 @@ export const documentCommands: CommandDefinition[] = [
                 snapshot.width = width;
                 snapshot.height = height;
                 snapshot.grid = grid;
-                snapshot.palette = palette;
-                const paletteCount = palette.length > 0 ? palette.length : 1;
-                snapshot.currentColorIndex = Math.min(snapshot.currentColorIndex, paletteCount - 1);
+                const nextPalette = palette.length > 0 ? palette : originalPalette;
+                snapshot.palette = nextPalette;
+                const paletteCount = Math.max(1, nextPalette.length);
+                snapshot.currentColorIndex = Math.min(snapshot.currentColorIndex ?? 0, paletteCount - 1);
+                if (snapshot.currentColorIndex < 0) snapshot.currentColorIndex = 0;
                 engine.loadSnapshot(snapshot);
 
                 cleanup();
