@@ -52,6 +52,29 @@ describe('Visual mode operations', () => {
     assert.ok(true);
   });
 
+  it('stroke and fill circle selections', () => {
+    const pico = getPaletteByName('pico-8')!;
+    const eng = new VPixEngine({ width: 7, height: 7, palette: pico.colors });
+    eng.handleKey({ key: 'v' });
+    for (const key of ['l', 'l', 'l', 'l', 'j', 'j', 'j', 'j']) {
+      eng.handleKey({ key });
+    }
+    eng.handleKey({ key: 'C' });
+    assert.equal(eng.mode, MODES.NORMAL);
+    assert.ok(eng.grid[0][2] != null);
+    assert.ok(eng.grid[2][0] != null);
+    assert.equal(eng.grid[2][2], null);
+
+    eng.cursor = { x: 0, y: 0 };
+    eng.handleKey({ key: 'v' });
+    for (const key of ['l', 'l', 'l', 'l', 'j', 'j', 'j', 'j']) {
+      eng.handleKey({ key });
+    }
+    eng.handleKey({ key: 'O' });
+    assert.equal(eng.mode, MODES.NORMAL);
+    assert.ok(eng.grid[2][2] != null);
+  });
+
   it('transparent paste and rotations and move selection', () => {
     const pico = getPaletteByName('pico-8')!;
     const eng = new VPixEngine({ width: 5, height: 5, palette: pico.colors });

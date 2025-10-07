@@ -5,6 +5,7 @@ import { floodFill as floodFillTool } from '../tools/flood-fill';
 import { fillRect as fillRectTool } from '../tools/fill-rect';
 import { drawLine as drawLineTool } from '../tools/line';
 import { strokeRect as strokeRectTool } from '../tools/stroke-rect';
+import { fillEllipse as fillEllipseTool, strokeEllipse as strokeEllipseTool } from '../tools/circle';
 import type { ToolOperation } from '../tools/types';
 import { ClipboardBuffer } from './clipboard';
 import { EngineEvents } from './events';
@@ -480,6 +481,20 @@ export default class VPixEngine {
     if (!rect) return;
     const operations = strokeRectTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
     this.applyToolOperations('rect', operations);
+  }
+
+  strokeCircleSelection(colorIndex: number = this._currentColorIndex) {
+    const rect = this.selection.rect;
+    if (!rect) return;
+    const operations = strokeEllipseTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    this.applyToolOperations('ellipse-stroke', operations);
+  }
+
+  fillCircleSelection(colorIndex: number = this._currentColorIndex) {
+    const rect = this.selection.rect;
+    if (!rect) return;
+    const operations = fillEllipseTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    this.applyToolOperations('ellipse-fill', operations);
   }
 
   drawLine(a: Point | null, b: Point | null, colorIndex: number = this._currentColorIndex) {

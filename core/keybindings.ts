@@ -382,6 +382,8 @@ export const KEYBINDINGS: KeyBinding[] = [
   { scope: 'visual', key: 'M', command: 'selection.move-to-cursor', description: 'Move selection to cursor' },
   { scope: 'visual', key: 'F', command: 'selection.fill', description: 'Fill selection' },
   { scope: 'visual', key: 'R', command: 'selection.stroke-rect', description: 'Stroke selection rectangle' },
+  { scope: 'visual', key: 'C', command: 'selection.stroke-circle', description: 'Stroke selection circle' },
+  { scope: 'visual', key: 'O', command: 'selection.fill-circle', description: 'Fill selection circle' },
   { scope: 'visual', key: 'L', command: 'selection.draw-line', description: 'Draw line across selection' },
   { scope: 'visual', key: 'f', command: 'selection.flood-fill', description: 'Flood fill selection' },
 ];
