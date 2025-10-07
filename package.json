@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest run"
+    "test:ui": "vitest run",
+    "generate:keys": "node scripts/generate-keys-doc.mjs"
   },
   "dependencies": {
     "react": "^19.1.1",
