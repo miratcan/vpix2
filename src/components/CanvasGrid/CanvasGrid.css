@@ -6,9 +6,6 @@
   background: #0b0b0b;
   box-sizing: border-box;
 }
-.canvas-grid.insert-mode {
-  border: 2px solid var(--color-accent);
-}
 .canvas-layer-stack {
   position: relative;
   line-height: 0;

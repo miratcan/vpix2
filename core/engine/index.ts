@@ -242,7 +242,6 @@ export default class VPixEngine {
       const stepMoved = this.cursorManager.moveBy(dx, dy, this.width, this.height);
       if (!stepMoved) continue;
       moved = true;
-      if (this.modeManager.current === MODES.INSERT) this.paint();
     }
     if (moved) {
       this.emit();
