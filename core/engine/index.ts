@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/member-ordering */
-import { dispatchKey } from '../keymap';
 import { clamp } from '../util';
 import { floodFill as floodFillTool } from '../tools/flood-fill';
 import { fillRect as fillRectTool } from '../tools/fill-rect';
@@ -14,7 +13,6 @@ import { HistoryManager, type HistoryCell, type HistoryGroup } from './history';
 import { SelectionManager } from './selection';
 import { CountBuffer, CursorManager, ModeManager, PrefixManager } from './state';
 import { MODES } from './types';
-import { KEYBINDINGS } from '../keybindings';
 
 import type { Axis, EngineChangePayload, EngineSnapshot, Mode, Point } from './types';
 
@@ -122,7 +120,7 @@ export default class VPixEngine {
     return this.gridState.cells;
   }
 
-  get mode() {
+  getMode() {
     return this.modeManager.current;
   }
 
@@ -450,10 +448,6 @@ export default class VPixEngine {
     const eng = new VPixEngine({ width: data.width, height: data.height, palette: data.palette });
     eng.loadSnapshot(data);
     return eng;
-  }
-
-  handleKey(evt: { key: string; ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean }) {
-    return dispatchKey(this, evt as any);
   }
 
   enterVisual() {
@@ -986,20 +980,5 @@ export default class VPixEngine {
       this.gridState.writeCell(it.x, it.y, (it as any)[key] ?? null);
     }
     this.emit();
-  }
-
-  getRandomTip(): string | null {
-    const allTips: string[] = [];
-
-    for (const binding of KEYBINDINGS) {
-      if (binding.tips && binding.tips.length > 0) {
-        allTips.push(...binding.tips);
-      }
-    }
-
-    if (allTips.length === 0) return null;
-
-    const randomIndex = Math.floor(Math.random() * allTips.length);
-    return allTips[randomIndex];
   }
 }

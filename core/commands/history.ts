@@ -1,22 +1,32 @@
-import type { CommandDefinition } from './common';
+import { type CommandDefinition } from './common';
 
 export const historyCommands: CommandDefinition[] = [
   {
     id: 'history.undo',
     summary: 'Undo last action',
+    description: 'Reverts the last change made to the canvas.',
+    keybindings: [{ key: 'u', when: 'normal' }],
+    patterns: [
+      { pattern: 'undo', help: 'undo last action' },
+      { pattern: 'u', help: 'undo last action' },
+    ],
     handler: ({ engine }) => {
       engine.undo();
-      return 'Last action was undone.';
+      return { ok: true, msg: 'undo' };
     },
-    patterns: [{ pattern: 'undo', help: 'undo' }],
   },
   {
     id: 'history.redo',
-    summary: 'Redo last undone action',
+    summary: 'Redo last action',
+    description: 'Re-applies the last change that was undone.',
+    keybindings: [{ key: 'ctrl+r', when: 'global' }],
+    patterns: [
+      { pattern: 'redo', help: 'redo last action' },
+      { pattern: 'r', help: 'redo last action' },
+    ],
     handler: ({ engine }) => {
       engine.redo();
-      return 'Last undone action was redone.';
+      return { ok: true, msg: 'redo' };
     },
-    patterns: [{ pattern: 'redo', help: 'redo' }],
   },
 ];

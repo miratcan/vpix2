@@ -1,7 +1,6 @@
 import type VPixEngine from '../engine';
 import { MODES, type MotionKind, type OperatorKind } from '../engine';
 import { createRegistry, type CommandExecutionResult, type CommandMeta } from '../command-registry';
-import { KEYBINDINGS } from '../keybindings';
 import { DocumentRepository, type IDocumentRepository } from '../services/document-repository';
 import { PaletteService, type IPaletteService } from '../services/palette-service';
 import { ShareLinkService, type IShareLinkService } from '../services/share-link-service';
@@ -48,11 +47,18 @@ export type CommandPattern = {
   mapArgs?: (args: Record<string, unknown>) => Record<string, unknown>;
 };
 
+export interface KeyBinding {
+  key: string;
+  when?: string;
+}
+
 export type CommandDefinition = {
   id: string;
   summary: string;
+  description?: string;
   handler: CommandHandler;
   patterns: CommandPattern[];
+  keybindings?: KeyBinding[];
   hidden?: boolean;
 };
 
@@ -109,5 +115,5 @@ export function createCommandRegistry() {
   return createRegistry();
 }
 
-export { CommandExecutionResult, CommandMeta, KEYBINDINGS, MODES };
+export { CommandExecutionResult, CommandMeta, MODES };
 export type { MotionKind, OperatorKind };

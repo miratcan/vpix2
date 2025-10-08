@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { describeCommands } from '../../../core/commands';
 import './HelpModal.css';
 
 type Props = {
@@ -31,83 +30,19 @@ export default function HelpModal({ onClose, onDontShowAgain }: Props) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [dontShow, onClose, onDontShowAgain]);
 
-  const commands = describeCommands();
-
-  // Group commands by category (prefix before first dot)
-  const grouped = commands.reduce((acc, cmd) => {
-    const category = cmd.id.split('.')[0];
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(cmd);
-    return acc;
-  }, {} as Record<string, typeof commands>);
-
-  const categoryNames: Record<string, string> = {
-    canvas: 'Canvas',
-    palette: 'Palette',
-    paint: 'Paint',
-    clipboard: 'Clipboard',
-    selection: 'Selection',
-    axis: 'Movement',
-    cursor: 'Cursor',
-    motion: 'Motion',
-    mode: 'Mode',
-    operator: 'Operators',
-    history: 'History',
-    share: 'Share',
-    core: 'Core',
-    prefix: 'Prefix',
-    edit: 'Edit',
-    document: 'Document',
-  };
-
   return (
     <div className="help-modal-overlay" onClick={handleClose}>
       <div className="help-modal" onClick={(e) => e.stopPropagation()}>
         <div className="help-modal-header">
-          <h2 className="help-modal-title">vpix Commands</h2>
+          <h2 className="help-modal-title">Welcome to vpix!</h2>
           <button className="help-modal-close" onClick={handleClose}>
             ×
           </button>
         </div>
 
         <div className="help-modal-body">
-          {Object.entries(grouped).map(([category, cmds]) => (
-            <div key={category} className="help-modal-section">
-              <h3 className="help-modal-section-title">
-                {categoryNames[category] || category}
-              </h3>
-              <div className="help-modal-table-wrapper">
-                <table className="help-modal-table">
-                  <thead>
-                    <tr>
-                      <th>Command</th>
-                      <th>Summary</th>
-                      <th>Keys</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cmds.map((cmd) => (
-                      <tr key={cmd.id}>
-                        <td>{cmd.name}</td>
-                        <td>{cmd.summary}</td>
-                        <td>
-                          {cmd.keys.length ? (
-                            cmd.keys.map((key, idx) => (
-                              <span key={`${cmd.id}-key-${idx}`} className="help-modal-key-badge">
-                                {key}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="help-modal-no-keys">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
+          <p>Keybindings documentation can now be found in <strong>docs/KEYS.md</strong></p>
+          <p>This documentation is auto-generated from the command definitions.</p>
         </div>
 
         <div className="help-modal-footer">

@@ -1,113 +1,62 @@
-import type { CommandDefinition } from './common';
+import { getPaletteByName, getPaletteNames } from '../palettes';
+import { type CommandDefinition } from './common';
 
 export const paletteCommands: CommandDefinition[] = [
   {
-    id: 'palette.apply',
-    summary: 'Apply palette by slug',
-    handler: ({ engine, services }, { slug }) => {
-      const applied = services.palettes.applyPalette(engine, String(slug));
-      if (!applied) return `Palette '${slug}' not found.`;
-      return { msg: `Active palette set to '${slug}'.`, meta: { closeTerminal: true } };
-    },
-    patterns: [{ pattern: 'set palette {slug:slug}', help: 'set palette <slug>' }],
-  },
-  {
     id: 'palette.use',
-    summary: 'Apply palette by slug',
-    handler: ({ engine, services }, { slug }) => {
-      const applied = services.palettes.applyPalette(engine, String(slug));
-      if (!applied) return `Palette '${slug}' not found.`;
-      return { msg: `Active palette set to '${slug}'.`, meta: { closeTerminal: true } };
+    summary: 'Use a named palette',
+    description: 'Switches the active palette to a registered named palette.',
+    patterns: [{ pattern: 'palette use {name:string}', help: 'palette use <name>' }],
+    handler: ({ engine }, { name }) => {
+      const palette = getPaletteByName(name as string);
+      if (!palette) return { ok: false, msg: `palette not found: ${name}` };
+      engine.setPalette(palette.colors);
+      return { ok: true, msg: `palette set to ${name}` };
     },
-    patterns: [{ pattern: 'palette use {slug:slug}', help: 'palette use <slug>' }],
   },
   {
     id: 'palette.list',
-    summary: 'List available palette slugs',
-    handler: ({ services }) => {
-      const names = services.palettes.listRegistrySlugs();
-      return names.length ? { lines: names } : 'No palettes registered.';
+    summary: 'List available palettes',
+    description: 'Lists all registered color palettes.',
+    patterns: [{ pattern: 'palette list', help: 'list available palettes' }],
+    handler: () => {
+      const names = getPaletteNames();
+      return { ok: true, msg: 'palettes listed', meta: { lines: names } };
     },
-    patterns: [{ pattern: 'palette list', help: 'palette list' }],
-  },
-  {
-    id: 'palette.fetch',
-    summary: 'Fetch palette from LoSpec',
-    handler: async ({ services }, { slug }) => {
-      const pal = await services.palettes.fetchPalette(String(slug), services.fetch);
-      return pal ? `Loaded palette '${pal.slug}' (${pal.colors.length} colors).` : `Failed to load palette '${String(slug)}'.`;
-    },
-    patterns: [{ pattern: 'palette fetch {slug:slug}', help: 'palette fetch <slug>' }],
-  },
-  {
-    id: 'palette.search',
-    summary: 'Search palettes on LoSpec',
-    handler: async ({ services }, { term }) => {
-      const results = await services.palettes.searchRemote(String(term), services.fetch);
-      return results.length ? { lines: results } : 'No palettes found matching search term.';
-    },
-    patterns: [{ pattern: 'palette search {term:rest}', help: 'palette search <term>' }],
   },
   {
     id: 'palette.swap-last-color',
-    summary: 'Swap with previously used palette color',
+    summary: 'Swap to last used color',
+    description: 'Swaps the current color with the previously used color.',
+    keybindings: [{ key: 'ctrl+^', when: 'global' }],
+    patterns: [{ pattern: 'swap-color', help: 'swap to last used color' }],
     handler: ({ engine }) => {
       engine.swapToLastColor();
-      return 'Swapped to previous color.';
+      return { ok: true, msg: 'swapped color' };
     },
-    patterns: [{ pattern: 'palette swap-last', help: 'palette swap-last' }],
-  },
-  {
-    id: 'palette.select-index',
-    summary: 'Select palette color by index',
-    handler: ({ engine }, { index }) => {
-      const paletteLength = engine.palette.length;
-      if (!paletteLength) return 'No active palette.';
-      const idx = Math.min(paletteLength, Math.max(1, Number(index ?? 1)));
-      engine.setColorIndex(idx - 1);
-      engine.clearPrefix();
-      return `Selected color #${idx} from palette.`;
-    },
-    patterns: [{ pattern: 'palette select {index:int[1..512]}', help: 'palette select <index>' }],
-  },
-  {
-    id: 'palette.paint-color',
-    summary: 'Paint using palette color index',
-    handler: ({ engine }, { index }) => {
-      const paletteIndex = Math.max(1, Number(index ?? 1)) - 1;
-      if (paletteIndex >= 0 && paletteIndex < engine.palette.length) {
-        engine.paint(paletteIndex);
-        engine.recordLastAction((eng) => {
-          eng.paint(paletteIndex);
-        });
-      }
-      engine.clearPrefix();
-      return `Painted with color #${Number(index)} from palette.`;
-    },
-    patterns: [{ pattern: 'paint color {index:int[1..512]}', help: 'paint color <index>' }],
   },
   {
     id: 'palette.cycle-next',
-    summary: 'Select next palette color',
+    summary: 'Cycle to next palette color',
+    description: 'Selects the next color in the palette.',
+    keybindings: [{ key: 'g t', when: 'normal' }],
+    patterns: [{ pattern: 'cycle-next', help: 'cycle to next palette color' }],
     handler: ({ engine }) => {
-      if (!engine.palette.length) return 'No active palette.';
       const next = (engine.currentColorIndex + 1) % engine.palette.length;
       engine.setColorIndex(next);
-      engine.clearPrefix();
-      return `Cycled to next color: #${next + 1}.`;
+      return { ok: true, msg: `color set to ${next}` };
     },
-    patterns: [{ pattern: 'palette next', help: 'palette next' }],
   },
   {
     id: 'palette.cycle-previous',
-    summary: 'Select previous palette color',
+    summary: 'Cycle to previous palette color',
+    description: 'Selects the previous color in the palette.',
+    keybindings: [{ key: 'g T', when: 'normal' }],
+    patterns: [{ pattern: 'cycle-prev', help: 'cycle to previous palette color' }],
     handler: ({ engine }) => {
-      if (!engine.palette.length) return 'No active palette.';
       const prev = (engine.currentColorIndex - 1 + engine.palette.length) % engine.palette.length;
       engine.setColorIndex(prev);
-      engine.clearPrefix();
-      return `Cycled to previous color: #${prev + 1}.`;
+      return { ok: true, msg: `color set to ${prev}` };
     },
-    patterns: [{ pattern: 'palette prev', help: 'palette prev' }],
   },
 ];

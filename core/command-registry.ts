@@ -256,6 +256,13 @@ function compilePatternDSL(spec: string): PatternEl[] {
       paramType = { name: 'json', placeholder: '<json>', parse: (tok) => { try { return { ok: true, value: JSON.parse(tok) }; } catch { return { ok: false, err: 'invalid json' }; } }, greedy: true };
     } else if (t === 'rest') {
       paramType = { name: 'rest', placeholder: '<text>', parse: (tok) => ({ ok: true, value: tok }), greedy: true };
+    } else if (t === 'number') {
+      paramType = { name: 'number', placeholder: '<number>', parse: (tok) => {
+        const n = parseFloat(tok);
+        return !Number.isNaN(n) ? { ok: true, value: n } : { ok: false, err: 'not a number' };
+      }};
+    } else if (t === 'string') {
+      paramType = { name: 'string', placeholder: '<string>', parse: (tok) => ({ ok: true, value: tok }) };
     }
     if (!paramType) throw new Error(`unknown param type in pattern: ${p}`);
     out.push(param(name, paramType));

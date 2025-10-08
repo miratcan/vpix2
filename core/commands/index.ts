@@ -6,7 +6,6 @@ import {
   type CommandResult,
   type CommandServices,
   type RuntimeServices,
-  KEYBINDINGS,
   createCommandRegistry,
   normalizeCommandResult,
   resolveServices,
@@ -41,79 +40,6 @@ const registry = createCommandRegistry();
 let registryInitialized = false;
 const definitionMap = new Map<string, CommandDefinition>();
 
-function formatBindingKey(scope: string, key: string, condition?: string) {
-  const extras: string[] = [];
-  if (condition === 'prefix:any') extras.push('prefix');
-  if (condition === 'prefix:g') extras.push('prefix g');
-  if (condition === 'prefix:r') extras.push('prefix r');
-  const suffix = extras.length ? ` [${extras.join(', ')}]` : '';
-  return `${scope}:${key}${suffix}`;
-}
-
-function collectCommandKeys() {
-  const map = new Map<string, string[]>();
-  for (const binding of KEYBINDINGS) {
-    const label = formatBindingKey(binding.scope, binding.display ?? binding.key, binding.when);
-    const bucket = map.get(binding.command) ?? [];
-    if (!bucket.includes(label)) bucket.push(label);
-    map.set(binding.command, bucket);
-  }
-  return map;
-}
-
-type CommandSummary = { id: string; name: string; summary: string; keys: string[] };
-
-function formatHelpLines(entries: CommandSummary[]) {
-  return entries.map((entry) => {
-    const keyText = entry.keys.length ? ` [keys: ${entry.keys.join(', ')}]` : '';
-    return `${entry.name} — ${entry.summary}${keyText}`;
-  });
-}
-
-export function describeCommands(prefix?: string): CommandSummary[] {
-  const keyMap = collectCommandKeys();
-  const normPrefix = prefix?.toLowerCase();
-  return COMMAND_DEFINITIONS
-    .filter((def) => !def.hidden)
-    .map((def) => {
-      const primaryPattern = def.patterns[0];
-      const name = primaryPattern?.help ?? primaryPattern?.pattern ?? def.id;
-      return {
-        id: def.id,
-        name,
-        summary: def.summary,
-        keys: keyMap.get(def.id) ?? [],
-      } satisfies CommandSummary;
-    })
-    .filter((entry) => {
-      if (!normPrefix) return true;
-      const idMatch = entry.id.toLowerCase().startsWith(normPrefix);
-      const nameMatch = entry.name.toLowerCase().startsWith(normPrefix);
-      return idMatch || nameMatch;
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export function helpCommands(prefix?: string): string[] {
-  const entries = describeCommands(prefix);
-  if (!entries.length) return [];
-  return formatHelpLines(entries);
-}
-
-COMMAND_DEFINITIONS.push({
-  id: 'core.help',
-  summary: 'Show available commands',
-  handler: (_ctx, { prefix }) => {
-    const list = describeCommands(prefix ? String(prefix) : undefined);
-    if (!list.length) return { msg: 'no commands', meta: { lines: ['no commands'] } };
-    const lines = formatHelpLines(list);
-    return { msg: lines.join('\n'), meta: { lines } };
-  },
-  patterns: [
-    { pattern: 'help', help: 'help' },
-    { pattern: 'help {prefix:rest}', help: 'help <prefix>' },
-  ],
-});
 
 function ensureRegistry() {
   if (registryInitialized) return;

@@ -1,32 +1,86 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import VPixEngine from '../../core/engine';
+import { COMMAND_DEFINITIONS, executeCommand, suggestCommands } from '../../core/commands';
+import { buildKeymapTree } from '../../core/services/keymap-builder';
 
-import type VPixEngine from '../../core/engine';
+let engine: VPixEngine | null = null;
 
-export type EngineHookConfig = {
-  factory: () => VPixEngine;
-};
+function getEngine() {
+  if (engine) return engine;
+  engine = new VPixEngine();
+  // Assign to window for debugging in development mode
+  if (import.meta.env.DEV) {
+    (window as any).vpix2 = engine;
+  }
+  return engine;
+}
 
-let lineId = 0;
+export function useEngine() {
+  const [revision, setRevision] = useState(0);
 
-export function useEngine({ factory }: EngineHookConfig) {
-  const engine = useMemo(factory, [factory]);
-  const [frame, setFrame] = useState(0);
-  const [feedLines, setFeedLines] = useState<{ id: number; text: string; type: 'in' | 'out' | 'tip' }[]>([]);
+  const keymapTree = useMemo(() => buildKeymapTree(COMMAND_DEFINITIONS), []);
 
   useEffect(() => {
-    const unsub = engine.subscribe((_, payload) => {
-      setFrame((prev) => (payload?.revision ?? prev + 1));
-      if (payload?.cmd) {
-        const { display, lines, ok } = payload.cmd;
-        const output = lines ?? [display];
-        const newLines = output.filter(Boolean).map((text: string) => ({ id: lineId++, text, type: 'out' as const }));
-        if (newLines.length) {
-          setFeedLines((prev) => [...prev, ...newLines]);
+    const engine = getEngine();
+    const chordBuffer: any = { current: null };
+    const chordTimeout: any = { current: null };
+
+    const handler = (e: { key: string; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean; preventDefault: () => void; }) => {
+      const key = e.key;
+
+      if (chordTimeout.current) {
+        clearTimeout(chordTimeout.current);
+        chordTimeout.current = null;
+      }
+
+      let commandId: string | undefined;
+
+      if (chordBuffer.current) {
+        const nextLevel = chordBuffer.current[key];
+        if (typeof nextLevel === 'string') {
+          commandId = nextLevel;
+          chordBuffer.current = null;
+        } else if (typeof nextLevel === 'object') {
+          chordBuffer.current = nextLevel;
+          chordTimeout.current = setTimeout(() => {
+            chordBuffer.current = null;
+          }, 1000);
+        } else {
+          chordBuffer.current = null;
+        }
+      } else {
+        const currentMode = engine.getMode();
+        const modeMap = keymapTree[currentMode] || {};
+        const globalMap = keymapTree['global'] || {};
+
+        const potentialMatch = modeMap[key] || globalMap[key];
+
+        if (typeof potentialMatch === 'string') {
+          commandId = potentialMatch;
+        } else if (typeof potentialMatch === 'object') {
+          chordBuffer.current = potentialMatch;
+          chordTimeout.current = setTimeout(() => {
+            chordBuffer.current = null;
+          }, 1000);
         }
       }
-    });
-    return unsub;
-  }, [engine]);
 
-  return { engine, frame, feedLines } as const;
+      if (commandId) {
+        e.preventDefault();
+        executeCommand(engine, commandId);
+      }
+    };
+
+    const revisionHandler = () => setRevision((r) => r + 1);
+
+    engine.on('change', revisionHandler);
+    window.addEventListener('keydown', handler);
+
+    return () => {
+      engine.off('change', revisionHandler);
+      window.removeEventListener('keydown', handler);
+    };
+  }, [keymapTree]);
+
+  return { engine: getEngine(), revision, executeCommand, suggestCommands };
 }

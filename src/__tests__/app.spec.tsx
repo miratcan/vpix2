@@ -1,3 +1,4 @@
+import { getPaletteByName } from '../../core/palettes';
 import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -6,9 +7,12 @@ const ENGINE_REF = '__vpix_test_engine__';
 
 vi.mock('../../core/engine', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../core/engine')>();
+  const pico = getPaletteByName('pico-8')!;
   class InstrumentedEngine extends actual.default {
     constructor(...args: ConstructorParameters<typeof actual.default>) {
-      super(...args);
+      const config = args[0] || { palette: pico.colors };
+      if (!config.palette) config.palette = pico.colors;
+      super(config);
       (globalThis as any)[ENGINE_REF] = this;
     }
   }

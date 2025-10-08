@@ -1,48 +1,26 @@
-import type { CommandDefinition } from './common';
+import { type CommandDefinition } from './common';
 
 export const clipboardCommands: CommandDefinition[] = [
   {
     id: 'clipboard.paste',
-    summary: 'Paste clipboard at cursor (normal mode)',
+    summary: 'Paste from clipboard',
+    description: 'Pastes the content of the clipboard at the cursor position.',
+    keybindings: [{ key: 'p', when: 'normal' }],
+    patterns: [{ pattern: 'paste', help: 'paste from clipboard' }],
     handler: ({ engine }) => {
       engine.pasteAtCursor();
-      engine.recordLastAction((eng) => {
-        eng.pasteAtCursor();
-      });
-      engine.clearPrefix();
-      return 'Pasted content from clipboard at cursor.';
+      return { ok: true, msg: 'pasted' };
     },
-    patterns: [{ pattern: 'paste', help: 'paste' }],
   },
   {
     id: 'clipboard.paste-transparent',
-    summary: 'Paste clipboard transparently (normal mode)',
+    summary: 'Paste from clipboard (transparent)',
+    description: 'Pastes the content of the clipboard, ignoring empty pixels.',
+    keybindings: [{ key: 'P', when: 'normal' }],
+    patterns: [{ pattern: 'paste-transparent', help: 'paste from clipboard (transparent)' }],
     handler: ({ engine }) => {
       engine.pasteAtCursorTransparent();
-      engine.recordLastAction((eng) => {
-        eng.pasteAtCursorTransparent();
-      });
-      engine.clearPrefix();
-      return 'Pasted content from clipboard transparently.';
+      return { ok: true, msg: 'pasted (transparent)' };
     },
-    patterns: [{ pattern: 'paste transparent', help: 'paste transparent' }],
-  },
-  {
-    id: 'selection.rotate-cw',
-    summary: 'Rotate selection clockwise',
-    handler: ({ engine }) => {
-      engine.rotateSelectionCW();
-      return 'Rotated selection clockwise.';
-    },
-    patterns: [{ pattern: 'selection rotate-cw', help: 'selection rotate-cw' }],
-  },
-  {
-    id: 'selection.rotate-ccw',
-    summary: 'Rotate selection counterclockwise',
-    handler: ({ engine }) => {
-      engine.rotateSelectionCCW();
-      return 'Rotated selection counter-clockwise.';
-    },
-    patterns: [{ pattern: 'selection rotate-ccw', help: 'selection rotate-ccw' }],
   },
 ];
