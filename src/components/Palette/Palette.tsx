@@ -7,8 +7,9 @@ export default function Palette({ palette, currentIndex }: Props) {
     <div className="palette">
       {palette.map((c, i) => (
         <div key={i} className={`swatch${i === currentIndex ? ' active' : ''}`}>
-          <span className="key">{i + 1}</span>
-          <span className="chip" style={{ background: c }} />
+          <span className="chip" style={{ background: c }}>
+            <span className="key">{i + 1}</span>
+          </span>
         </div>
       ))}
     </div>

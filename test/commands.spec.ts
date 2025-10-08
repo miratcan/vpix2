@@ -18,7 +18,7 @@ describe('Command execution', () => {
     const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
     const res = executeCommand(eng, 'palette list') as CommandResult;
     assert.equal(res.ok, true);
-    assert.ok(/pico-8/.test(res.msg));
+    assert.ok(res.meta?.lines?.some(line => /pico-8/.test(line)));
   });
 
   it('set W and set H resize canvas, preserving pixels', () => {
@@ -69,12 +69,11 @@ describe('Command execution', () => {
     assert.equal(eng2.grid[0][0], '#123456');
   });
 
-  it('set size commands are silent and request terminal close', () => {
+  it('set size command resizes canvas and gives feedback', () => {
     const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
     const res = executeCommand(eng, 'set size 3x3') as CommandResult;
     assert.equal(res.ok, true);
-    assert.equal(res.msg, '');
-    assert.equal(res.meta?.silent, true);
+    assert.equal(res.msg, 'Canvas size set to 3x3.');
     assert.equal(res.meta?.closeTerminal, true);
   });
 });

@@ -6,8 +6,8 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'Apply palette by slug',
     handler: ({ engine, services }, { slug }) => {
       const applied = services.palettes.applyPalette(engine, String(slug));
-      if (!applied) return `unknown palette: ${slug}`;
-      return { msg: '', meta: { silent: true, closeTerminal: true } };
+      if (!applied) return `Palette '${slug}' not found.`;
+      return { msg: `Active palette set to '${slug}'.`, meta: { closeTerminal: true } };
     },
     patterns: [{ pattern: 'set palette {slug:slug}', help: 'set palette <slug>' }],
   },
@@ -16,8 +16,8 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'Apply palette by slug',
     handler: ({ engine, services }, { slug }) => {
       const applied = services.palettes.applyPalette(engine, String(slug));
-      if (!applied) return `unknown palette: ${slug}`;
-      return { msg: '', meta: { silent: true, closeTerminal: true } };
+      if (!applied) return `Palette '${slug}' not found.`;
+      return { msg: `Active palette set to '${slug}'.`, meta: { closeTerminal: true } };
     },
     patterns: [{ pattern: 'palette use {slug:slug}', help: 'palette use <slug>' }],
   },
@@ -26,7 +26,7 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'List available palette slugs',
     handler: ({ services }) => {
       const names = services.palettes.listRegistrySlugs();
-      return names.length ? `palettes: ${names.join(', ')}` : 'no palettes';
+      return names.length ? { lines: names } : 'No palettes registered.';
     },
     patterns: [{ pattern: 'palette list', help: 'palette list' }],
   },
@@ -35,7 +35,7 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'Fetch palette from LoSpec',
     handler: async ({ services }, { slug }) => {
       const pal = await services.palettes.fetchPalette(String(slug), services.fetch);
-      return pal ? `loaded: ${pal.slug} (${pal.colors.length})` : `failed to load: ${String(slug)}`;
+      return pal ? `Loaded palette '${pal.slug}' (${pal.colors.length} colors).` : `Failed to load palette '${String(slug)}'.`;
     },
     patterns: [{ pattern: 'palette fetch {slug:slug}', help: 'palette fetch <slug>' }],
   },
@@ -44,7 +44,7 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'Search palettes on LoSpec',
     handler: async ({ services }, { term }) => {
       const results = await services.palettes.searchRemote(String(term), services.fetch);
-      return results.length ? results.join(', ') : 'no results';
+      return results.length ? { lines: results } : 'No palettes found matching search term.';
     },
     patterns: [{ pattern: 'palette search {term:rest}', help: 'palette search <term>' }],
   },
@@ -53,7 +53,7 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'Swap with previously used palette color',
     handler: ({ engine }) => {
       engine.swapToLastColor();
-      return `Swapped color`;
+      return 'Swapped to previous color.';
     },
     patterns: [{ pattern: 'palette swap-last', help: 'palette swap-last' }],
   },
@@ -62,11 +62,11 @@ export const paletteCommands: CommandDefinition[] = [
     summary: 'Select palette color by index',
     handler: ({ engine }, { index }) => {
       const paletteLength = engine.palette.length;
-      if (!paletteLength) return 'No palette';
+      if (!paletteLength) return 'No active palette.';
       const idx = Math.min(paletteLength, Math.max(1, Number(index ?? 1)));
       engine.setColorIndex(idx - 1);
       engine.clearPrefix();
-      return `Color ${idx}`;
+      return `Selected color #${idx} from palette.`;
     },
     patterns: [{ pattern: 'palette select {index:int[1..512]}', help: 'palette select <index>' }],
   },
@@ -82,7 +82,7 @@ export const paletteCommands: CommandDefinition[] = [
         });
       }
       engine.clearPrefix();
-      return `Painted #${Number(index)}`;
+      return `Painted with color #${Number(index)} from palette.`;
     },
     patterns: [{ pattern: 'paint color {index:int[1..512]}', help: 'paint color <index>' }],
   },
@@ -90,11 +90,11 @@ export const paletteCommands: CommandDefinition[] = [
     id: 'palette.cycle-next',
     summary: 'Select next palette color',
     handler: ({ engine }) => {
-      if (!engine.palette.length) return 'No palette';
+      if (!engine.palette.length) return 'No active palette.';
       const next = (engine.currentColorIndex + 1) % engine.palette.length;
       engine.setColorIndex(next);
       engine.clearPrefix();
-      return `Color ${next + 1}`;
+      return `Cycled to next color: #${next + 1}.`;
     },
     patterns: [{ pattern: 'palette next', help: 'palette next' }],
   },
@@ -102,11 +102,11 @@ export const paletteCommands: CommandDefinition[] = [
     id: 'palette.cycle-previous',
     summary: 'Select previous palette color',
     handler: ({ engine }) => {
-      if (!engine.palette.length) return 'No palette';
+      if (!engine.palette.length) return 'No active palette.';
       const prev = (engine.currentColorIndex - 1 + engine.palette.length) % engine.palette.length;
       engine.setColorIndex(prev);
       engine.clearPrefix();
-      return `Color ${prev + 1}`;
+      return `Cycled to previous color: #${prev + 1}.`;
     },
     patterns: [{ pattern: 'palette prev', help: 'palette prev' }],
   },

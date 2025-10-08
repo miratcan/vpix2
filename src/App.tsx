@@ -30,7 +30,7 @@ export default function App() {
     return new VPixEngine({ width: 32, height: 24, palette: colors });
   }, [paletteService]);
 
-  const { engine, frame } = useEngine({ factory: engineFactory });
+  const { engine, frame, feedLines } = useEngine({ factory: engineFactory });
 
   const documents = useMemo(() => new DocumentRepository(STORAGE_KEY), []);
   const shareLinks = useMemo(() => new ShareLinkService(), []);
@@ -68,12 +68,11 @@ export default function App() {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [trail, setTrail] = useState<Array<{ x: number; y: number; ts: number }>>([]);
-  const [cmdFeed, setCmdFeed] = useState<Array<{ id: string; display: string }>>([]);
   const lastCursorRef = useRef<{ x: number; y: number } | null>(null);
-  const [viewSize, setViewSize] = useState<{ width: number; height: number }>({
-    width: DEFAULT_VIEW_WIDTH,
-    height: DEFAULT_VIEW_HEIGHT,
-  });
+  const [viewSize, setViewSize] = useState<{ width: number; height: number }>(() => ({
+    width: typeof window !== 'undefined' ? window.innerWidth : DEFAULT_VIEW_WIDTH,
+    height: typeof window !== 'undefined' ? window.innerHeight : DEFAULT_VIEW_HEIGHT,
+  }));
 
   const baseCellSize = useMemo(() => {
     const widthScale = viewSize.width / engine.width;
@@ -159,24 +158,6 @@ export default function App() {
     })();
   }, [documents, engine, shareLinks]);
 
-  // Subscribe to engine events to capture executed command labels
-  useEffect(() => {
-    const unsub = engine.subscribe((_, payload) => {
-      const anyPayload = payload as any;
-      if (anyPayload && anyPayload.cmd) {
-        const { id, display } = anyPayload.cmd as { id: string; display: string };
-        setCmdFeed((prev) => {
-          // Create a truly unique ID for each event to ensure it's always added to the feed.
-          const uniqueId = `${id}-${Date.now()}-${Math.random()}`;
-          const next = [...prev, { id: uniqueId, display }];
-          const MAX = 50;
-          return next.length > MAX ? next.slice(next.length - MAX) : next;
-        });
-      }
-    });
-    return unsub;
-  }, [engine]);
-
   // Cursor trail: sample intermediate cells on large jumps and timestamp them
   useEffect(() => {
     const now = performance.now ? performance.now() : Date.now();
@@ -187,7 +168,7 @@ export default function App() {
     const dx = Math.abs(cur.x - prev.x);
     const dy = Math.abs(cur.y - prev.y);
     if (dx + dy <= 1) return; // only trail when skipping more than one cell
-    // Bresenham-like sampling between prev and cur inclusive
+    
     const points: Array<{ x: number; y: number; ts: number }> = [];
     let x = prev.x, y = prev.y;
     const sx = cur.x > prev.x ? 1 : -1;
@@ -196,7 +177,6 @@ export default function App() {
     const limit = 2048; // safety
     let guard = 0;
     while (true) {
-      // All points get the same timestamp - render code handles the fade
       points.push({ x, y, ts: now });
       if (x === cur.x && y === cur.y) break;
       const e2 = err;
@@ -206,7 +186,6 @@ export default function App() {
     }
     setTrail((prevTrail) => {
       const next = prevTrail.concat(points);
-      // prune old points by time window and length cap
       const L = 500; // ms visible window
       const cutoff = now - L;
       const pruned = next.filter((p) => p.ts >= cutoff);
@@ -216,92 +195,41 @@ export default function App() {
   }, [engine, engine.cursor.x, engine.cursor.y]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    // If help modal is open, ignore keys (modal handles ESC)
-    if (showHelp) {
-      return;
-    }
-
-    // If command mode input is focused, let it handle keys
-    if (cmdMode && (e.target as HTMLElement).tagName === 'INPUT') {
-      return;
-    }
-
-    // Ignore other keys when command mode is active
-    if (cmdMode) {
-      e.preventDefault();
-      return;
-    }
+    if (showHelp) return;
+    if (cmdMode && (e.target as HTMLElement).tagName === 'INPUT') return;
+    if (cmdMode) { e.preventDefault(); return; }
 
     if (e.ctrlKey && !e.metaKey && !e.altKey) {
       const { visWcells, visHcells } = getVisibleCellCounts();
       const halfW = Math.max(1, Math.floor(visWcells / 2));
       const halfH = Math.max(1, Math.floor(visHcells / 2));
       switch (e.key) {
-        case 'd':
-        case 'D':
-        case 'ArrowDown':
-          scrollPanBy(0, halfH);
-          e.preventDefault();
-          return;
-        case 'u':
-        case 'U':
-        case 'ArrowUp':
-          scrollPanBy(0, -halfH);
-          e.preventDefault();
-          return;
-        case 'ArrowRight':
-          scrollPanBy(halfW, 0);
-          e.preventDefault();
-          return;
-        case 'ArrowLeft':
-          scrollPanBy(-halfW, 0);
-          e.preventDefault();
-          return;
-        default:
-          break;
+        case 'd': case 'D': case 'ArrowDown': scrollPanBy(0, halfH); e.preventDefault(); return;
+        case 'u': case 'U': case 'ArrowUp': scrollPanBy(0, -halfH); e.preventDefault(); return;
+        case 'ArrowRight': scrollPanBy(halfW, 0); e.preventDefault(); return;
+        case 'ArrowLeft': scrollPanBy(-halfW, 0); e.preventDefault(); return;
+        default: break;
       }
     }
-    if (e.key === '?') {
-      setShowHelp(true);
-      e.preventDefault();
-      return;
-    }
-    if (engine.mode === MODES.NORMAL && e.key === ':') {
-      openCommand();
-      e.preventDefault();
-      return;
-    }
+    if (e.key === '?') { setShowHelp(true); e.preventDefault(); return; }
+    if (engine.mode === MODES.NORMAL && e.key === ':') { openCommand(); e.preventDefault(); return; }
     if (e.key === '+') { setZoom((z) => Math.min(8, z * 1.25)); e.preventDefault(); return; }
     if (e.key === '-') { setZoom((z) => Math.max(minZoom, z / 1.25)); e.preventDefault(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key === '0') {
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
-      e.preventDefault();
-      return;
-    }
-    if (engine.mode === MODES.NORMAL && e.key === 'S') {
-      documents.save(engine.toSnapshot());
-      e.preventDefault();
-      return;
-    }
+    if ((e.ctrlKey || e.metaKey) && e.key === '0') { setZoom(1); setPan({ x: 0, y: 0 }); e.preventDefault(); return; }
+    if (engine.mode === MODES.NORMAL && e.key === 'S') { documents.save(engine.toSnapshot()); e.preventDefault(); return; }
     if (engine.mode === MODES.NORMAL && e.key === 'L') {
       const data = documents.load();
-      if (data) {
-        engine.loadSnapshot(data);
-      }
+      if (data) engine.loadSnapshot(data);
       e.preventDefault();
       return;
     }
     engine.handleKey({ key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
     if (['h', 'j', 'k', 'l', ' ', 'Backspace', 'Tab'].includes(e.key)) e.preventDefault();
-  }, [cmdMode, documents, engine, minZoom, openCommand, showHelp]);
+  }, [cmdMode, documents, engine, minZoom, openCommand, showHelp, getVisibleCellCounts, scrollPanBy]);
 
   useEffect(() => {
     if (!cmdMode && !showHelp) {
-      if (typeof window === 'undefined') {
-        focusContainer();
-        return;
-      }
+      if (typeof window === 'undefined') { focusContainer(); return; }
       const handle = window.setTimeout(() => focusContainer(), 0);
       return () => window.clearTimeout(handle);
     }
@@ -339,7 +267,7 @@ export default function App() {
             cellSize={cellPixelSize}
           />
           <StatusBar engine={engine} zoom={zoom} pan={pan} />
-          <CommandFeed items={cmdFeed} engine={engine} />
+          <CommandFeed items={feedLines} />
         </div>
 
         {cmdMode && (
@@ -350,16 +278,9 @@ export default function App() {
               value={cmdText}
               onChange={(e) => setCmdText(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  submit();
-                  e.preventDefault();
-                } else if (e.key === 'Escape') {
-                  closeCommand();
-                  e.preventDefault();
-                } else if (e.key === 'Tab') {
-                  handleTabComplete();
-                  e.preventDefault();
-                }
+                if (e.key === 'Enter') { submit(); e.preventDefault(); }
+                else if (e.key === 'Escape') { closeCommand(); e.preventDefault(); }
+                else if (e.key === 'Tab') { handleTabComplete(); e.preventDefault(); }
               }}
               autoFocus
               className="vpix-command-input"

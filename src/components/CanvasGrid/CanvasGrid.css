@@ -6,7 +6,9 @@
   background: var(--color-background);
   box-sizing: border-box;
   min-height: 0;
+  border: var(--border-width-strong) solid transparent;
 }
+
 .canvas-layer-stack {
   position: relative;
   line-height: 0;

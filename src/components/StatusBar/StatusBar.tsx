@@ -9,11 +9,11 @@ export default function StatusBar({ engine, zoom, pan }: Props) {
       <table className="status-table" role="table">
         <tbody>
           <tr>
-            <th scope="row">mode</th>
+            <th scope="row">MODE</th>
             <td>{engine.mode}</td>
           </tr>
           <tr>
-            <th scope="row">axis</th>
+            <th scope="row">AXIS</th>
             <td>
               <span className="axis-symbol" aria-label="axis">
                 {engine.axis === 'horizontal' ? '-' : '|'}
@@ -21,27 +21,27 @@ export default function StatusBar({ engine, zoom, pan }: Props) {
             </td>
           </tr>
           <tr>
-            <th scope="row">cursor</th>
+            <th scope="row">CURSOR</th>
             <td>({engine.cursor.x},{engine.cursor.y})</td>
           </tr>
           <tr>
-            <th scope="row">color</th>
+            <th scope="row">COLOR</th>
             <td><span className="color-chip" style={{ background: engine.color }} /></td>
           </tr>
           <tr>
-            <th scope="row">size</th>
+            <th scope="row">SIZE</th>
             <td>{engine.width}x{engine.height}</td>
           </tr>
           <tr>
-            <th scope="row">zoom</th>
+            <th scope="row">ZOOM</th>
             <td>{Math.round((zoom || 1) * 100)}%</td>
           </tr>
           <tr>
-            <th scope="row">pan</th>
+            <th scope="row">PAN</th>
             <td>({pan?.x ?? 0},{pan?.y ?? 0})</td>
           </tr>
           <tr>
-            <th scope="row">version</th>
+            <th scope="row">VERSION</th>
             <td>{__APP_VERSION__}</td>
           </tr>
         </tbody>

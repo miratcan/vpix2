@@ -20,6 +20,7 @@
 .feed-line {
   overflow-wrap: break-word;
   word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .feed-line-tip {

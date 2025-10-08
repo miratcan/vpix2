@@ -38,11 +38,11 @@ export const documentCommands: CommandDefinition[] = [
     id: 'document.read',
     summary: 'Load last saved document',
     handler: ({ engine, services }) => {
-      if (!services.documents) return 'storage not available';
+      if (!services.documents) return 'Storage not available.';
       const doc = services.documents.load();
-      if (!doc) return 'No saved document';
+      if (!doc) return 'No saved document found.';
       engine.loadSnapshot(doc);
-      return 'document loaded';
+      return 'Loaded last saved document.';
     },
     patterns: [{ pattern: 'read', help: 'read' }],
   },
@@ -54,9 +54,9 @@ export const documentCommands: CommandDefinition[] = [
         const raw = typeof doc === 'string' ? doc : JSON.stringify(doc);
         const loaded = VPixEngine.deserialize(raw);
         engine.loadSnapshot(loaded.toSnapshot());
-        return 'document loaded';
+        return 'Loaded document from JSON.';
       } catch {
-        return 'invalid json';
+        return 'Invalid JSON data.';
       }
     },
     patterns: [{ pattern: 'read json {doc:json}', help: 'read json <{...}>' }],
@@ -66,14 +66,14 @@ export const documentCommands: CommandDefinition[] = [
     summary: 'Fetch and load document from URL',
     handler: async ({ engine, services }, { url }) => {
       const fetchImpl = services.fetch;
-      if (!fetchImpl) return 'network unavailable';
+      if (!fetchImpl) return 'Network services unavailable.';
       try {
         const txt = await fetchImpl(String(url)).then((r) => r.text());
         const loaded = VPixEngine.deserialize(txt);
         engine.loadSnapshot(loaded.toSnapshot());
-        return 'document loaded';
+        return 'Loaded document from URL.';
       } catch {
-        return 'network error';
+        return 'A network error occurred while downloading the document.';
       }
     },
     patterns: [{ pattern: 'read url {url:url}', help: 'read url <https://...>' }],
@@ -82,15 +82,15 @@ export const documentCommands: CommandDefinition[] = [
     id: 'document.export',
     summary: 'Export current canvas as PNG',
     handler: ({ engine }) => {
-      if (typeof document === 'undefined') return 'export unavailable';
+      if (typeof document === 'undefined') return 'Export feature is not available.';
       const target = document.body;
-      if (!target) return 'export unavailable';
+      if (!target) return 'Export feature is not available.';
 
       const canvas = document.createElement('canvas');
       canvas.width = engine.width;
       canvas.height = engine.height;
       const ctx = canvas.getContext('2d');
-      if (!ctx) return 'export unavailable';
+      if (!ctx) return 'Export feature is not available.';
 
       const imageData = ctx.createImageData(canvas.width, canvas.height);
       const data = imageData.data;
@@ -128,7 +128,7 @@ export const documentCommands: CommandDefinition[] = [
         link.remove();
       }
 
-      return { msg: `exported ${canvas.width}×${canvas.height}`, meta: { closeTerminal: true } };
+      return { msg: `Exported ${canvas.width}x${canvas.height} PNG file.`, meta: { closeTerminal: true } };
     },
     patterns: [{ pattern: 'export', help: 'export' }],
   },
@@ -136,9 +136,9 @@ export const documentCommands: CommandDefinition[] = [
     id: 'document.import',
     summary: 'Import PNG into canvas',
     handler: ({ engine }) => {
-      if (typeof document === 'undefined') return 'import unavailable';
+      if (typeof document === 'undefined') return 'Import feature is not available.';
       const target = document.body;
-      if (!target) return 'import unavailable';
+      if (!target) return 'Import feature is not available.';
 
       return new Promise<string | { ok: boolean; msg: string; meta?: { closeTerminal?: boolean } }>((resolve) => {
         const input = document.createElement('input');
@@ -154,20 +154,20 @@ export const documentCommands: CommandDefinition[] = [
           const file = input.files?.[0];
           if (!file) {
             cleanup();
-            resolve({ ok: false, msg: 'import cancelled' });
+            resolve({ ok: false, msg: 'Import cancelled.' });
             return;
           }
 
           const reader = new FileReader();
           reader.onerror = () => {
             cleanup();
-            resolve({ ok: false, msg: 'import failed' });
+            resolve({ ok: false, msg: 'Import failed.' });
           };
           reader.onload = () => {
             const result = typeof reader.result === 'string' ? reader.result : '';
             if (!result) {
               cleanup();
-              resolve({ ok: false, msg: 'invalid image' });
+              resolve({ ok: false, msg: 'Invalid image file.' });
               return;
             }
             const img = new Image();
@@ -180,7 +180,7 @@ export const documentCommands: CommandDefinition[] = [
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
                   cleanup();
-                  resolve({ ok: false, msg: 'import unavailable' });
+                  resolve({ ok: false, msg: 'Import feature is not available.' });
                   return;
                 }
                 ctx.drawImage(img, 0, 0);
@@ -231,15 +231,15 @@ export const documentCommands: CommandDefinition[] = [
                 engine.loadSnapshot(snapshot);
 
                 cleanup();
-                resolve({ msg: `imported ${width}×${height}`, meta: { closeTerminal: true } });
+                resolve({ msg: `Imported ${width}x${height} PNG file.`, meta: { closeTerminal: true } });
               } catch {
                 cleanup();
-                resolve({ ok: false, msg: 'import failed' });
+                resolve({ ok: false, msg: 'Import failed.' });
               }
             };
             img.onerror = () => {
               cleanup();
-              resolve({ ok: false, msg: 'invalid image' });
+              resolve({ ok: false, msg: 'Invalid image file.' });
             };
             img.src = result;
           };

@@ -111,23 +111,23 @@ if (qp2r) decoded = decodeFromParamV2R(qp2r, VPixEngine);
 
   updateHistory(engine: VPixEngine) {
     const url = this.locate();
-    if (!url || !this.history) return { ok: false, msg: 'share links unavailable' } as const;
+    if (!url || !this.history) return { ok: false, msg: 'Share link feature is not available.' } as const;
     const payload = this.generatePayload(engine);
     url.searchParams.set('vp2r', payload);
     url.searchParams.delete('vp2');
     this.history.replaceState(null, '', url.toString());
-    return { ok: true, msg: 'link updated (?vp2r=...)' } as const;
+    return { ok: true, msg: 'Shareable link updated in browser history.' } as const;
   }
 
   async copyLink(engine: VPixEngine) {
     const url = this.buildUrl(engine);
-    const warning = url.length > 2000 ? `warning: long URL (${url.length} chars)` : null;
+    const warning = url.length > 2000 ? `warning: URL is very long (${url.length} characters)` : null;
     if (!this.clipboard?.writeText) {
       return { ok: false, msg: warning ? `${warning}; ${url}` : url } as const;
     }
     try {
       await this.clipboard.writeText(url);
-      return { ok: true, msg: warning ? `link copied — ${warning}` : 'link copied' } as const;
+      return { ok: true, msg: warning ? `Link copied to clipboard (${warning})` : 'Shareable link copied to clipboard.' } as const;
     } catch {
       return { ok: false, msg: warning ? `${warning}; ${url}` : url } as const;
     }

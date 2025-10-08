@@ -8,7 +8,7 @@ export const selectionCommands: CommandDefinition[] = [
     handler: ({ engine }) => {
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Exit visual';
+      return 'Exited Visual mode.';
     },
     patterns: [{ pattern: 'visual exit', help: 'visual exit' }],
   },
@@ -19,7 +19,7 @@ export const selectionCommands: CommandDefinition[] = [
       const c = ensureCount(count);
       engine.move(-1, 0, c);
       engine.updateSelectionRect();
-      return `← ${c}`;
+      return `Selection expanded left by ${c} pixel(s).`;
     },
     patterns: [{ pattern: 'selection move-left {count:int[1..512]}', help: 'selection move-left <count>' }],
   },
@@ -30,7 +30,7 @@ export const selectionCommands: CommandDefinition[] = [
       const c = ensureCount(count);
       engine.move(1, 0, c);
       engine.updateSelectionRect();
-      return `→ ${c}`;
+      return `Selection expanded right by ${c} pixel(s).`;
     },
     patterns: [{ pattern: 'selection move-right {count:int[1..512]}', help: 'selection move-right <count>' }],
   },
@@ -41,7 +41,7 @@ export const selectionCommands: CommandDefinition[] = [
       const c = ensureCount(count);
       engine.move(0, -1, c);
       engine.updateSelectionRect();
-      return `↑ ${c}`;
+      return `Selection expanded up by ${c} pixel(s).`;
     },
     patterns: [{ pattern: 'selection move-up {count:int[1..512]}', help: 'selection move-up <count>' }],
   },
@@ -52,7 +52,7 @@ export const selectionCommands: CommandDefinition[] = [
       const c = ensureCount(count);
       engine.move(0, 1, c);
       engine.updateSelectionRect();
-      return `↓ ${c}`;
+      return `Selection expanded down by ${c} pixel(s).`;
     },
     patterns: [{ pattern: 'selection move-down {count:int[1..512]}', help: 'selection move-down <count>' }],
   },
@@ -63,7 +63,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.yankSelection();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Yanked';
+      return 'Yanked selection to clipboard.';
     },
     patterns: [{ pattern: 'selection yank', help: 'selection yank' }],
   },
@@ -74,7 +74,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.deleteSelection();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Deleted';
+      return 'Deleted selection.';
     },
     patterns: [{ pattern: 'selection delete', help: 'selection delete' }],
   },
@@ -85,7 +85,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.pasteAtCursor();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Pasted';
+      return 'Pasted from clipboard.';
     },
     patterns: [{ pattern: 'selection paste', help: 'selection paste' }],
   },
@@ -96,7 +96,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.pasteAtCursorTransparent();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Pasted transparent';
+      return 'Pasted transparently from clipboard.';
     },
     patterns: [{ pattern: 'selection paste-transparent', help: 'selection paste-transparent' }],
   },
@@ -107,7 +107,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.moveSelectionToCursor();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Moved';
+      return 'Moved selection to cursor.';
     },
     patterns: [{ pattern: 'selection move-to-cursor', help: 'selection move-to-cursor' }],
   },
@@ -118,7 +118,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.fillSelection();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Filled';
+      return 'Filled selection with current color.';
     },
     patterns: [{ pattern: 'selection fill', help: 'selection fill' }],
   },
@@ -129,7 +129,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.strokeRectSelection();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Stroked rect';
+      return 'Stroked rectangle in selection.';
     },
     patterns: [{ pattern: 'selection stroke', help: 'selection stroke' }],
   },
@@ -140,7 +140,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.strokeCircleSelection();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Stroked circle';
+      return 'Stroked circle in selection.';
     },
     patterns: [{ pattern: 'selection stroke-circle', help: 'selection stroke-circle' }],
   },
@@ -151,7 +151,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.fillCircleSelection();
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Filled circle';
+      return 'Filled circular area in selection.';
     },
     patterns: [{ pattern: 'selection fill-circle', help: 'selection fill-circle' }],
   },
@@ -163,7 +163,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.drawLine(snapshot.anchor, engine.cursor);
       engine.exitVisual();
       engine.clearPrefix();
-      return 'Line drawn';
+      return 'Line drawn.';
     },
     patterns: [{ pattern: 'selection line', help: 'selection line' }],
   },
@@ -176,7 +176,7 @@ export const selectionCommands: CommandDefinition[] = [
       engine.floodFill(engine.cursor.x, engine.cursor.y);
       if (hadSelection) engine.exitVisual();
       engine.clearPrefix();
-      return 'Flood filled';
+      return 'Flood fill applied.';
     },
     patterns: [{ pattern: 'selection flood', help: 'selection flood' }],
   },

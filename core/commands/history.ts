@@ -6,7 +6,7 @@ export const historyCommands: CommandDefinition[] = [
     summary: 'Undo last action',
     handler: ({ engine }) => {
       engine.undo();
-      return 'Undo';
+      return 'Last action was undone.';
     },
     patterns: [{ pattern: 'undo', help: 'undo' }],
   },
@@ -15,7 +15,7 @@ export const historyCommands: CommandDefinition[] = [
     summary: 'Redo last undone action',
     handler: ({ engine }) => {
       engine.redo();
-      return 'Redo';
+      return 'Last undone action was redone.';
     },
     patterns: [{ pattern: 'redo', help: 'redo' }],
   },

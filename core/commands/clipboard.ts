@@ -10,7 +10,7 @@ export const clipboardCommands: CommandDefinition[] = [
         eng.pasteAtCursor();
       });
       engine.clearPrefix();
-      return 'Pasted';
+      return 'Pasted content from clipboard at cursor.';
     },
     patterns: [{ pattern: 'paste', help: 'paste' }],
   },
@@ -23,7 +23,7 @@ export const clipboardCommands: CommandDefinition[] = [
         eng.pasteAtCursorTransparent();
       });
       engine.clearPrefix();
-      return 'Pasted transparent';
+      return 'Pasted content from clipboard transparently.';
     },
     patterns: [{ pattern: 'paste transparent', help: 'paste transparent' }],
   },
@@ -32,7 +32,7 @@ export const clipboardCommands: CommandDefinition[] = [
     summary: 'Rotate selection clockwise',
     handler: ({ engine }) => {
       engine.rotateSelectionCW();
-      return 'Rotated ↻';
+      return 'Rotated selection clockwise.';
     },
     patterns: [{ pattern: 'selection rotate-cw', help: 'selection rotate-cw' }],
   },
@@ -41,7 +41,7 @@ export const clipboardCommands: CommandDefinition[] = [
     summary: 'Rotate selection counterclockwise',
     handler: ({ engine }) => {
       engine.rotateSelectionCCW();
-      return 'Rotated ↺';
+      return 'Rotated selection counter-clockwise.';
     },
     patterns: [{ pattern: 'selection rotate-ccw', help: 'selection rotate-ccw' }],
   },

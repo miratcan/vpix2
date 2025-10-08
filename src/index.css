@@ -1,5 +1,5 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
@@ -7,14 +7,14 @@
 
   /* Renkler */
   --color-background: #0b0b0b;
-  --color-accent: #00e1ff;
-  --color-text: rgba(255, 255, 255, 0.87);
-  --color-text-muted: rgba(255, 255, 255, 0.4);
+  --color-accent: #0081dd;
+  --color-text: rgba(215, 215, 215);
+  --color-text-muted: rgba(155, 155, 155);
   --color-border: rgba(255, 255, 255, 0.1);
 
   /* Border widths */
-  --border-width: 1px;
-  --border-width-strong: 2px;
+  --border-width: 2px;
+  --border-width-strong: 4px;
 
   /* Font Boyutları */
   --font-size-s: 12px;
@@ -27,9 +27,6 @@
   --spacing-m: 12px;
   --spacing-l: 16px;
   --spacing-xl: 24px;
-
-  /* Command Feed */
-  --command-feed-height: 100px;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

@@ -6,7 +6,7 @@ export const canvasCommands: CommandDefinition[] = [
     summary: 'Clear canvas (erase all cells)',
     handler: ({ engine }) => {
       engine.clearCanvas();
-      return 'Canvas cleared';
+      return 'Canvas cleared.';
     },
     patterns: [{ pattern: 'clear', help: 'clear' }],
   },
@@ -16,7 +16,7 @@ export const canvasCommands: CommandDefinition[] = [
     handler: ({ engine }, { value }) => {
       const w = Number(value);
       engine.setWidth(w);
-      return { msg: `W=${w}`, meta: { closeTerminal: true } };
+      return { msg: `Canvas width set to ${w} pixels.`, meta: { closeTerminal: true } };
     },
     patterns: [{ pattern: 'set W {value:int[1..256]}', help: 'set W <int(1..256)>' }],
   },
@@ -26,7 +26,7 @@ export const canvasCommands: CommandDefinition[] = [
     handler: ({ engine }, { value }) => {
       const h = Number(value);
       engine.setHeight(h);
-      return { msg: `H=${h}`, meta: { closeTerminal: true } };
+      return { msg: `Canvas height set to ${h} pixels.`, meta: { closeTerminal: true } };
     },
     patterns: [{ pattern: 'set H {value:int[1..256]}', help: 'set H <int(1..256)>' }],
   },
@@ -36,7 +36,7 @@ export const canvasCommands: CommandDefinition[] = [
     handler: ({ engine }, { size }) => {
       const dims = size as { w: number; h: number };
       engine.setSize(dims.w, dims.h);
-      return { msg: '', meta: { closeTerminal: true, silent: true } };
+      return { msg: `Canvas size set to ${dims.w}x${dims.h}.`, meta: { closeTerminal: true } };
     },
     patterns: [{ pattern: 'set size {size:size}', help: 'set size <WxH>' }],
   },

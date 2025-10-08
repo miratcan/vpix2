@@ -8,15 +8,15 @@ const runMotion = (engine: VPixEngine, motion: MotionKind, count: unknown): stri
   engine.applyMotion(motion, ensureCount(count));
   engine.clearPrefix();
   const motionLabels: Record<MotionKind, string> = {
-    'word-next': 'w→',
-    'word-prev': '←w',
-    'word-end-next': 'e→',
-    'word-end-prev': '←e',
-    'line-begin': '⇤',
-    'line-first-nonblank': '^',
-    'line-end': '⇥',
-    'canvas-begin': '⇱',
-    'canvas-end': '⇲',
+    'word-next': 'Moved to start of next word.',
+    'word-prev': 'Moved to start of previous word.',
+    'word-end-next': 'Moved to end of word.',
+    'word-end-prev': 'Moved to end of previous word.',
+    'line-begin': 'Moved to start of line.',
+    'line-first-nonblank': 'Moved to first non-blank pixel on line.',
+    'line-end': 'Moved to end of line.',
+    'canvas-begin': 'Moved to start of canvas.',
+    'canvas-end': 'Moved to end of canvas.',
   };
   return motionLabels[motion] || motion;
 };
@@ -26,10 +26,9 @@ export const axisCommands: CommandDefinition[] = [
     id: 'axis.toggle',
     summary: 'Toggle movement axis (horizontal/vertical)',
     handler: ({ engine }) => {
-      const oldAxis = engine.axis;
       engine.toggleAxis();
       const newAxis = engine.axis;
-      return `Axis: ${newAxis === 'vertical' ? 'vertical' : 'horizontal'}`;
+      return `Movement axis changed to ${newAxis}.`;
     },
     patterns: [{ pattern: 'axis toggle', help: 'axis toggle' }],
   },
@@ -40,9 +39,9 @@ export const axisCommands: CommandDefinition[] = [
       const v = String(value);
       if (v === 'horizontal' || v === 'vertical') {
         engine.setAxis(v as any);
-        return `Axis: ${v}`;
+        return `Movement axis set to ${v}.`;
       }
-      return 'Invalid axis';
+      return 'Invalid axis.';
     },
     patterns: [{ pattern: 'axis set {value:oneof[horizontal|vertical]}', help: 'axis set <horizontal|vertical>' }],
   },
@@ -52,7 +51,7 @@ export const axisCommands: CommandDefinition[] = [
     handler: ({ engine }, { count }) => {
       const c = ensureCount(count);
       engine.move(-1, 0, c);
-      return `← ${c}`;
+      return `Cursor moved left by ${c} pixel(s).`;
     },
     patterns: [
       { pattern: 'move left', help: 'move left', mapArgs: () => ({ count: 1 }) },
@@ -65,7 +64,7 @@ export const axisCommands: CommandDefinition[] = [
     handler: ({ engine }, { count }) => {
       const c = ensureCount(count);
       engine.move(1, 0, c);
-      return `→ ${c}`;
+      return `Cursor moved right by ${c} pixel(s).`;
     },
     patterns: [
       { pattern: 'move right', help: 'move right', mapArgs: () => ({ count: 1 }) },
@@ -78,7 +77,7 @@ export const axisCommands: CommandDefinition[] = [
     handler: ({ engine }, { count }) => {
       const c = ensureCount(count);
       engine.move(0, -1, c);
-      return `↑ ${c}`;
+      return `Cursor moved up by ${c} pixel(s).`;
     },
     patterns: [
       { pattern: 'move up', help: 'move up', mapArgs: () => ({ count: 1 }) },
@@ -91,7 +90,7 @@ export const axisCommands: CommandDefinition[] = [
     handler: ({ engine }, { count }) => {
       const c = ensureCount(count);
       engine.move(0, 1, c);
-      return `↓ ${c}`;
+      return `Cursor moved down by ${c} pixel(s).`;
     },
     patterns: [
       { pattern: 'move down', help: 'move down', mapArgs: () => ({ count: 1 }) },

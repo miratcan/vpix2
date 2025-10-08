@@ -11,7 +11,7 @@ export const paintCommands: CommandDefinition[] = [
       engine.recordLastAction((eng) => {
         for (let i = 0; i < times; i += 1) eng.erase();
       });
-      return `Erased ${times}`;
+      return `Erased ${times} pixel(s).`;
     },
     patterns: [
       { pattern: 'erase', help: 'erase', mapArgs: () => ({ count: 1 }) },
@@ -27,7 +27,7 @@ export const paintCommands: CommandDefinition[] = [
       engine.recordLastAction((eng) => {
         for (let i = 0; i < times; i += 1) eng.cut();
       });
-      return `Cut ${times}`;
+      return `Cut ${times} pixel(s) to clipboard.`;
     },
     patterns: [
       { pattern: 'cut', help: 'cut', mapArgs: () => ({ count: 1 }) },
@@ -43,7 +43,7 @@ export const paintCommands: CommandDefinition[] = [
       engine.recordLastAction((eng) => {
         for (let i = 0; i < times; i += 1) eng.toggle();
       });
-      return `Painted ${times}`;
+      return `Toggled ${times} pixel(s).`;
     },
     patterns: [
       { pattern: 'toggle', help: 'toggle', mapArgs: () => ({ count: 1 }) },
@@ -59,7 +59,7 @@ export const paintCommands: CommandDefinition[] = [
       engine.recordLastAction((eng) => {
         eng.paint(colorIndex);
       });
-      return `Painted`;
+      return 'Painted pixel at cursor.';
     },
     patterns: [{ pattern: 'paint', help: 'paint' }],
   },

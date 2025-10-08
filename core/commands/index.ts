@@ -142,16 +142,25 @@ export function executeCommand(
   if (!cmd) return { ok: false, msg: 'Empty command' };
   ensureRegistry();
   const runtime = resolveServices(services);
-  const out = registry.execute(cmd, { engine, services: runtime }) as
-    | CommandExecutionResult
-    | Promise<CommandExecutionResult>;
+
+  const processAndEmit = (result: CommandExecutionResult) => {
+    const { matched, ok, msg, meta } = result;
+    const finalResult = matched ? { ok, msg, meta } : { ok: false, msg: `Unknown command: ${cmd}` };
+    try {
+      if (finalResult.msg || finalResult.meta?.lines) {
+        (engine as any).emit({ cmd: { display: finalResult.msg, lines: finalResult.meta?.lines, ok: finalResult.ok } });
+      }
+    } catch {}
+    return finalResult;
+  };
+
+  const out = registry.execute(cmd, { engine, services: runtime });
+
   if (out && typeof (out as any).then === 'function') {
-    return (out as Promise<CommandExecutionResult>).then(({ matched, ok, msg, meta }) =>
-      matched ? { ok, msg, meta } : { ok: false, msg: `Unknown command: ${cmd}` },
-    );
+    return (out as Promise<CommandExecutionResult>).then(processAndEmit);
   }
-  const { matched, ok, msg, meta } = out as CommandExecutionResult;
-  return matched ? { ok, msg, meta } : { ok: false, msg: `Unknown command: ${cmd}` };
+
+  return processAndEmit(out as CommandExecutionResult);
 }
 
 export function runCommand(
