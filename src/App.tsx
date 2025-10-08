@@ -115,28 +115,6 @@ export default function App() {
     [engine, getVisibleCellCounts],
   );
 
-  const getVisibleCellCounts = useCallback(() => {
-    const cellPx = BASE_CELL_SIZE * (zoom || 1);
-    const visWcells = Math.max(1, Math.floor(VIEW_WIDTH / cellPx));
-    const visHcells = Math.max(1, Math.floor(VIEW_HEIGHT / cellPx));
-    return { visWcells, visHcells };
-  }, [zoom]);
-
-  const scrollPanBy = useCallback(
-    (dx: number, dy: number) => {
-      const { visWcells, visHcells } = getVisibleCellCounts();
-      setPan((prev) => {
-        const maxX = Math.max(0, engine.width - visWcells);
-        const maxY = Math.max(0, engine.height - visHcells);
-        const nextX = Math.min(maxX, Math.max(0, prev.x + dx));
-        const nextY = Math.min(maxY, Math.max(0, prev.y + dy));
-        if (nextX === prev.x && nextY === prev.y) return prev;
-        return { x: nextX, y: nextY };
-      });
-    },
-    [engine, getVisibleCellCounts],
-  );
-
   // Show help modal on first visit
   useEffect(() => {
     if (IS_TEST_ENV) return;

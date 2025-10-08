@@ -14,6 +14,26 @@ type Props = {
   onViewSizeChange?: (size: { width: number; height: number }) => void;
 };
 
+const parseColor = (str: string) => {
+  const rgbMatch = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(str);
+  if (rgbMatch) {
+    return { r: parseInt(rgbMatch[1], 10), g: parseInt(rgbMatch[2], 10), b: parseInt(rgbMatch[3], 10) };
+  }
+  const hexMatch = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(str);
+  if (hexMatch) {
+    return { r: parseInt(hexMatch[1], 16), g: parseInt(hexMatch[2], 16), b: parseInt(hexMatch[3], 16) };
+  }
+  const shortHexMatch = /^#?([a-f\d])([a-f\d])([a-f\d])$/i.exec(str);
+  if (shortHexMatch) {
+    return {
+      r: parseInt(shortHexMatch[1] + shortHexMatch[1], 16),
+      g: parseInt(shortHexMatch[2] + shortHexMatch[2], 16),
+      b: parseInt(shortHexMatch[3] + shortHexMatch[3], 16),
+    };
+  }
+  return null;
+};
+
 export default function CanvasGrid({
   engine,
   zoom = 1,
@@ -223,11 +243,34 @@ export default function CanvasGrid({
       }
 
       // Cursor (topmost)
-      const cx = offsetX + engine.cursor.x * cell;
-      const cy = offsetY + engine.cursor.y * cell;
-      if (cx + cell >= 0 && cy + cell >= 0 && cx <= viewW && cy <= viewH) {
-        ctx.strokeStyle = cursorHighlight;
-        ctx.lineWidth = 1;
+      const cursorX = engine.cursor.x;
+      const cursorY = engine.cursor.y;
+      const cx = offsetX + cursorX * cell;
+      const cy = offsetY + cursorY * cell;
+      const shouldDrawCursor = (now % 1000) < 500;
+
+      if (shouldDrawCursor && cx + cell >= 0 && cy + cell >= 0 && cx <= viewW && cy <= viewH) {
+        const colorIndex = engine.grid[cursorY]?.[cursorX];
+        let baseColorStr = canvasBackground;
+        if (colorIndex != null) {
+          const color = engine.palette[colorIndex];
+          if (color) {
+            baseColorStr = color;
+          }
+        }
+
+        let invertedColor = cursorHighlight;
+        const baseColor = parseColor(baseColorStr);
+
+        if (baseColor) {
+          const r = 255 - baseColor.r;
+          const g = 255 - baseColor.g;
+          const b = 255 - baseColor.b;
+          invertedColor = `rgb(${r},${g},${b})`;
+        }
+
+        ctx.strokeStyle = invertedColor;
+        ctx.lineWidth = 4;
         ctx.strokeRect(Math.floor(cx) + 0.5, Math.floor(cy) + 0.5, Math.max(1, cell - 1), Math.max(1, cell - 1));
       }
 
