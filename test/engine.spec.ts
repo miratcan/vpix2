@@ -93,13 +93,13 @@ describe('VPixEngine', () => {
     assert.equal(eng.currentColorIndex, start);
   });
 
-  it('Ctrl-^ toggles last color (Ctrl+6)', () => {
+  it('Ctrl-^ toggles last color', () => {
     const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
     eng.setColorIndex(4);
     eng.setColorIndex(1);
-    eng.handleKey({ key: '6', ctrlKey: true });
+    eng.handleKey({ key: '^', ctrlKey: true, shiftKey: true });
     assert.equal(eng.currentColorIndex, 4);
-    eng.handleKey({ key: '6', ctrlKey: true });
+    eng.handleKey({ key: '^', ctrlKey: true, shiftKey: true });
     assert.equal(eng.currentColorIndex, 1);
   });
 

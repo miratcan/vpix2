@@ -10,13 +10,4 @@ export const shareCommands: CommandDefinition[] = [
     },
     patterns: [{ pattern: 'link', help: 'link' }],
   },
-  {
-    id: 'share.copylink',
-    summary: 'Copy shareable link to clipboard',
-    handler: async ({ engine, services }) => {
-      const res = await services.shareLinks.copyLink(engine);
-      return res.msg;
-    },
-    patterns: [{ pattern: 'copylink', help: 'copylink' }],
-  },
 ];
