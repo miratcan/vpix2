@@ -7,10 +7,8 @@
 
 | Shortcut | When | Command | Description |
 | --- | --- | --- | --- |
-| `ctrl+z` | Always | `history.undo` | Undo last action |
-| `ctrl+y` | Always | `history.redo` | Redo last action |
+| `__general__` | Always | `noop` | General tips |
 | `ctrl+r` | Always | `history.redo` | Redo last action |
-| `ctrl+6` | Always | `palette.swap-last-color` | Swap to last used color |
 | `ctrl+^` | Always | `palette.swap-last-color` | Swap to last used color |
 | `Tab` | Always | `axis.toggle` | Toggle axis (horizontal/vertical) |
 
@@ -28,14 +26,15 @@
 | `0` | No prefix | `motion.line-begin` | Go to axis line begin |
 | `^` | No prefix | `motion.line-first-nonblank` | Go to first non-empty cell on axis line |
 | `$` | No prefix | `motion.line-end` | Go to axis line end |
-| `G` | No prefix | `motion.canvas-end` | Go to canvas end |
+| `shift+g` | No prefix | `motion.canvas-end` | Go to canvas end |
 | `x` | No prefix | `paint.cut` | Cut cell(s) (delete and yank) |
 | `d` | No prefix | `operator.set` | Begin delete operator |
 | `y` | No prefix | `operator.set` | Begin yank operator |
 | ` ` | No prefix | `paint.toggle` | Toggle cell(s) |
+| `f` | No prefix | `selection.flood-fill` | Flood fill from cursor |
 | `p` | No prefix | `clipboard.paste` | Paste at cursor |
-| `D` | No prefix | `operator.delete.to-end` | Delete to line end |
-| `C` | No prefix | `operator.change.to-end` | Change to line end |
+| `shift+d` | No prefix | `operator.delete.to-end` | Delete to line end |
+| `shift+c` | No prefix | `operator.change.to-end` | Change to line end |
 | `P` | No prefix | `clipboard.paste-transparent` | Paste at cursor (transparent) |
 | `u` | No prefix | `history.undo` | Undo last action |
 | `.` | No prefix | `edit.repeat-last` | Repeat last change |
@@ -48,7 +47,7 @@
 | `e` | After `g` prefix | `motion.word-end-prev` | Move to previous run end |
 | `Escape` | Prefix active | `prefix.clear` | Cancel pending prefix |
 | `t` | After `g` prefix | `palette.cycle-next` | Cycle to next palette color |
-| `T` | After `g` prefix | `palette.cycle-previous` | Cycle to previous palette color |
+| `shift+t` | After `g` prefix | `palette.cycle-previous` | Cycle to previous palette color |
 | `1..9` | After `r` prefix | `palette.paint-color` | Paint using palette color by index |
 
 ## Visual mode
@@ -62,15 +61,14 @@
 | `l` | Always | `selection.move-right` | Expand selection to the right |
 | `y` | Always | `selection.yank` | Yank selection |
 | `d` | Always | `selection.delete` | Delete selection (cut) |
-| `x` | Always | `selection.delete` | Delete selection (cut) |
 | `p` | Always | `selection.paste` | Paste at cursor |
-| `P` | Always | `selection.paste-transparent` | Paste (transparent) |
+| `shift+p` | Always | `selection.paste-transparent` | Paste (transparent) |
 | `]` | Always | `selection.rotate-cw` | Rotate clipboard clockwise |
 | `[` | Always | `selection.rotate-ccw` | Rotate clipboard counterclockwise |
-| `M` | Always | `selection.move-to-cursor` | Move selection to cursor |
-| `F` | Always | `selection.fill` | Fill selection |
-| `R` | Always | `selection.stroke-rect` | Stroke selection rectangle |
-| `C` | Always | `selection.stroke-circle` | Stroke selection circle |
-| `O` | Always | `selection.fill-circle` | Fill selection circle |
-| `L` | Always | `selection.draw-line` | Draw line across selection |
+| `shift+m` | Always | `selection.move-to-cursor` | Move selection to cursor |
+| `shift+f` | Always | `selection.fill` | Fill selection |
+| `shift+r` | Always | `selection.stroke-rect` | Stroke selection rectangle |
+| `shift+c` | Always | `selection.stroke-circle` | Stroke selection circle |
+| `shift+o` | Always | `selection.fill-circle` | Fill selection circle |
+| `shift+l` | Always | `selection.draw-line` | Draw line across selection |
 | `f` | Always | `selection.flood-fill` | Flood fill selection |

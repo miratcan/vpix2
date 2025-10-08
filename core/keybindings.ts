@@ -40,16 +40,15 @@ export const KEYBINDINGS: KeyBinding[] = [
   },
 
   // Global bindings
-  { scope: 'global', key: 'ctrl+z', command: 'history.undo', description: 'Undo last action' },
+  // Aliases removed for Zen: [ctrl+y]
   {
     scope: 'global',
-    key: 'ctrl+y',
+    key: 'ctrl+r',
     command: 'history.redo',
     description: 'Redo last action',
     tips: ['Press Ctrl+r to redo'],
   },
-  { scope: 'global', key: 'ctrl+r', command: 'history.redo', description: 'Redo last action' },
-  { scope: 'global', key: 'ctrl+6', command: 'palette.swap-last-color', description: 'Swap to last used color' },
+  // Aliases removed for Zen: [ctrl+6]
   { scope: 'global', key: 'ctrl+^', command: 'palette.swap-last-color', description: 'Swap to last used color' },
   {
     scope: 'global',
@@ -225,6 +224,7 @@ export const KEYBINDINGS: KeyBinding[] = [
     description: 'Paste at cursor (transparent)',
     tips: ['Press P to paste transparent (skip empty)'],
   },
+  // Aliases removed for Zen: [ctrl+z]
   {
     scope: 'normal',
     key: 'u',
@@ -372,8 +372,8 @@ export const KEYBINDINGS: KeyBinding[] = [
     description: 'Expand selection to the right',
   },
   { scope: 'visual', key: 'y', command: 'selection.yank', description: 'Yank selection' },
+  // Aliases removed for Zen: [x]
   { scope: 'visual', key: 'd', command: 'selection.delete', description: 'Delete selection (cut)' },
-  { scope: 'visual', key: 'x', command: 'selection.delete', description: 'Delete selection (cut)' },
   { scope: 'visual', key: 'p', command: 'selection.paste', description: 'Paste at cursor' },
   { scope: 'visual', key: 'shift+p', command: 'selection.paste-transparent', description: 'Paste (transparent)' },
   {

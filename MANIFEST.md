@@ -69,6 +69,12 @@ Bu manifesto, VPix (Vim‑benzeri piksel editörü) için karar alma pusulasıd�
 - Link (vp2r), sürüm meta’sı ve palette slug ile eserin temsilini sabitler.
 - İleride: checksum/manifest ekleri; farklı ortamda uyarı, mümkünse uyumlu açılım.
 
+## 17. Tek Yol İlkesi (The One Way Rule)
+- Python’un “There should be one—and preferably only one—obvious way to do it” prensibinden ilham alır; her eylemin açık, tek ve sezgisel bir yolu olmalıdır.
+- Her işlev yalnızca bir tuş veya komutla çağrılabilir; kullanıcı aynı sonucu almak için yollar arasında seçim yapmak zorunda kalmamalıdır.
+- Aynı işi yapan alternatif kısayollar ya da alias’lar yalnızca geçici uyumluluk amacıyla tutulur; aksi durumda sistemin içsel tutarlılığını zayıflatır.
+- Bu ilke, öğrenme eğrisini kısaltır, kas hafızasını güçlendirir, belirsizlikleri ortadan kaldırır ve kullanıcıyı araçla değil yaratım süreciyle baş başa bırakır.
+
 ---
 
 # İkilem Anında Yol Haritası
