@@ -13,6 +13,7 @@ import {
 import { axisCommands } from './axis';
 import { gridCommands } from './grid';
 import { clipboardCommands } from './clipboard';
+import { cursorCommands } from './cursor';
 import { documentCommands } from './document';
 import { historyCommands } from './history';
 import { modeCommands } from './mode';
@@ -25,6 +26,7 @@ const FEATURE_COMMANDS: CommandDefinition[] = [
   ...axisCommands,
   ...gridCommands,
   ...clipboardCommands,
+  ...cursorCommands,
   ...documentCommands,
   ...historyCommands,
   ...modeCommands,

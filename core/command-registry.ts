@@ -117,6 +117,7 @@ export function createRegistry() {
       let usageOnPrefix: string | null = null;
       for (const c of cmds) {
         const res = matchPattern(tokens, c.pattern);
+        console.log('[debug] execute - matchPattern result:', res);
         if (res.matched && res.ok) {
           try {
             const ret = c.handler(ctx, res.args!);
@@ -188,12 +189,14 @@ function matchPrefix(tokens: string[], pattern: PatternEl[]): boolean {
     const el = pattern[i]; const t = tokens[i];
     if (!el) return false;
     if (el.kind === 'lit') { if (el.word !== t) return false; }
-    else { const p = el.type.parse(t); if (!p.ok) return false; }
+    else { const p = el.type.parse(t); if (!p.ok) { console.log('[debug] matchPrefix - param parse failed', t, el.type.name); return false; } }
   }
+  console.log('[debug] matchPrefix - returning true');
   return true;
 }
 
 function matchPattern(tokens: string[], pattern: PatternEl[]): { matched: boolean; ok: boolean; args?: Record<string, unknown> } {
+  console.log('[debug] matchPattern - tokens:', tokens, 'pattern:', pattern);
   if (!matchPrefix(tokens.slice(0, Math.min(tokens.length, pattern.length)), pattern)) return { matched: false, ok: false };
   const last = pattern[pattern.length - 1];
   const lastGreedy = !!(last && (last as any).kind === 'param' && (last as any).type.greedy);
@@ -205,6 +208,7 @@ function matchPattern(tokens: string[], pattern: PatternEl[]): { matched: boolea
   const args: Record<string, unknown> = {};
   for (let i = 0; i < pattern.length; i++) {
     const el: any = pattern[i];
+    console.log('[debug] matchPattern - loop i:', i, 'el:', el, 'token:', tokens[i]);
     if (el.kind === 'lit') continue;
     if (i === pattern.length - 1 && el.type.greedy) {
       const rest = tokens.slice(i).join(' ');
@@ -217,8 +221,10 @@ function matchPattern(tokens: string[], pattern: PatternEl[]): { matched: boolea
       const p = el.type.parse(t);
       if (!p.ok) return { matched: true, ok: false };
       args[el.name] = (p as any).value;
+      console.log('[debug] matchPattern - assigned arg:', el.name, (p as any).value, 'current args:', args);
     }
   }
+  console.log('[debug] matchPattern - returning args:', args);
   return { matched: true, ok: true, args };
 }
 

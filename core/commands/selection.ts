@@ -33,6 +33,7 @@ export const selectionCommands: CommandDefinition[] = [
     patterns: [{ pattern: 'fill', help: 'fill selection' }],
     handler: ({ engine }) => {
       engine.fillSelection();
+      engine.exitVisual();
       return { ok: true, msg: 'filled' };
     },
   },

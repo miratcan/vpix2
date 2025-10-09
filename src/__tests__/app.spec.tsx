@@ -20,6 +20,9 @@ vi.mock('../../core/engine', async (importOriginal) => {
 });
 
 import App from '../App';
+import { COMMAND_DEFINITIONS } from '../../core/commands';
+
+console.log('[debug] COMMAND_DEFINITIONS:', COMMAND_DEFINITIONS);
 
 import type VPixEngine from '../../core/engine';
 

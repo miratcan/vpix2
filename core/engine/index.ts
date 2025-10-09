@@ -207,6 +207,7 @@ export default class VPixEngine {
   pushCountDigit(d: string) {
     const changed = this.countBuffer.pushDigit(d);
     if (changed) this.emit();
+    return changed;
   }
 
   setColorIndex(idx: number) {

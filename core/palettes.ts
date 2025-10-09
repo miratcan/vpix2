@@ -58,6 +58,10 @@ export function getPaletteByName(name: string): { slug: string; colors: string[]
   return null;
 }
 
+export function getPaletteNames(): string[] {
+  return Array.from(REGISTRY.keys());
+}
+
 export function registerPalette(slug: string, colors: string[]) {
   const s = normalizeSlug(slug);
   const list = (colors || []).map((c) => (c.startsWith('#') ? c.toUpperCase() : `#${c.toUpperCase()}`));

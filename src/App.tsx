@@ -30,7 +30,7 @@ export default function App() {
     return new VPixEngine({ width: 32, height: 24, palette: colors });
   }, [paletteService]);
 
-  const { engine, frame, feedLines } = useEngine({ factory: engineFactory });
+  const { engine, frame, feedLines, handleKey } = useEngine({ factory: engineFactory });
 
   const documents = useMemo(() => new DocumentRepository(STORAGE_KEY), []);
   const shareLinks = useMemo(() => new ShareLinkService(), []);
@@ -223,8 +223,14 @@ export default function App() {
       e.preventDefault();
       return;
     }
-    engine.handleKey({ key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
-    if (['h', 'j', 'k', 'l', ' ', 'Backspace', 'Tab'].includes(e.key)) e.preventDefault();
+    handleKey({
+      key: e.key,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      shiftKey: e.shiftKey,
+      altKey: e.altKey,
+      preventDefault: () => e.preventDefault()
+    });
   }, [cmdMode, documents, engine, minZoom, openCommand, showHelp, getVisibleCellCounts, scrollPanBy]);
 
   useEffect(() => {
