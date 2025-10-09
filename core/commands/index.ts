@@ -11,7 +11,7 @@ import {
   resolveServices,
 } from './common';
 import { axisCommands } from './axis';
-import { canvasCommands } from './canvas';
+import { gridCommands } from './grid';
 import { clipboardCommands } from './clipboard';
 import { documentCommands } from './document';
 import { historyCommands } from './history';
@@ -23,7 +23,7 @@ import { shareCommands } from './share';
 
 const FEATURE_COMMANDS: CommandDefinition[] = [
   ...axisCommands,
-  ...canvasCommands,
+  ...gridCommands,
   ...clipboardCommands,
   ...documentCommands,
   ...historyCommands,

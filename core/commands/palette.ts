@@ -59,4 +59,21 @@ export const paletteCommands: CommandDefinition[] = [
       return { ok: true, msg: `color set to ${prev}` };
     },
   },
+  {
+    id: 'palette.select-index',
+    summary: 'Select palette color by index',
+    description: 'Selects a palette color by index using the grid command.',
+    patterns: [{ pattern: 'gc {index:number}', help: 'gc <index>' }],
+    handler: ({ engine }, { index }) => {
+      const idx = Number(index) - 1;
+      if (!Number.isFinite(idx)) {
+        return { ok: false, msg: 'invalid color index' };
+      }
+      if (idx < 0 || idx >= engine.palette.length) {
+        return { ok: false, msg: `color index out of range: ${Number(index)}` };
+      }
+      engine.setColorIndex(idx);
+      return { ok: true, msg: `color set to ${idx}` };
+    },
+  },
 ];

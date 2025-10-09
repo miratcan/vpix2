@@ -4,7 +4,7 @@ export const historyCommands: CommandDefinition[] = [
   {
     id: 'history.undo',
     summary: 'Undo last action',
-    description: 'Reverts the last change made to the canvas.',
+    description: 'Reverts the last change made to the grid.',
     keybindings: [{ key: 'u', when: 'normal' }],
     patterns: [
       { pattern: 'undo', help: 'undo last action' },

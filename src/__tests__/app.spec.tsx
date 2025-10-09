@@ -37,13 +37,11 @@ describe('App keyboard flows', () => {
     Object.assign(navigator, { clipboard: { writeText: () => Promise.resolve() } });
   });
 
-  it('[count] gc selects color (11gc selects 11th swatch in pico-8)', async () => {
+  it('gc<index> selects color (gc11 selects 11th color in pico-8)', async () => {
     const ui = render(<App />);
     focusContainer(ui);
-    await userEvent.keyboard('1');
-    await userEvent.keyboard('1');
-    await userEvent.keyboard('g');
-    await userEvent.keyboard('c');
+    await userEvent.keyboard(':');
+    await userEvent.keyboard('gc 11{Enter}');
     const engine = getEngine();
     expect(engine).toBeTruthy();
     expect(engine.currentColorIndex).toBe(10);

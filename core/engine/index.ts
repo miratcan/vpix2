@@ -25,8 +25,8 @@ type MotionKind =
   | 'line-begin'
   | 'line-first-nonblank'
   | 'line-end'
-  | 'canvas-begin'
-  | 'canvas-end';
+  | 'grid-begin'
+  | 'grid-end';
 
 type AxisSegment = { axis: Axis; fixed: number; start: number; end: number };
 type MotionResolution = { target: Point; axis: Axis; exclusive: boolean; moved: boolean };
@@ -252,7 +252,7 @@ export default class VPixEngine {
     this.setSize(this.width, height);
   }
 
-  clearCanvas() {
+  clearGrid() {
     const snapshot = this.gridState.cloneGrid();
     const cells: Array<{ type: 'cell'; x: number; y: number; prev: number | null; next: null }> = [];
 
@@ -752,7 +752,7 @@ export default class VPixEngine {
         moved = pos !== this.getAxisPosition(from, axis);
         break;
       }
-      case 'canvas-begin': {
+      case 'grid-begin': {
         if (axis === 'horizontal') {
           pos = 0;
           moved = pos !== this.getAxisPosition(from, axis);
@@ -762,7 +762,7 @@ export default class VPixEngine {
         }
         break;
       }
-      case 'canvas-end': {
+      case 'grid-end': {
         if (axis === 'horizontal') {
           pos = axisLength - 1;
           moved = pos !== this.getAxisPosition(from, axis);
