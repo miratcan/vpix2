@@ -39,7 +39,9 @@ function CommandLine({ text, onDone, className }: { text: string; onDone: () => 
 }
 
 // Parent component that manages the list of lines
-export default function CommandFeed({ items }: { items: Array<{ id: number; text: string; type: string }> }) {
+type CommandFeedItem = { id: number; text: string; type: string };
+
+export default function CommandFeed({ items = [] }: { items?: CommandFeedItem[] }) {
   // Note: The parent (`App.tsx`) is now responsible for managing the items list.
   // This component just renders them and handles the fade-out animation.
   const [visibleItems, setVisibleItems] = useState(items);

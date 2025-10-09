@@ -22,24 +22,24 @@ describe('Command execution', () => {
     assert.ok(res.meta?.lines?.some(line => /pico-8/.test(line)));
   });
 
-  it('canvas.set-width and canvas.set-height resize canvas', () => {
+  it('grid.set-width and grid.set-height resize grid', () => {
     const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
     eng.paint(1);
-    let res = runCommand(eng, 'canvas.set-width', { value: 1 }) as CommandResult;
+    let res = runCommand(eng, 'grid.set-width', { value: 1 }) as CommandResult;
     assert.strictEqual(res.ok, true);
     assert.strictEqual(eng.width, 1);
     assert.strictEqual(eng.grid[0][0], 1);
-    res = runCommand(eng, 'canvas.set-height', { value: 3 }) as CommandResult;
+    res = runCommand(eng, 'grid.set-height', { value: 3 }) as CommandResult;
     assert.strictEqual(res.ok, true);
     assert.strictEqual(eng.height, 3);
     assert.strictEqual(eng.grid[0][0], 1);
     assert.strictEqual(eng.grid[2][0], null);
   });
 
-  it('canvas.set-size resizes both dimensions', () => {
+  it('grid.set-size resizes both dimensions', () => {
     const eng = new VPixEngine({ width: 3, height: 2, palette: pico.colors });
     eng.paint(1);
-    const res = runCommand(eng, 'canvas.set-size', { width: 2, height: 1 }) as CommandResult;
+    const res = runCommand(eng, 'grid.set-size', { width: 2, height: 1 }) as CommandResult;
     assert.strictEqual(res.ok, true);
     assert.strictEqual(eng.width, 2);
     assert.strictEqual(eng.height, 1);
