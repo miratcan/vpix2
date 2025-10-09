@@ -208,9 +208,9 @@ export const cursorCommands: CommandDefinition[] = [
     },
   },
   {
-    id: 'motion.canvas-begin',
-    summary: 'Move to canvas beginning',
-    description: 'Moves the cursor to the beginning of the canvas.',
+    id: 'motion.grid-begin',
+    summary: 'Move to grid beginning',
+    description: 'Moves the cursor to the beginning of the grid.',
     keybindings: [{ key: 'gg', when: 'normal' }],
     patterns: [
       { pattern: '{count:number} gg', help: '[count] gg' },
@@ -219,7 +219,7 @@ export const cursorCommands: CommandDefinition[] = [
     handler: ({ engine }, { count }) => {
       const c = ensureCount(count);
       if (engine.pendingOperator) {
-        const motion = engine.resolveMotion('canvas-begin', c);
+        const motion = engine.resolveMotion('grid-begin', c);
         const segment = engine.computeOperatorSegment(engine.cursor, motion);
         if (segment) {
           const op = engine.pendingOperator.op;
@@ -233,15 +233,15 @@ export const cursorCommands: CommandDefinition[] = [
         engine.clearPendingOperator();
         engine.cursor = motion.target;
       } else {
-        engine.applyMotion('canvas-begin', c);
+        engine.applyMotion('grid-begin', c);
       }
       return { ok: true, silent: true };
     },
   },
   {
-    id: 'motion.canvas-end',
-    summary: 'Move to canvas end',
-    description: 'Moves the cursor to the end of the canvas.',
+    id: 'motion.grid-end',
+    summary: 'Move to grid end',
+    description: 'Moves the cursor to the end of the grid.',
     keybindings: [{ key: 'G', when: 'normal' }],
     patterns: [
       { pattern: '{count:number} G', help: '[count] G' },
@@ -250,7 +250,7 @@ export const cursorCommands: CommandDefinition[] = [
     handler: ({ engine }, { count }) => {
       const c = ensureCount(count);
       if (engine.pendingOperator) {
-        const motion = engine.resolveMotion('canvas-end', c);
+        const motion = engine.resolveMotion('grid-end', c);
         const segment = engine.computeOperatorSegment(engine.cursor, motion);
         if (segment) {
           const op = engine.pendingOperator.op;
@@ -264,7 +264,7 @@ export const cursorCommands: CommandDefinition[] = [
         engine.clearPendingOperator();
         engine.cursor = motion.target;
       } else {
-        engine.applyMotion('canvas-end', c);
+        engine.applyMotion('grid-end', c);
       }
       return { ok: true, silent: true };
     },

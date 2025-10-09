@@ -16,20 +16,20 @@ export function useEngine({ factory }: { factory: () => VPixEngine }) {
 
       const handleKey = useCallback((e: { key: string; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; metaKey: boolean; preventDefault: () => void; }) => {
         const key = e.key;
-  
+
         if (chordTimeout.current) {
           clearTimeout(chordTimeout.current);
           chordTimeout.current = null;
         }
-  
+
         // Handle count input
         if (engine.pushCountDigit(key)) {
           if (e?.preventDefault) e.preventDefault();
           return;
         }
-  
+
         let commandMatch: string | undefined;
-  
+
         if (chordBuffer.current) {
           const nextLevel = chordBuffer.current[key];
           if (typeof nextLevel === 'string') {
@@ -37,9 +37,23 @@ export function useEngine({ factory }: { factory: () => VPixEngine }) {
             chordBuffer.current = null;
           } else if (typeof nextLevel === 'object') {
             chordBuffer.current = nextLevel;
-            chordTimeout.current = setTimeout(() => {
-              chordBuffer.current = null;
-            }, 1000);
+            // If this object has a __cmd, set timeout to execute it
+            if (nextLevel.__cmd) {
+              chordTimeout.current = setTimeout(() => {
+                const cmd = chordBuffer.current?.__cmd;
+                chordBuffer.current = null;
+                if (cmd) {
+                  const count = engine.countValue();
+                  engine.clearCount();
+                  const fullCommand = count > 1 ? `${count} ${cmd}` : cmd;
+                  executeCommand(engine, fullCommand);
+                }
+              }, 1000);
+            } else {
+              chordTimeout.current = setTimeout(() => {
+                chordBuffer.current = null;
+              }, 1000);
+            }
           } else {
             chordBuffer.current = null;
           }
@@ -47,19 +61,33 @@ export function useEngine({ factory }: { factory: () => VPixEngine }) {
           const currentMode = engine.getMode();
           const modeMap = keymapTree[currentMode] || {};
           const globalMap = keymapTree['global'] || {};
-  
+
           const potentialMatch = modeMap[key] || globalMap[key];
-  
+
           if (typeof potentialMatch === 'string') {
             commandMatch = potentialMatch;
           } else if (typeof potentialMatch === 'object') {
             chordBuffer.current = potentialMatch;
-            chordTimeout.current = setTimeout(() => {
-              chordBuffer.current = null;
-            }, 1000);
+            // If this object has a __cmd, set timeout to execute it
+            if (potentialMatch.__cmd) {
+              chordTimeout.current = setTimeout(() => {
+                const cmd = chordBuffer.current?.__cmd;
+                chordBuffer.current = null;
+                if (cmd) {
+                  const count = engine.countValue();
+                  engine.clearCount();
+                  const fullCommand = count > 1 ? `${count} ${cmd}` : cmd;
+                  executeCommand(engine, fullCommand);
+                }
+              }, 1000);
+            } else {
+              chordTimeout.current = setTimeout(() => {
+                chordBuffer.current = null;
+              }, 1000);
+            }
           }
         }
-  
+
         if (commandMatch) {
                   if (e?.preventDefault) e.preventDefault();
                   const count = engine.countValue();

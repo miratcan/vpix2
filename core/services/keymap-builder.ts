@@ -42,21 +42,29 @@ export function buildKeymapTree(commands: readonly CommandDefinition[]) {
 
         if (i === keys.length - 1) {
           // Last key in the sequence
+          const commandPattern = extractLiterals(command.patterns[0].pattern);
+
           if (currentLevel[key] && typeof currentLevel[key] === 'object') {
-            throw new Error(`Keybinding conflict: Key '${binding.key}' for command '${command.id}' conflicts with a chord leader.`);
-          }
-          if (currentLevel[key]) {
+            // This key is already a chord leader; store the command in __cmd property
+            if (currentLevel[key].__cmd) {
+              throw new Error(`Keybinding conflict: Key '${binding.key}' in mode '${mode}' is already mapped. Cannot map to '${command.id}'.`);
+            }
+            currentLevel[key].__cmd = commandPattern;
+          } else if (currentLevel[key]) {
+            // Already mapped to another command
             throw new Error(`Keybinding conflict: Key '${binding.key}' in mode '${mode}' is already mapped. Cannot map to '${command.id}'.`);
+          } else {
+            // New command binding
+            currentLevel[key] = commandPattern;
           }
-          // Store only the literal words from the pattern, not the parameter placeholders
-          currentLevel[key] = extractLiterals(command.patterns[0].pattern);
         } else {
           // Chord leader
           if (!currentLevel[key]) {
             currentLevel[key] = {};
-          }
-          if (typeof currentLevel[key] !== 'object') {
-            throw new Error(`Keybinding conflict: Key '${key}' is a chord leader but is already mapped to a command.`);
+          } else if (typeof currentLevel[key] === 'string') {
+            // This key is already a command; convert it to an object with __cmd
+            const existingCommand = currentLevel[key];
+            currentLevel[key] = { __cmd: existingCommand };
           }
           currentLevel = currentLevel[key];
         }
