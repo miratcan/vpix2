@@ -504,7 +504,6 @@ export default class VPixEngine {
   pasteAtCursor() {
     const data = this.clipboard.snapshot;
     if (!data) return;
-    this.beginGroup('paste');
     for (let yy = 0; yy < data.h; yy++) {
       for (let xx = 0; xx < data.w; xx++) {
         const x = this.cursor.x + xx;
@@ -516,7 +515,6 @@ export default class VPixEngine {
         this.gridState.writeCell(x, y, next ?? null);
       }
     }
-    this.endGroup();
   }
 
   pasteAtCursorTransparent() {

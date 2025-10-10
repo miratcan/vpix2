@@ -36,6 +36,9 @@ export function useEngine({ factory }: EngineHookConfig) {
 
     builder.bind(' ', 'paint.toggle');
 
+    // Clipboard Commands (Phase 2)
+    builder.bind('p', 'clipboard.paste');
+
     return builder.build();
   }, []); // Empty dependency array, so it runs once.
 
