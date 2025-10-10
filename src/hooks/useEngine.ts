@@ -39,6 +39,9 @@ export function useEngine({ factory }: EngineHookConfig) {
     // Clipboard Commands (Phase 2)
     builder.bind('p', 'clipboard.paste');
 
+    // Mode Commands (Phase 2)
+    builder.bind('v', 'mode.visual');
+
     return builder.build();
   }, []); // Empty dependency array, so it runs once.
 
