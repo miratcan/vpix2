@@ -31,6 +31,9 @@ export function useEngine({ factory }: EngineHookConfig) {
     builder.bind('l', 'cursor.move-right');
     builder.bind('ArrowRight', 'cursor.move-right');
 
+    // Paint Commands (Phase 2)
+    builder.bind('x', 'paint.erase');
+
     return builder.build();
   }, []); // Empty dependency array, so it runs once.
 
