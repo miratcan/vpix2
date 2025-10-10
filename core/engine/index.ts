@@ -487,7 +487,6 @@ export default class VPixEngine {
   deleteSelection() {
     const rect = this.selection.rect;
     if (!rect) return;
-    this.beginGroup('deleteSelection');
     this.yankSelection();
     for (let y = rect.y1; y <= rect.y2; y++) {
       for (let x = rect.x1; x <= rect.x2; x++) {
@@ -498,7 +497,6 @@ export default class VPixEngine {
       }
     }
     this.cursorManager.setPosition(this.selection.rect.x1, this.selection.rect.y1);
-    this.endGroup();
   }
 
   pasteAtCursor() {

@@ -51,6 +51,9 @@ export function useEngine({ factory }: EngineHookConfig) {
     // Selection Commands (Phase 3)
     builder.bind(visualScope, 'y', 'selection.yank');
 
+    // Selection Commands (Phase 3)
+    builder.bind(visualScope, 'd', 'selection.delete');
+
     return builder.build();
   }, []); // Empty dependency array, so it runs once.
 
