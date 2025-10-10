@@ -45,6 +45,9 @@ export function useEngine({ factory }: EngineHookConfig) {
     // Palette Commands (Phase 2)
     builder.bind('Ctrl+^', 'palette.swap-last-color');
 
+    // Axis Commands (Phase 2)
+    builder.bind('Tab', 'axis.toggle');
+
     return builder.build();
   }, []); // Empty dependency array, so it runs once.
 
