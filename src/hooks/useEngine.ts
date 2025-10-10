@@ -34,6 +34,8 @@ export function useEngine({ factory }: EngineHookConfig) {
     // Paint Commands (Phase 2)
     builder.bind('x', 'paint.erase');
 
+    builder.bind(' ', 'paint.toggle');
+
     return builder.build();
   }, []); // Empty dependency array, so it runs once.
 
