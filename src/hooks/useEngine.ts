@@ -48,6 +48,9 @@ export function useEngine({ factory }: EngineHookConfig) {
     builder.bind(visualScope, 'l', 'selection.move-right');
     builder.bind(visualScope, 'Escape', 'selection.exit-visual');
 
+    // Selection Commands (Phase 3)
+    builder.bind(visualScope, 'y', 'selection.yank');
+
     return builder.build();
   }, []); // Empty dependency array, so it runs once.
 
