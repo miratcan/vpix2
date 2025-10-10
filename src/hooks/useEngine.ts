@@ -42,6 +42,9 @@ export function useEngine({ factory }: EngineHookConfig) {
     // Mode Commands (Phase 2)
     builder.bind('v', 'mode.visual');
 
+    // Palette Commands (Phase 2)
+    builder.bind('Ctrl+^', 'palette.swap-last-color');
+
     return builder.build();
   }, []); // Empty dependency array, so it runs once.
 
@@ -49,30 +52,28 @@ export function useEngine({ factory }: EngineHookConfig) {
     const originalHandleKey = engine.handleKey.bind(engine);
 
     engine.handleKey = (evt: { key: string; ctrlKey?: boolean; metaKey?: boolean; shiftKey?: boolean }) => {
-      // Do not handle keys if modifiers other than Shift are pressed (for now)
-      if (evt.ctrlKey || evt.altKey || evt.metaKey) {
-        return originalHandleKey(evt);
-      }
+    // Do not handle keys if modifiers other than Shift are pressed (for now)
+    // if (evt.ctrlKey || evt.altKey || evt.metaKey) {
+    //   return originalHandleKey(evt);
+    // }
 
-      // The `parseEvent` method is static and expects a browser KeyboardEvent.
-      // We need to construct a minimal one for it to work.
-      const mockEvent = new KeyboardEvent('keydown', evt);
-      const key = KeymapBuilder.parseEvent(mockEvent);
-      const commandId = keymap.get(key);
+    const mockEvent = new KeyboardEvent('keydown', evt);
+    const key = KeymapBuilder.parseEvent(mockEvent);
+    const commandId = keymap.get(key);
 
-      if (commandId) {
-        // If we found it in our new map, run it and stop.
-        return runCommand(engine, commandId);
-      } else {
-        // Otherwise, fall back to the old system.
-        return originalHandleKey(evt);
-      }
-    };
+    if (commandId) {
+      // If we found it in our new map, run it and stop.
+      return runCommand(engine, commandId);
+    } else {
+      // Otherwise, fall back to the old system.
+      return originalHandleKey(evt);
+    }
+  };
 
-    return () => {
-      engine.handleKey = originalHandleKey;
-    };
-  }, [engine, keymap]);
+  return () => {
+    engine.handleKey = originalHandleKey;
+  };
+}, [engine, keymap]);
 
   useEffect(() => {
     const unsub = engine.subscribe((_, payload) => {
