@@ -119,18 +119,33 @@ export function createRegistry() {
         const res = matchPattern(tokens, c.pattern);
         if (res.matched && res.ok) {
           try {
+            ctx.engine?.beginGroup(c.help || formatUsage(c.pattern));
+
             const ret = c.handler(ctx, res.args!);
+
+            // ASYNC case
             if (ret && typeof (ret as any).then === 'function') {
               return (ret as Promise<any>)
                 .then((out) => {
+                  ctx.engine?.endGroup();
                   const norm = normalizeHandlerResult(out);
-                  return { matched: true, ok: norm.ok, msg: norm.msg, meta: norm.meta } as CommandExecutionResult;
+                  return { matched: true, ok: norm.ok, msg: norm.msg, meta: norm.meta };
                 })
-                .catch(() => ({ matched: true, ok: false, msg: 'command failed' }));
+                .catch((err) => {
+                  // Async error: group is not ended, so it's discarded.
+                  console.error('Command failed (async):', err);
+                  return { matched: true, ok: false, msg: 'command failed' };
+                });
             }
+
+            // SYNC case
+            ctx.engine?.endGroup();
             const norm = normalizeHandlerResult(ret);
             return { matched: true, ok: norm.ok, msg: norm.msg, meta: norm.meta };
-          } catch {
+
+          } catch (err) {
+            // Sync error: group is not ended, so it's discarded.
+            console.error('Command failed (sync):', err);
             return { matched: true, ok: false, msg: 'command failed' };
           }
         } else if (res.matched) {

@@ -386,11 +386,11 @@ export default class VPixEngine {
   }
 
   beginGroup(label = '') {
-    this.history.beginGroup(label);
+    this.history.beginGroup(label, this.cursor);
   }
 
   endGroup() {
-    const grp = this.history.endGroup();
+    const grp = this.history.endGroup(this.cursor);
     if (!grp) return;
     this.emit();
   }

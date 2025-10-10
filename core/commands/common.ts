@@ -109,5 +109,9 @@ export function createCommandRegistry() {
   return createRegistry();
 }
 
+// For new keymap system
+export type Command = string; // The ID of a command, e.g., 'canvas.clear'
+export type Keymap = Map<string, Command>;
+
 export { CommandExecutionResult, CommandMeta, KEYBINDINGS, MODES };
 export type { MotionKind, OperatorKind };

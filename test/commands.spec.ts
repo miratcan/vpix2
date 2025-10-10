@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
-import { describe, it } from 'vitest';
+import { describe, it, vi } from 'vitest';
 
-import { executeCommand, type CommandResult } from '../core/commands';
+import { executeCommand, type CommandResult, COMMAND_DEFINITIONS } from '../core/commands';
 import VPixEngine from '../core/engine';
 import { getPaletteByName } from '../core/palettes';
 
@@ -75,5 +75,41 @@ describe('Command execution', () => {
     assert.equal(res.ok, true);
     assert.equal(res.msg, 'Canvas size set to 3x3.');
     assert.equal(res.meta?.closeTerminal, true);
+  });
+
+  describe('Command execution with history', () => {
+    const pico = getPaletteByName('pico-8')!;
+
+    it('should create a history group for a successful command', () => {
+      const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+      const beginGroupSpy = vi.spyOn(eng.history, 'beginGroup');
+      const endGroupSpy = vi.spyOn(eng.history, 'endGroup');
+
+      executeCommand(eng, 'clear');
+
+      assert.equal(beginGroupSpy.mock.calls.length, 1);
+      assert.equal(endGroupSpy.mock.calls.length, 1);
+    });
+
+    it('should not create a history group for a failed command', () => {
+      const clearCommandDef = COMMAND_DEFINITIONS.find(def => def.id === 'canvas.clear');
+      assert.ok(clearCommandDef, 'Could not find canvas.clear command definition');
+
+      const handlerSpy = vi.spyOn(clearCommandDef, 'handler').mockImplementation(() => {
+        throw new Error('Handler failed for test');
+      });
+
+      const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
+      const beginGroupSpy = vi.spyOn(eng.history, 'beginGroup');
+      const endGroupSpy = vi.spyOn(eng.history, 'endGroup');
+
+      const res = executeCommand(eng, 'clear') as CommandResult;
+
+      assert.equal(res.ok, false);
+      assert.equal(beginGroupSpy.mock.calls.length, 1);
+      assert.equal(endGroupSpy.mock.calls.length, 0);
+
+      handlerSpy.mockRestore();
+    });
   });
 });
