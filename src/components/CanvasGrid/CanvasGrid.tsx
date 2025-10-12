@@ -12,6 +12,7 @@ type Props = {
   trail?: Array<{ x: number; y: number; ts: number }>;
   cellSize: number;
   onViewSizeChange?: (size: { width: number; height: number }) => void;
+  onZoomChange?: (zoom: number) => void;
 };
 
 const parseColor = (str: string) => {
@@ -42,6 +43,7 @@ export default function CanvasGrid({
   trail = [],
   cellSize,
   onViewSizeChange,
+  onZoomChange,
 }: Props) {
   const baseRef = useRef<HTMLCanvasElement | null>(null);
   const overlayRef = useRef<HTMLCanvasElement | null>(null);
@@ -57,6 +59,55 @@ export default function CanvasGrid({
   const axisClass = axis === 'vertical' ? 'axis-vertical' : 'axis-horizontal';
   const gridClassName = `canvas-grid ${axisClass}`;
   const { canvasBackground, gridLine, accent, cursorHighlight } = GRID_THEME;
+
+  // Mouse click handler - move cursor to clicked position
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+
+    const rect = wrapper.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Convert viewport pixel coords to grid cell coords
+    const offsetX = -panX * cellSize;
+    const offsetY = -panY * cellSize;
+    const gridX = Math.floor((clickX - offsetX) / cellSize);
+    const gridY = Math.floor((clickY - offsetY) / cellSize);
+
+    // Bounds check
+    if (gridX < 0 || gridX >= engine.width || gridY < 0 || gridY >= engine.height) return;
+
+    // Move cursor to clicked position (no painting)
+    engine.cursor = { x: gridX, y: gridY };
+  };
+
+  // Mouse wheel handler - zoom in/out
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (!onZoomChange) return;
+
+    e.preventDefault();
+
+    // Determine zoom direction from wheel delta
+    const delta = e.deltaY;
+    const zoomFactor = 1.25;
+    const minZoom = 0.01;
+    const maxZoom = 8;
+
+    // Calculate new zoom level
+    const currentZoom = zoom;
+    let newZoom: number;
+
+    if (delta < 0) {
+      // Scroll up - zoom in
+      newZoom = Math.min(maxZoom, currentZoom * zoomFactor);
+    } else {
+      // Scroll down - zoom out
+      newZoom = Math.max(minZoom, currentZoom / zoomFactor);
+    }
+
+    onZoomChange(newZoom);
+  };
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -128,6 +179,10 @@ export default function CanvasGrid({
     const offsetX = -panX * cell;
     const offsetY = -panY * cell;
 
+    const cursorX = engine.cursor.x;
+    const cursorY = engine.cursor.y;
+    const showCrosshair = engine.showCrosshair;
+
     const drawCell = (x: number, y: number) => {
       const vx = Math.floor(offsetX + x * cell);
       const vy = Math.floor(offsetY + y * cell);
@@ -142,13 +197,23 @@ export default function CanvasGrid({
           ctx.fillRect(vx, vy, cell, cell);
         }
       }
+
+      // Crosshair is now rendered in overlay canvas for full viewport coverage
     };
 
-    // Always full redraw - simpler and bug-free
+    // Clear viewport
     ctx.fillStyle = canvasBackground;
     ctx.fillRect(0, 0, viewW, viewH);
-    for (let y = 0; y < engine.height; y++) {
-      for (let x = 0; x < engine.width; x++) drawCell(x, y);
+
+    // Calculate visible cell bounds
+    const startX = Math.max(0, Math.floor(panX));
+    const endX = Math.min(engine.width, Math.ceil(panX + viewW / cell));
+    const startY = Math.max(0, Math.floor(panY));
+    const endY = Math.min(engine.height, Math.ceil(panY + viewH / cell));
+
+    // Only draw visible cells (viewport clipping optimization)
+    for (let y = startY; y < endY; y++) {
+      for (let x = startX; x < endX; x++) drawCell(x, y);
     }
   }, [cellSize, engine, panX, panY, frame, viewHeight, viewWidth]);
 
@@ -242,12 +307,78 @@ export default function CanvasGrid({
         ctx.restore();
       }
 
+      // Guides
+      const guides = engine.guides;
+      if (guides.x.length > 0 || guides.y.length > 0) {
+        ctx.strokeStyle = 'rgba(255, 100, 255, 0.4)';
+        ctx.lineWidth = 1;
+
+        // Vertical guides
+        for (const gx of guides.x) {
+          const vx = Math.floor(offsetX + gx * cell) + 0.5;
+          if (vx >= 0 && vx <= viewW) {
+            ctx.beginPath();
+            ctx.moveTo(vx, 0);
+            ctx.lineTo(vx, viewH);
+            ctx.stroke();
+          }
+        }
+
+        // Horizontal guides
+        for (const gy of guides.y) {
+          const vy = Math.floor(offsetY + gy * cell) + 0.5;
+          if (vy >= 0 && vy <= viewH) {
+            ctx.beginPath();
+            ctx.moveTo(0, vy);
+            ctx.lineTo(viewW, vy);
+            ctx.stroke();
+          }
+        }
+      }
+
       // Cursor (topmost)
       const cursorX = engine.cursor.x;
       const cursorY = engine.cursor.y;
       const cx = offsetX + cursorX * cell;
       const cy = offsetY + cursorY * cell;
       const shouldDrawCursor = (now % 1000) < 500;
+
+      // Crosshair - full viewport lines with subtle overlay
+      if (engine.showCrosshair && shouldDrawCursor) {
+        const crosshairY = Math.floor(cy + cell / 2) + 0.5;
+        const crosshairX = Math.floor(cx + cell / 2) + 0.5;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 1;
+
+        // Horizontal line
+        ctx.beginPath();
+        ctx.moveTo(0, crosshairY);
+        ctx.lineTo(viewW, crosshairY);
+        ctx.stroke();
+
+        // Vertical line
+        ctx.beginPath();
+        ctx.moveTo(crosshairX, 0);
+        ctx.lineTo(crosshairX, viewH);
+        ctx.stroke();
+
+        // Add contrasting shadow line
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.lineWidth = 1;
+
+        // Horizontal shadow
+        ctx.beginPath();
+        ctx.moveTo(0, crosshairY + 1);
+        ctx.lineTo(viewW, crosshairY + 1);
+        ctx.stroke();
+
+        // Vertical shadow
+        ctx.beginPath();
+        ctx.moveTo(crosshairX + 1, 0);
+        ctx.lineTo(crosshairX + 1, viewH);
+        ctx.stroke();
+      }
 
       if (shouldDrawCursor && cx + cell >= 0 && cy + cell >= 0 && cx <= viewW && cy <= viewH) {
         const colorIndex = engine.grid[cursorY]?.[cursorX];
@@ -281,7 +412,7 @@ export default function CanvasGrid({
   }, [cellSize, engine, panX, panY, showGridLines, trail]);
 
   return (
-    <div className={gridClassName} ref={wrapperRef}>
+    <div className={gridClassName} ref={wrapperRef} onClick={handleCanvasClick} onWheel={handleWheel}>
       <div className="canvas-layer-stack">
         <canvas ref={baseRef} className="canvas-base" width={800} height={480} />
         <canvas ref={overlayRef} className="canvas-overlay" width={800} height={480} />

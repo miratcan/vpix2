@@ -77,6 +77,8 @@ export default class VPixEngine {
   private _axis: Axis = 'horizontal';
   private _pendingOperator: PendingOperator | null = null;
   private lastAction: (() => void) | null = null;
+  private _showCrosshair = false;
+  private _guides: { x: number[]; y: number[] } = { x: [], y: [] };
 
   get cursor(): Point {
     // Question: Bu sanirim engine.cursorManager.position diye uzun uzun yazilmasin 
@@ -195,6 +197,42 @@ export default class VPixEngine {
     this.emit();
   }
 
+  get showCrosshair(): boolean {
+    return this._showCrosshair;
+  }
+
+  toggleCrosshair() {
+    this._showCrosshair = !this._showCrosshair;
+    this.emit();
+  }
+
+  get guides(): { x: number[]; y: number[] } {
+    return { x: [...this._guides.x], y: [...this._guides.y] };
+  }
+
+  addGuideX(x: number) {
+    if (x < 0 || x >= this.width) return;
+    if (this._guides.x.includes(x)) return;
+    this._guides.x.push(x);
+    this._guides.x.sort((a, b) => a - b);
+    this.emit();
+  }
+
+  addGuideY(y: number) {
+    if (y < 0 || y >= this.height) return;
+    if (this._guides.y.includes(y)) return;
+    this._guides.y.push(y);
+    this._guides.y.sort((a, b) => a - b);
+    this.emit();
+  }
+
+  clearGuides() {
+    const hadGuides = this._guides.x.length > 0 || this._guides.y.length > 0;
+    this._guides.x = [];
+    this._guides.y = [];
+    if (hadGuides) this.emit();
+  }
+
   get color() {
     return this._palette[this._currentColorIndex] ?? '#000000';
   }
@@ -236,6 +274,16 @@ export default class VPixEngine {
     this._currentColorIndex = this.lastColorIndex;
     this.lastColorIndex = tmp;
     this.emit();
+  }
+
+  pickColorAtCursor() {
+    const { x, y } = this.cursor;
+    const colorIndex = this.gridState.getCell(x, y);
+    if (colorIndex == null) {
+      return 'No color at cursor position.';
+    }
+    this.setColorIndex(colorIndex);
+    return `Picked color #${colorIndex + 1} from palette.`;
   }
 
   setMode(mode: Mode) {

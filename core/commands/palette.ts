@@ -59,17 +59,14 @@ export const paletteCommands: CommandDefinition[] = [
   },
   {
     id: 'palette.select-index',
-    summary: 'Select palette color by index',
+    summary: 'Select palette color by index (requires count: 11gc)',
     handler: ({ engine }, { index }) => {
       const paletteLength = engine.palette.length;
       if (!paletteLength) return 'No active palette.';
 
       if (index == null) {
-        // If no index is provided, cycle to the next color
-        const next = (engine.currentColorIndex + 1) % engine.palette.length;
-        engine.setColorIndex(next);
-        engine.clearPrefix();
-        return `Cycled to next color: #${next + 1}.`;
+        // gc without count - show error message
+        return 'gc requires a count (e.g., 11gc for color 11). Use gt/gT to cycle.';
       }
 
       const idx = Math.min(paletteLength, Math.max(1, Number(index)));
@@ -118,5 +115,13 @@ export const paletteCommands: CommandDefinition[] = [
       return `Cycled to previous color: #${prev + 1}.`;
     },
     patterns: [{ pattern: 'palette prev', help: 'palette prev' }],
+  },
+  {
+    id: 'palette.pick-color',
+    summary: 'Pick color from pixel at cursor (eyedropper)',
+    handler: ({ engine }) => {
+      return engine.pickColorAtCursor();
+    },
+    patterns: [{ pattern: 'palette pick', help: 'palette pick' }],
   },
 ];

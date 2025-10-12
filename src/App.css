@@ -24,11 +24,12 @@
 
 .side-panel {
   width: 260px;
-  background: var(--color-background);
+  background: var(--color-background-dark);
   border-left: var(--border-width) solid var(--color-border);
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-l);
+  padding: var(--spacing-m);
+  gap: var(--spacing-m);
 }
 
 /* help overlay / command result removed — use terminal */

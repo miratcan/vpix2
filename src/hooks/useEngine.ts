@@ -55,6 +55,8 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
     builder.bind('global', 'Ctrl+U', 'cursor.page-up');
     builder.bind('global', 'Ctrl+F', 'cursor.page-forward');
     builder.bind('global', 'Ctrl+B', 'cursor.page-backward');
+    builder.bind('global', '|', 'view.toggle-crosshair');
+    builder.bind('global', 'Shift+|', 'view.toggle-crosshair'); // Turkish Q keyboard sends Shift+|
     builder.bind('global', 'Ctrl+^', 'palette.swap-last-color');
     builder.bind('global', 'Tab', 'axis.toggle');
 
@@ -72,6 +74,7 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
     builder.bind(normalScope, ' ', 'paint.toggle');
     builder.bind(normalScope, 'p', 'clipboard.paste');
     builder.bind(normalScope, 'v', 'mode.visual');
+    builder.bind(normalScope, 'i', 'palette.pick-color');
 
     // Visual Mode Bindings (Phase 3)
     const visualScope: BindingScope = MODES.VISUAL;
@@ -88,7 +91,7 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
     // Prefix-based Commands
     builder.bind(normalScope, 'g+g', 'motion.canvas-begin');
     builder.bind(normalScope, 'g+e', 'motion.word-end-prev');
-    builder.bind(normalScope, 'g+c', 'palette.select-index');
+    builder.bind(normalScope, 'g+c', 'palette.select-index'); // Requires count: 11gc
     builder.bind(normalScope, 'g+t', 'palette.cycle-next');
     builder.bind(normalScope, 'g+Shift+T', 'palette.cycle-previous');
 
@@ -127,6 +130,12 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
     const mockEvent = new KeyboardEvent('keydown', evt.nativeEvent);
     const key = KeymapBuilder.parseEvent(mockEvent);
 
+    // Ignore modifier keys alone (don't clear prefix when holding Shift/Ctrl/Alt)
+    // parseEvent returns lowercase: 'shift', 'ctrl', 'alt', 'meta'
+    if (key === 'shift' || key === 'ctrl' || key === 'alt' || key === 'meta') {
+      return false;
+    }
+
     // 1. Handle Escape to clear prefix/count
     if (key === 'Escape') {
       if (currentPrefix !== null || currentCount !== null) {
@@ -137,7 +146,15 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
       }
     }
 
-    // 2. Handle Count (Digits)
+    // 2. Handle Prefix Keys FIRST (g, d, y, c) - before digits
+    // Note: 'r' removed - will use gc for all color selection
+    if (currentPrefix === null && (key === 'g' || key === 'd' || key === 'y' || key === 'c')) {
+      setCurrentPrefix(key);
+      evt.preventDefault(); // Consume prefix key, wait for next key
+      return true; // Handled
+    }
+
+    // 3. Handle Count (Digits) - can be used before any command
     const digit = parseInt(key, 10);
     if (!isNaN(digit) && digit >= 0 && digit <= 9) {
       if (digit === 0 && currentCount === null) {
@@ -146,19 +163,11 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
       }
       setCurrentCount((prev) => (prev === null ? digit : prev * 10 + digit));
       evt.preventDefault(); // Consume digit, wait for next key
-      return true; // Handled
-    }
-
-    // 3. Handle Prefix Keys (g, r, d, y, c)
-    if (currentCount === null && (key === 'g' || key === 'r' || key === 'd' || key === 'y' || key === 'c')) {
-      setCurrentPrefix(key);
-      evt.preventDefault(); // Consume prefix key, wait for next key
-      return true; // Handled
+      return true; // Handled (prefix stays active if set)
     }
 
     // 4. Find command
     let commandId = findCommandInKeymap(keymap, engine.mode, key, currentPrefix);
-
 
     if (commandId) {
       const count = currentCount !== null ? currentCount : 1;
@@ -173,12 +182,12 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
         else operatorValue = 'delete'; // Fallback, should not happen
         args = { value: operatorValue, count };
       } else if (commandId === 'palette.select-index') {
-        // According to user's design, gc11 means select color 11. [count]gc means repeat gc [count] times.
-        // So, if palette.select-index is triggered by g+c, it should cycle next color (default behavior).
-        // The count here is for repetition, not for index.
-        // We will not pass index here. The command handler will use its default behavior.
-        // If gc11 is implemented later, it will be a different command or a different way of passing args.
-        args = {}; // No index argument for now, let handler use default (cycle next)
+        // 11gc means select color 11 (count becomes index)
+        if (currentCount !== null) {
+          args = { index: currentCount };
+        } else {
+          args = {}; // No index, will show error
+        }
       } else if (
         commandId === 'cursor.page-down' ||
         commandId === 'cursor.page-up' ||
@@ -230,5 +239,5 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
     return unsub;
   }, [engine]);
 
-  return { engine, frame, feedLines, handleKeyDown } as const;
+  return { engine, frame, feedLines, handleKeyDown, currentPrefix, currentCount } as const;
 }

@@ -66,6 +66,13 @@ export const KEYBINDINGS: KeyBinding[] = [
     command: 'cursor.page-backward',
     description: 'Scroll full page backward (axis-aware)',
   },
+  {
+    scope: 'global',
+    key: '|',
+    command: 'view.toggle-crosshair',
+    description: 'Toggle crosshair cursor',
+    tips: ['Press | to toggle crosshair for alignment', 'Use :guide v/:guide h to add guides'],
+  },
   // Aliases removed for Zen: [ctrl+y]
   {
     scope: 'global',

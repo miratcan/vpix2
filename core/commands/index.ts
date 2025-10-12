@@ -21,6 +21,7 @@ import { paintCommands } from './paint';
 import { paletteCommands } from './palette';
 import { selectionCommands } from './selection';
 import { shareCommands } from './share';
+import { viewCommands } from './view';
 
 const FEATURE_COMMANDS: CommandDefinition[] = [
   ...axisCommands,
@@ -33,6 +34,7 @@ const FEATURE_COMMANDS: CommandDefinition[] = [
   ...paletteCommands,
   ...selectionCommands,
   ...shareCommands,
+  ...viewCommands,
 ];
 
 const COMMAND_DEFINITIONS: CommandDefinition[] = [...FEATURE_COMMANDS];

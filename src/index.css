@@ -5,28 +5,35 @@
 
   color-scheme: dark;
 
-  /* Renkler */
-  --color-background: #0b0b0b;
-  --color-accent: #0081dd;
-  --color-text: rgba(215, 215, 215);
-  --color-text-muted: rgba(155, 155, 155);
-  --color-border: rgba(255, 255, 255, 0.1);
+  /* Renkler - Retro pixel art editor tema (Aseprite inspired) */
+  --color-background: #2d2d30;
+  --color-background-light: #3e3e42;
+  --color-background-dark: #252526;
+  --color-accent: #68b0e8;
+  --color-text: #d4d4d4;
+  --color-text-muted: #858585;
+  --color-border: #3e3e42;
 
-  /* Border widths */
-  --border-width: 2px;
-  --border-width-strong: 4px;
+  /* Border widths - crisp, pixel perfect */
+  --border-width: 1px;
+  --border-width-strong: 2px;
 
   /* Font Boyutları */
-  --font-size-s: 12px;
-  --font-size-m: 14px;
-  --font-size-l: 16px;
+  --font-size-s: 11px;
+  --font-size-m: 12px;
+  --font-size-l: 14px;
 
-  /* Boşluklar (Spacing) */
+  /* Boşluklar (Spacing) - compact retro feel */
   --spacing-xs: 4px;
-  --spacing-s: 8px;
-  --spacing-m: 12px;
-  --spacing-l: 16px;
-  --spacing-xl: 24px;
+  --spacing-s: 6px;
+  --spacing-m: 8px;
+  --spacing-l: 12px;
+  --spacing-xl: 16px;
+
+  /* No border radius - sharp pixel-perfect edges */
+  --radius-s: 0px;
+  --radius-m: 0px;
+  --radius-l: 0px;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;

@@ -10,6 +10,7 @@ import Palette from './components/Palette/Palette';
 import StatusBar from './components/StatusBar/StatusBar';
 import CommandFeed from './components/CommandFeed/CommandFeed';
 import HelpModal from './components/HelpModal/HelpModal';
+import KeyHint from './components/KeyHint/KeyHint';
 import { useCommandConsole } from './hooks/useCommandConsole';
 import { useEngine } from './hooks/useEngine';
 import { FALLBACK_PALETTE } from './theme/colors';
@@ -33,7 +34,7 @@ export default function App() {
   // Viewport cells calculation (need to define early, but will be properly initialized later)
   const viewportCellsRef = useRef<{ width: number; height: number }>({ width: 10, height: 10 });
 
-  const { engine, frame, feedLines, handleKeyDown: engineHandleKeyDown } = useEngine({
+  const { engine, frame, feedLines, handleKeyDown: engineHandleKeyDown, currentPrefix, currentCount } = useEngine({
     factory: engineFactory,
     getViewportCells: () => viewportCellsRef.current,
   });
@@ -260,6 +261,7 @@ export default function App() {
             trail={trail}
             cellSize={cellPixelSize}
             onViewSizeChange={setViewSize}
+            onZoomChange={setZoom}
           />
         </div>
         <div className="side-panel">
@@ -301,6 +303,8 @@ export default function App() {
             onDontShowAgain={() => localStorage.setItem(HELP_SHOWN_KEY, 'dont-show')}
           />
         )}
+
+        <KeyHint prefix={currentPrefix} count={currentCount} visible={!cmdMode && !showHelp} />
       </div>
     </div>
   );
