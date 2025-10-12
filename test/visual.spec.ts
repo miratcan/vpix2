@@ -5,6 +5,16 @@ import VPixEngine, { MODES } from '../core/engine';
 import { getPaletteByName } from '../core/palettes';
 
 describe('Visual mode operations', () => {
+  const press = (
+    engine: VPixEngine,
+    ...keys: Array<string | { key: string; ctrlKey?: boolean; shiftKey?: boolean; altKey?: boolean; metaKey?: boolean }>
+  ) => {
+    keys.forEach((key) => {
+      if (typeof key === 'string') engine.handleKey({ key });
+      else engine.handleKey(key);
+    });
+  };
+
   it('enters visual and yanks/deletes/pastes', () => {
     const pico = getPaletteByName('pico-8')!;
     const eng = new VPixEngine({ width: 4, height: 2, palette: pico.colors });
@@ -34,43 +44,29 @@ describe('Visual mode operations', () => {
   it('fill, stroke rect, line, flood fill', () => {
     const pico = getPaletteByName('pico-8')!;
     const eng = new VPixEngine({ width: 5, height: 5, palette: pico.colors });
-    eng.handleKey({ key: 'v' });
-    eng.handleKey({ key: 'l' }); eng.handleKey({ key: 'l' });
-    eng.handleKey({ key: 'j' }); eng.handleKey({ key: 'j' });
-    eng.handleKey({ key: 'F' });
+    press(eng, 'v', 'l', 'l', 'j', 'j', 'F');
     assert.ok(eng.grid[1][1] != null);
-    eng.handleKey({ key: 'v' });
-    eng.handleKey({ key: 'l' }); eng.handleKey({ key: 'l' });
-    eng.handleKey({ key: 'R' });
+    press(eng, 'v', 'l', 'l', 'R');
     eng.cursor = { x: 0, y: 0 };
-    eng.handleKey({ key: 'v' });
+    press(eng, 'v');
     eng.cursor = { x: 4, y: 4 };
-    eng.handleKey({ key: 'L' });
+    press(eng, 'L');
     eng.cursor = { x: 4, y: 0 };
-    eng.handleKey({ key: 'v' });
-    eng.handleKey({ key: 'f' });
+    press(eng, 'v', 'f');
     assert.ok(true);
   });
 
   it('stroke and fill circle selections', () => {
     const pico = getPaletteByName('pico-8')!;
     const eng = new VPixEngine({ width: 7, height: 7, palette: pico.colors });
-    eng.handleKey({ key: 'v' });
-    for (const key of ['l', 'l', 'l', 'l', 'j', 'j', 'j', 'j']) {
-      eng.handleKey({ key });
-    }
-    eng.handleKey({ key: 'C' });
+    press(eng, 'v', 'l', 'l', 'l', 'l', 'j', 'j', 'j', 'j', 'C');
     assert.equal(eng.mode, MODES.NORMAL);
     assert.ok(eng.grid[0][2] != null);
     assert.ok(eng.grid[2][0] != null);
     assert.equal(eng.grid[2][2], null);
 
     eng.cursor = { x: 0, y: 0 };
-    eng.handleKey({ key: 'v' });
-    for (const key of ['l', 'l', 'l', 'l', 'j', 'j', 'j', 'j']) {
-      eng.handleKey({ key });
-    }
-    eng.handleKey({ key: 'O' });
+    press(eng, 'v', 'l', 'l', 'l', 'l', 'j', 'j', 'j', 'j', 'O');
     assert.equal(eng.mode, MODES.NORMAL);
     assert.ok(eng.grid[2][2] != null);
   });
@@ -151,26 +147,21 @@ describe('Visual mode operations', () => {
     const eng = new VPixEngine({ width: 10, height: 10, palette: pico.colors });
 
     // User sets color to index 5
-    eng.handleKey({ key: '6' }); // count 6
-    eng.handleKey({ key: 'g' });
-    eng.handleKey({ key: 'c' }); // select color (index 5, because count-1)
+    press(eng, '6', 'g', 'c'); // select color (index 5, because count-1)
     assert.equal(eng.currentColorIndex, 5);
 
     // User enters visual mode at (2,2)
     eng.cursor = { x: 2, y: 2 };
-    eng.handleKey({ key: 'v' });
+    press(eng, 'v');
     assert.equal(eng.mode, MODES.VISUAL);
 
     // User selects area: move right twice, down twice -> (4,4)
-    eng.handleKey({ key: 'l' });
-    eng.handleKey({ key: 'l' });
-    eng.handleKey({ key: 'j' });
-    eng.handleKey({ key: 'j' });
+    press(eng, 'l', 'l', 'j', 'j');
     assert.equal(eng.cursor.x, 4);
     assert.equal(eng.cursor.y, 4);
 
     // User fills with F
-    eng.handleKey({ key: 'F' });
+    press(eng, 'F');
 
     // Should be back in normal mode
     assert.equal(eng.mode, MODES.NORMAL, 'Should be in NORMAL mode after fill');
@@ -186,13 +177,13 @@ describe('Visual mode operations', () => {
 
     // User moves cursor with hjkl in normal mode - should NOT paint
     eng.cursor = { x: 0, y: 0 };
-    eng.handleKey({ key: 'l' }); // move right
+    press(eng, 'l'); // move right
     assert.equal(eng.grid[0][0], null, 'Moving in normal mode should not paint');
 
-    eng.handleKey({ key: 'j' }); // move down
+    press(eng, 'j'); // move down
     assert.equal(eng.grid[1][0], null, 'Moving in normal mode should not paint');
 
-    eng.handleKey({ key: 'l' }); // move right again
+    press(eng, 'l'); // move right again
     assert.equal(eng.grid[1][1], null, 'Moving in normal mode should not paint');
   });
 
@@ -201,24 +192,19 @@ describe('Visual mode operations', () => {
     const eng = new VPixEngine({ width: 10, height: 10, palette: pico.colors });
 
     // User sets color to index 5
-    eng.handleKey({ key: '6' }); // count 6
-    eng.handleKey({ key: 'g' });
-    eng.handleKey({ key: 'c' }); // select color (index 5, because count-1)
+    press(eng, '6', 'g', 'c'); // select color (index 5, because count-1)
     assert.equal(eng.currentColorIndex, 5);
 
     // User enters visual mode at (2,2)
     eng.cursor = { x: 2, y: 2 };
-    eng.handleKey({ key: 'v' });
+    press(eng, 'v');
     assert.equal(eng.mode, MODES.VISUAL);
 
     // User selects area: move right twice, down twice -> (4,4)
-    eng.handleKey({ key: 'l' });
-    eng.handleKey({ key: 'l' });
-    eng.handleKey({ key: 'j' });
-    eng.handleKey({ key: 'j' });
+    press(eng, 'l', 'l', 'j', 'j');
 
     // User does flood fill with lowercase f
-    eng.handleKey({ key: 'f' });
+    press(eng, 'f');
 
     // Should be back in normal mode
     assert.equal(eng.mode, MODES.NORMAL, 'Should be in NORMAL mode after flood fill');
@@ -269,7 +255,7 @@ describe('Visual mode operations', () => {
 
     // Move to different position and paste with p
     eng.cursor = { x: 5, y: 5 };
-    eng.handleKey({ key: 'p' });
+    press(eng, 'p');
 
     // Should still be in normal mode
     assert.equal(eng.mode, MODES.NORMAL, 'Should remain in normal mode after paste');
@@ -292,14 +278,14 @@ describe('Visual mode operations', () => {
     assert.equal(eng.grid[3][2], 7);
 
     // Cut it with x
-    eng.handleKey({ key: 'x' });
+    press(eng, 'x');
 
     // Should be erased
     assert.equal(eng.grid[3][2], null, 'Cell should be erased after cut');
 
     // Should be in clipboard - paste it somewhere else
     eng.cursor = { x: 5, y: 5 };
-    eng.handleKey({ key: 'p' });
+    press(eng, 'p');
 
     // Should be pasted
     assert.equal(eng.grid[5][5], 7, 'Cut cell should be in clipboard and pasteable');

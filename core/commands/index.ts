@@ -127,7 +127,7 @@ function ensureRegistry() {
           const mapped = pattern.mapArgs ? pattern.mapArgs(rawArgs ?? {}) : rawArgs ?? {};
           return def.handler({ engine: ctx.engine as VPixEngine, services: ctx.services as RuntimeServices }, mapped);
         },
-        { help: pattern.help ?? pattern.pattern },
+        { help: pattern.help ?? pattern.pattern, managesHistory: def.managesHistory },
       );
     }
   }
@@ -173,11 +173,24 @@ export function runCommand(
   const def = definitionMap.get(id);
   if (!def) return { ok: false, msg: `Unknown command: ${id}` };
   const runtime = resolveServices(services);
+  const managesHistory = def.managesHistory !== undefined ? def.managesHistory : true;
+  const autoGroup = !managesHistory;
+  const historyLabel = def.patterns[0]?.help ?? def.patterns[0]?.pattern ?? def.id;
   try {
+    if (autoGroup) {
+      try {
+        engine.beginGroup(historyLabel);
+      } catch {}
+    }
     const result = def.handler({ engine, services: runtime }, args ?? {});
     if (result && typeof (result as any).then === 'function') {
       return (result as Promise<any>)
         .then((value) => {
+          if (autoGroup) {
+            try {
+              engine.endGroup();
+            } catch {}
+          }
           const normalized = normalizeCommandResult(value);
           try {
             // Only emit if we have a message
@@ -190,6 +203,11 @@ export function runCommand(
         .catch(() => ({ ok: false, msg: 'command failed' }));
     }
     const out = normalizeCommandResult(result);
+    if (autoGroup) {
+      try {
+        engine.endGroup();
+      } catch {}
+    }
     try {
       // Only emit if we have a message (skip empty void returns)
       if (out.msg) {

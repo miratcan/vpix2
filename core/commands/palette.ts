@@ -63,7 +63,16 @@ export const paletteCommands: CommandDefinition[] = [
     handler: ({ engine }, { index }) => {
       const paletteLength = engine.palette.length;
       if (!paletteLength) return 'No active palette.';
-      const idx = Math.min(paletteLength, Math.max(1, Number(index ?? 1)));
+
+      if (index == null) {
+        // If no index is provided, cycle to the next color
+        const next = (engine.currentColorIndex + 1) % engine.palette.length;
+        engine.setColorIndex(next);
+        engine.clearPrefix();
+        return `Cycled to next color: #${next + 1}.`;
+      }
+
+      const idx = Math.min(paletteLength, Math.max(1, Number(index)));
       engine.setColorIndex(idx - 1);
       engine.clearPrefix();
       return `Selected color #${idx} from palette.`;

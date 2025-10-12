@@ -40,6 +40,32 @@ export const KEYBINDINGS: KeyBinding[] = [
   },
 
   // Global bindings
+  {
+    scope: 'global',
+    key: 'ctrl+d',
+    command: 'cursor.page-down',
+    description: 'Scroll half page forward (axis-aware)',
+    tips: ['Press Ctrl+d to scroll half page forward', 'Press Ctrl+u to scroll half page backward', 'Axis determines scroll direction'],
+  },
+  {
+    scope: 'global',
+    key: 'ctrl+u',
+    command: 'cursor.page-up',
+    description: 'Scroll half page backward (axis-aware)',
+  },
+  {
+    scope: 'global',
+    key: 'ctrl+f',
+    command: 'cursor.page-forward',
+    description: 'Scroll full page forward (axis-aware)',
+    tips: ['Press Ctrl+f to scroll full page forward', 'Press Ctrl+b to scroll full page backward'],
+  },
+  {
+    scope: 'global',
+    key: 'ctrl+b',
+    command: 'cursor.page-backward',
+    description: 'Scroll full page backward (axis-aware)',
+  },
   // Aliases removed for Zen: [ctrl+y]
   {
     scope: 'global',

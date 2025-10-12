@@ -30,7 +30,13 @@ export default function App() {
     return new VPixEngine({ width: 32, height: 24, palette: colors });
   }, [paletteService]);
 
-  const { engine, frame, feedLines } = useEngine({ factory: engineFactory });
+  // Viewport cells calculation (need to define early, but will be properly initialized later)
+  const viewportCellsRef = useRef<{ width: number; height: number }>({ width: 10, height: 10 });
+
+  const { engine, frame, feedLines, handleKeyDown: engineHandleKeyDown } = useEngine({
+    factory: engineFactory,
+    getViewportCells: () => viewportCellsRef.current,
+  });
 
   const documents = useMemo(() => new DocumentRepository(STORAGE_KEY), []);
   const shareLinks = useMemo(() => new ShareLinkService(), []);
@@ -96,7 +102,9 @@ export default function App() {
     const cellPx = cellPixelSize;
     const visWcells = Math.max(1, Math.floor(viewSize.width / cellPx));
     const visHcells = Math.max(1, Math.floor(viewSize.height / cellPx));
-    return { visWcells, visHcells };
+    // Update ref for useEngine to access
+    viewportCellsRef.current = { width: visWcells, height: visHcells };
+    return { width: visWcells, height: visHcells, visWcells, visHcells };
   }, [cellPixelSize, viewSize.height, viewSize.width]);
 
   const scrollPanBy = useCallback(
@@ -195,22 +203,21 @@ export default function App() {
   }, [engine, engine.cursor.x, engine.cursor.y]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement | null;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+      return;
+    }
+    // Try the new key handling system first
+    if (engineHandleKeyDown(e)) {
+      return;
+    }
+
+    // If not handled by the new system, continue with App.tsx specific logic
     if (showHelp) return;
     if (cmdMode && (e.target as HTMLElement).tagName === 'INPUT') return;
     if (cmdMode) { e.preventDefault(); return; }
 
-    if (e.ctrlKey && !e.metaKey && !e.altKey) {
-      const { visWcells, visHcells } = getVisibleCellCounts();
-      const halfW = Math.max(1, Math.floor(visWcells / 2));
-      const halfH = Math.max(1, Math.floor(visHcells / 2));
-      switch (e.key) {
-        case 'd': case 'D': case 'ArrowDown': scrollPanBy(0, halfH); e.preventDefault(); return;
-        case 'u': case 'U': case 'ArrowUp': scrollPanBy(0, -halfH); e.preventDefault(); return;
-        case 'ArrowRight': scrollPanBy(halfW, 0); e.preventDefault(); return;
-        case 'ArrowLeft': scrollPanBy(-halfW, 0); e.preventDefault(); return;
-        default: break;
-      }
-    }
+    // Removed old Ctrl+d/u handling - now handled by useEngine keybindings
     if (e.key === '?') { setShowHelp(true); e.preventDefault(); return; }
     if (engine.mode === MODES.NORMAL && e.key === ':') { openCommand(); e.preventDefault(); return; }
     if (e.key === '+') { setZoom((z) => Math.min(8, z * 1.25)); e.preventDefault(); return; }
@@ -223,9 +230,8 @@ export default function App() {
       e.preventDefault();
       return;
     }
-    engine.handleKey({ key: e.key, ctrlKey: e.ctrlKey, metaKey: e.metaKey, shiftKey: e.shiftKey });
     if (['h', 'j', 'k', 'l', ' ', 'Backspace', 'Tab'].includes(e.key)) e.preventDefault();
-  }, [cmdMode, documents, engine, minZoom, openCommand, showHelp, getVisibleCellCounts, scrollPanBy]);
+  }, [cmdMode, documents, engine, minZoom, openCommand, showHelp, getVisibleCellCounts, scrollPanBy, engineHandleKeyDown]);
 
   useEffect(() => {
     if (!cmdMode && !showHelp) {

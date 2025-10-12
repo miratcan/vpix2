@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/member-ordering */
 import { dispatchKey } from '../keymap';
-import { clamp } from '../util';
+import { clamp, rotateMatrixCW, rotateMatrixCCW } from '../util';
 import { floodFill as floodFillTool } from '../tools/flood-fill';
 import { fillRect as fillRectTool } from '../tools/fill-rect';
 import { drawLine as drawLineTool } from '../tools/line';
@@ -41,6 +41,7 @@ export type { AxisSegment };
 export type { MotionKind };
 
 function rotateMatrixCW(matrix: Array<Array<number | null>>): Array<Array<number | null>> {
+  // Question: bu neden burada? selectionManager icinde olmasi gerekmez miydi?
   const height = matrix.length;
   const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
   if (height === 0 || width === 0) return [];
@@ -50,6 +51,7 @@ function rotateMatrixCW(matrix: Array<Array<number | null>>): Array<Array<number
 }
 
 function rotateMatrixCCW(matrix: Array<Array<number | null>>): Array<Array<number | null>> {
+  // Question: bu neden burada? selectionManager icinde olmasi gerekmez miydi?
   const height = matrix.length;
   const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
   if (height === 0 || width === 0) return [];
@@ -77,10 +79,15 @@ export default class VPixEngine {
   private lastAction: (() => void) | null = null;
 
   get cursor(): Point {
+    // Question: Bu sanirim engine.cursorManager.position diye uzun uzun yazilmasin 
+    // istendigi icin buraya bir shortcut olarak kullanilmis. Ama cursorManager yerine
+    // cursor kullanilsa idi engine.cursor.position diye hem daha deklaratif ulasmis
+    // olurduk hem de engine'in namespace'ini kirletmemis olurduk ne dersin?
     return this.cursorManager.position;
   }
 
   set cursor(point: Point) {
+    // Question: Clamp islemleri engine'in isi degil bence. cursorManager'in isi.
     const x = clamp(point.x, 0, Math.max(0, this.width - 1));
     const y = clamp(point.y, 0, Math.max(0, this.height - 1));
     this.cursorManager.setPosition(x, y);
@@ -91,22 +98,28 @@ export default class VPixEngine {
     if (!palette || !Array.isArray(palette) || palette.length === 0) {
       throw new Error('palette is required (DI)');
     }
+    // Question: Bunlar neden class sevviyesinde degil constructor seviyesinde?
     this.gridState = new GridState(width, height);
     this.history = new HistoryManager();
     this._palette = palette.slice();
   }
 
   subscribe(fn: (engine: VPixEngine, payload?: EngineChangePayload) => void) {
+    // TODO: Explain.
     return this.events.subscribe(fn);
   }
 
   private emit(payload?: EngineChangePayload) {
+    // TODO: Aciklama ekle revision vs nedir okuyan kisi burada anlamali.
     this.revision += 1;
     const nextPayload: EngineChangePayload = { ...(payload ?? {}), revision: this.revision };
     this.events.emit(this, nextPayload);
   }
 
   get width() {
+    // Question: Bu engine.width vs seklinde koydugun seyler deklaratifligi bozuyor. 
+    // bence engine.grid.width olmali, programcidan neyin nerede oldugu saklanmamali.
+    // ote yandan engine'in namespace'i asiri doluyor bu sekilde ne dersin?
     return this.gridState.width;
   }
 

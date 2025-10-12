@@ -16,7 +16,8 @@ export class KeymapBuilder {
     if (!this.bindings.has(scope)) {
       this.bindings.set(scope, new Map<string, Command>());
     }
-    this.bindings.get(scope)?.set(key, command);
+    const normalized = KeymapBuilder.normalizeKeySequence(key);
+    this.bindings.get(scope)?.set(normalized, command);
     return this;
   }
 
@@ -34,17 +35,35 @@ export class KeymapBuilder {
    */
   static parseEvent(event: KeyboardEvent): string {
     const parts: string[] = [];
-    if (event.ctrlKey) parts.push('Ctrl');
-    if (event.altKey) parts.push('Alt');
-    if (event.metaKey) parts.push('Meta');
+    if (event.ctrlKey) parts.push('ctrl');
+    if (event.altKey) parts.push('alt');
+    if (event.metaKey) parts.push('meta');
+    if (event.shiftKey) parts.push('shift');
 
-    const key = event.key;
-    if (!['Control', 'Alt', 'Shift', 'Meta'].includes(key)) {
+    let key = event.key;
+    if (key === ' ') key = 'space';
+    else if (key.length === 1) key = key.toLowerCase();
+    else key = key.toLowerCase();
+
+    if (!['control', 'alt', 'shift', 'meta'].includes(key)) {
       parts.push(key);
-    } else if (key === ' ') { // Special case for spacebar
-      parts.push('Space');
     }
 
     return parts.join('+');
+  }
+
+  private static normalizeKeySequence(sequence: string): string {
+    return sequence
+      .split('+')
+      .map((part) => {
+        const trimmed = part.trim();
+        if (!trimmed && part === ' ') return 'space';
+        if (!trimmed) return '';
+        const lower = trimmed.toLowerCase();
+        if (lower === 'space') return 'space';
+        return lower;
+      })
+      .filter(Boolean)
+      .join('+');
   }
 }

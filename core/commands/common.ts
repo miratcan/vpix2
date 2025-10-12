@@ -54,6 +54,7 @@ export type CommandDefinition = {
   handler: CommandHandler;
   patterns: CommandPattern[];
   hidden?: boolean;
+  managesHistory?: boolean;
 };
 
 const STORAGE_KEY = 'vpix.document.v1';

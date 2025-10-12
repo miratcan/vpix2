@@ -69,7 +69,12 @@ export function slug(): ParamType<string> {
   };
 }
 
-type Registered = { pattern: PatternEl[]; handler: (ctx: Ctx, args: Record<string, unknown>) => any; help?: string };
+type Registered = {
+  pattern: PatternEl[];
+  handler: (ctx: Ctx, args: Record<string, unknown>) => any;
+  help?: string;
+  managesHistory?: boolean;
+};
 
 export type CommandExecutionResult = { matched: boolean; ok: boolean; msg: string; meta?: CommandMeta };
 
@@ -105,12 +110,12 @@ function buildMeta(source: any): CommandMeta | undefined {
 export function createRegistry() {
   const cmds: Registered[] = [];
   return {
-    register(pattern: PatternEl[], handler: Registered['handler'], opts?: { help?: string }) {
-      cmds.push({ pattern, handler, help: opts?.help });
+    register(pattern: PatternEl[], handler: Registered['handler'], opts?: { help?: string; managesHistory?: boolean }) {
+      cmds.push({ pattern, handler, help: opts?.help, managesHistory: opts?.managesHistory });
     },
-    registerS(pattern: string, handler: Registered['handler'], opts?: { help?: string }) {
+    registerS(pattern: string, handler: Registered['handler'], opts?: { help?: string; managesHistory?: boolean }) {
       const compiled = compilePatternDSL(pattern);
-      cmds.push({ pattern: compiled, handler, help: opts?.help });
+      cmds.push({ pattern: compiled, handler, help: opts?.help, managesHistory: opts?.managesHistory });
     },
     execute(input: string, ctx: Ctx): CommandExecutionResult | Promise<CommandExecutionResult> {
       const tokens = tokenize(input);
@@ -118,8 +123,10 @@ export function createRegistry() {
       for (const c of cmds) {
         const res = matchPattern(tokens, c.pattern);
         if (res.matched && res.ok) {
+          const managesHistory = c.managesHistory === true;
+          const shouldAutoGroup = !managesHistory;
           try {
-            ctx.engine?.beginGroup(c.help || formatUsage(c.pattern));
+            if (shouldAutoGroup) ctx.engine?.beginGroup(c.help || formatUsage(c.pattern));
 
             const ret = c.handler(ctx, res.args!);
 
@@ -127,7 +134,7 @@ export function createRegistry() {
             if (ret && typeof (ret as any).then === 'function') {
               return (ret as Promise<any>)
                 .then((out) => {
-                  ctx.engine?.endGroup();
+                  if (shouldAutoGroup) ctx.engine?.endGroup();
                   const norm = normalizeHandlerResult(out);
                   return { matched: true, ok: norm.ok, msg: norm.msg, meta: norm.meta };
                 })
@@ -139,7 +146,7 @@ export function createRegistry() {
             }
 
             // SYNC case
-            ctx.engine?.endGroup();
+            if (shouldAutoGroup) ctx.engine?.endGroup();
             const norm = normalizeHandlerResult(ret);
             return { matched: true, ok: norm.ok, msg: norm.msg, meta: norm.meta };
 

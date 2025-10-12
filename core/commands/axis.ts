@@ -1,12 +1,14 @@
 import type { CommandDefinition } from './common';
 import { ensureCount } from './common';
 
-import type VPixEngine from '../engine';
+import VPixEngine, { MODES } from '../engine';
 import type { MotionKind } from './common';
 
 const runMotion = (engine: VPixEngine, motion: MotionKind, count: unknown): string => {
   engine.applyMotion(motion, ensureCount(count));
-  engine.clearPrefix();
+  if (engine.mode === MODES.VISUAL) {
+    engine.updateSelectionRect();
+  }
   const motionLabels: Record<MotionKind, string> = {
     'word-next': 'Moved to start of next word.',
     'word-prev': 'Moved to start of previous word.',
@@ -176,6 +178,74 @@ export const axisCommands: CommandDefinition[] = [
       return runMotion(engine, 'canvas-end', 1);
     },
     patterns: [{ pattern: 'motion canvas-end', help: 'motion canvas-end' }],
+    hidden: true,
+  },
+  {
+    id: 'cursor.page-down',
+    summary: 'Move cursor half page forward along axis',
+    handler: ({ engine }, { viewportSize }) => {
+      const size = typeof viewportSize === 'number' && viewportSize > 0 ? viewportSize : 10;
+      const distance = Math.max(1, Math.floor(size / 2));
+      if (engine.axis === 'horizontal') {
+        engine.move(distance, 0, 1);
+        return `Cursor moved right ${distance} pixels (half page).`;
+      } else {
+        engine.move(0, distance, 1);
+        return `Cursor moved down ${distance} pixels (half page).`;
+      }
+    },
+    patterns: [{ pattern: 'cursor page-down', help: 'cursor page-down' }],
+    hidden: true,
+  },
+  {
+    id: 'cursor.page-up',
+    summary: 'Move cursor half page backward along axis',
+    handler: ({ engine }, { viewportSize }) => {
+      const size = typeof viewportSize === 'number' && viewportSize > 0 ? viewportSize : 10;
+      const distance = Math.max(1, Math.floor(size / 2));
+      if (engine.axis === 'horizontal') {
+        engine.move(-distance, 0, 1);
+        return `Cursor moved left ${distance} pixels (half page).`;
+      } else {
+        engine.move(0, -distance, 1);
+        return `Cursor moved up ${distance} pixels (half page).`;
+      }
+    },
+    patterns: [{ pattern: 'cursor page-up', help: 'cursor page-up' }],
+    hidden: true,
+  },
+  {
+    id: 'cursor.page-forward',
+    summary: 'Move cursor full page forward along axis',
+    handler: ({ engine }, { viewportSize }) => {
+      const size = typeof viewportSize === 'number' && viewportSize > 0 ? viewportSize : 10;
+      const distance = Math.max(1, size);
+      if (engine.axis === 'horizontal') {
+        engine.move(distance, 0, 1);
+        return `Cursor moved right ${distance} pixels (full page).`;
+      } else {
+        engine.move(0, distance, 1);
+        return `Cursor moved down ${distance} pixels (full page).`;
+      }
+    },
+    patterns: [{ pattern: 'cursor page-forward', help: 'cursor page-forward' }],
+    hidden: true,
+  },
+  {
+    id: 'cursor.page-backward',
+    summary: 'Move cursor full page backward along axis',
+    handler: ({ engine }, { viewportSize }) => {
+      const size = typeof viewportSize === 'number' && viewportSize > 0 ? viewportSize : 10;
+      const distance = Math.max(1, size);
+      if (engine.axis === 'horizontal') {
+        engine.move(-distance, 0, 1);
+        return `Cursor moved left ${distance} pixels (full page).`;
+      } else {
+        engine.move(0, -distance, 1);
+        return `Cursor moved up ${distance} pixels (full page).`;
+      }
+    },
+    patterns: [{ pattern: 'cursor page-backward', help: 'cursor page-backward' }],
     hidden: true,
   },
 ];
