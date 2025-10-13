@@ -251,7 +251,7 @@ export default function App() {
         ref={containerRef}
         onKeyDown={handleKeyDown}
       >
-        <div className="left-panel">
+        <div className="sidebar left">
           <KeyHint prefix={currentPrefix} count={currentCount} visible={true} mode={engine.mode} keymap={keymap} />
         </div>
         <div className="main-area">
@@ -267,7 +267,7 @@ export default function App() {
             onZoomChange={setZoom}
           />
         </div>
-        <div className="side-panel">
+        <div className="sidebar right">
           <MiniMap
             engine={engine}
             pan={pan}

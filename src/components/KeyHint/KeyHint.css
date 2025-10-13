@@ -8,53 +8,40 @@
   overflow-x: hidden;
 }
 
-.key-hint-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.key-hint-table thead th {
+.info-table thead th {
   background: var(--color-background);
   color: var(--color-accent);
   font-weight: 700;
-  text-align: left;
+  text-align: right;
   padding: var(--spacing-s);
-  border-bottom: var(--border-width) solid var(--color-border);
   position: sticky;
   top: 0;
   z-index: 1;
 }
 
-.key-hint-table tbody tr.key-hint-category-row td {
-  background: var(--color-background);
-  color: var(--color-accent);
+.info-table tbody tr.key-hint-category-row td {
   font-weight: 700;
   text-transform: uppercase;
   padding: var(--spacing-xs) var(--spacing-s);
-  border-top: var(--border-width) solid var(--color-border);
-  border-bottom: var(--border-width) solid var(--color-border);
-  font-size: 14px;
 }
 
-.key-hint-table tbody td.key-hint-key {
+.info-table tbody td.key-hint-key {
   color: var(--color-accent);
   padding: 2px var(--spacing-s);
   white-space: nowrap;
+  text-align: right;
   width: 1%;
-  font-size: 14px;
 }
 
-.key-hint-table tbody td.key-hint-desc {
+.info-table tbody td.key-hint-desc {
   color: var(--color-text);
   padding: 2px var(--spacing-s);
-  font-size: 14px;
 }
 
-.key-hint-table tbody tr:hover td {
+.info-table tbody tr:hover td {
   background: var(--color-background-light);
 }
 
-.key-hint-table tbody tr.key-hint-category-row:hover td {
+.info-table tbody tr.key-hint-category-row:hover td {
   background: var(--color-background);
 }

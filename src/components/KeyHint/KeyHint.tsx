@@ -178,7 +178,7 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal', keyma
     if (prefixBindings.length > 0) {
       return (
         <div className="key-hint-sidebar">
-          <table className="key-hint-table">
+          <table className="info-table">
             <thead>
               <tr>
                 <th colSpan={2}>{count !== null ? `${count}${prefix}` : prefix}</th>
@@ -212,7 +212,7 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal', keyma
 
   return (
     <div className="key-hint-sidebar">
-      <table className="key-hint-table">
+      <table className="info-table">
         <thead>
           <tr>
             <th colSpan={2}>{mode === 'visual' ? 'VISUAL' : 'NORMAL'}</th>

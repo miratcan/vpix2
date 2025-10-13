@@ -1,30 +1,12 @@
 .status-bar {
   color: var(--color-text-muted);
-  border-top: var(--border-width) solid var(--color-border);
 }
-.status-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--font-size-m);
-}
-.status-table th,
-.status-table td {
-  padding: var(--spacing-xs) var(--spacing-s);
-  vertical-align: middle;
-}
-.status-table th {
-  text-align: left;
-  color: var(--color-text);
+.info-table th {
   width: 40%;
-}
-.status-table tr + tr td,
-.status-table tr + tr th {
-  border-top: var(--border-width) solid var(--color-border);
 }
 .color-chip {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: var(--border-width) solid var(--color-border);
   vertical-align: middle;
 }

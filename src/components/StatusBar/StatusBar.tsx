@@ -6,7 +6,7 @@ type Props = { engine: VPixEngine; zoom: number; pan: { x: number; y: number } }
 export default function StatusBar({ engine, zoom, pan }: Props) {
   return (
     <div className="status-bar" role="status">
-      <table className="status-table" role="table">
+      <table className="info-table" role="table">
         <tbody>
           <tr>
             <th scope="row">MODE</th>

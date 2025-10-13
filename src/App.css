@@ -17,16 +17,23 @@
   overflow: hidden;
 }
 
-.left-panel {
+.sidebar {
   width: 200px;
   background: var(--color-background-dark);
-  border-right: var(--border-width) solid var(--color-border);
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
-  overflow-x: hidden;
   min-height: 0;
   flex-shrink: 0;
+}
+
+.sidebar.left {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar.right {
+  padding: var(--spacing-s);
+  gap: var(--spacing-s);
 }
 
 .main-area {
@@ -37,16 +44,21 @@
   min-width: 0;
 }
 
-.side-panel {
-  width: 200px;
-  background: var(--color-background-dark);
-  border-left: var(--border-width) solid var(--color-border);
-  display: flex;
-  flex-direction: column;
-  padding: var(--spacing-s);
-  gap: var(--spacing-s);
-  min-height: 0;
-  flex-shrink: 0;
+/* Shared info table styles for both sidebars */
+.info-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.info-table th,
+.info-table td {
+  padding: var(--spacing-xs) var(--spacing-s);
+  vertical-align: middle;
+}
+
+.info-table th {
+  text-align: left;
+  color: var(--color-text);
 }
 
 /* help overlay / command result removed — use terminal */
@@ -93,7 +105,6 @@
   left: 0;
   right: 0;
   background: var(--color-background);
-  border-top: var(--border-width-strong) solid var(--color-accent);
   padding: 0.5rem 1rem;
   z-index: 100;
   display: flex;
@@ -103,7 +114,6 @@
 
 .vpix-command-prompt {
   color: var(--color-accent);
-  font-size: 14px;
 }
 
 .vpix-command-input {
@@ -112,5 +122,4 @@
   border: none;
   outline: none;
   color: var(--color-text);
-  font-size: 14px;
 }

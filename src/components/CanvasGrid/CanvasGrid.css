@@ -6,7 +6,6 @@
   background: var(--color-background);
   box-sizing: border-box;
   min-height: 0;
-  border: var(--border-width-strong) solid transparent;
 }
 
 .canvas-layer-stack {
@@ -14,17 +13,6 @@
   line-height: 0;
   width: 100%;
   height: 100%;
-}
-
-/* Axis indicator borders */
-.canvas-grid.axis-vertical .canvas-layer-stack {
-  border-left: var(--border-width-strong) solid var(--color-accent);
-  border-right: var(--border-width-strong) solid var(--color-accent);
-}
-
-.canvas-grid.axis-horizontal .canvas-layer-stack {
-  border-top: var(--border-width-strong) solid var(--color-accent);
-  border-bottom: var(--border-width-strong) solid var(--color-accent);
 }
 
 .canvas-layer-stack .canvas-base,

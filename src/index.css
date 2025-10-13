@@ -9,28 +9,24 @@
   font-family: 'DOSFont', monospace;
   line-height: 1.5;
   font-weight: 400;
-  font-size: 14px;
 
   color-scheme: dark;
 
   /* Renkler - Retro pixel art editor tema (Aseprite inspired) */
-  --color-background: #2d2d30;
-  --color-background-light: #3e3e42;
-  --color-background-dark: #252526;
-  --color-accent: #68b0e8;
+  --color-background: black
+  --color-background-light: gray;
+  --color-background-dark: black;
+  --color-accent: green;
   --color-text: #d4d4d4;
   --color-text-muted: #858585;
   --color-border: #3e3e42;
 
   /* Border widths - crisp, pixel perfect */
-  --border-width: 1px;
-  --border-width-strong: 2px;
+  --border-width: 2px;
+  --border-width-strong: 4px;
 
   /* Font Boyutları - hepsi 14px sabit */
-  --font-size-xs: 14px;
-  --font-size-s: 14px;
-  --font-size-m: 14px;
-  --font-size-l: 14px;
+  --font-size: 14px;
 
   /* Boşluklar (Spacing) - compact retro feel */
   --spacing-xs: 4px;
@@ -43,11 +39,13 @@
   --radius-s: 0px;
   --radius-m: 0px;
   --radius-l: 0px;
-
+  /*
   font-synthesis: none;
   text-rendering: optimizeSpeed;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: grayscale;
+  */
 }
-html, body, #root { height: 100%; margin: 0; }
+html, body, #root { height: 100%; margin: 0; font-size: var(--font-size)}
 body { background: var(--color-background); }
+body * { font-size: inherit; }
