@@ -45,7 +45,7 @@ export default function MiniMap({
       const px = x * cell, py = y * cell;
       ctx.fillStyle = canvasBackground;
       ctx.fillRect(px, py, cell, cell);
-      const colorIndex = engine.grid[y][x];
+      const colorIndex = engine.grid.cells[y][x];
       if (colorIndex != null) {
         const color = engine.palette[colorIndex];
         if (color) { ctx.fillStyle = color; ctx.fillRect(px, py, cell, cell); }

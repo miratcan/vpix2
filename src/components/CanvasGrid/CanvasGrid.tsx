@@ -190,7 +190,7 @@ export default function CanvasGrid({
       if (vx + cell < 0 || vy + cell < 0 || vx >= viewW || vy >= viewH) return;
       ctx.fillStyle = canvasBackground;
       ctx.fillRect(vx, vy, cell, cell);
-      const colorIndex = engine.grid[y][x];
+      const colorIndex = engine.grid.cells[y][x];
       if (colorIndex != null) {
         const color = engine.palette[colorIndex];
         if (color) {
@@ -382,7 +382,7 @@ export default function CanvasGrid({
       }
 
       if (shouldDrawCursor && cx + cell >= 0 && cy + cell >= 0 && cx <= viewW && cy <= viewH) {
-        const colorIndex = engine.grid[cursorY]?.[cursorX];
+        const colorIndex = engine.grid.cells[cursorY]?.[cursorX];
         let baseColorStr = canvasBackground;
         if (colorIndex != null) {
           const color = engine.palette[colorIndex];
