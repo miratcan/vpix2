@@ -6,7 +6,6 @@
   background: var(--color-background);
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--spacing-s);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: var(--font-size-m);
   color: var(--color-text);
   max-height: 40vh;

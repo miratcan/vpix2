@@ -29,7 +29,7 @@
 }
 
 .help-modal-title {
-  font-size: 1.25rem;
+  font-size: 14px;
   font-weight: bold;
   color: var(--color-accent);
   margin: 0;
@@ -39,7 +39,7 @@
   background: none;
   border: none;
   color: var(--color-text);
-  font-size: 1.5rem;
+  font-size: 14px;
   cursor: pointer;
   padding: 0;
   width: 2rem;
@@ -70,7 +70,7 @@
 }
 
 .help-modal-section-title {
-  font-size: 1rem;
+  font-size: 14px;
   font-weight: bold;
   color: var(--color-accent);
   margin: 0 0 0.75rem 0;
@@ -85,7 +85,7 @@
 .help-modal-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-size: 14px;
 }
 
 .help-modal-table th,
@@ -98,13 +98,12 @@
 .help-modal-table th {
   text-align: left;
   color: var(--color-text);
-  font-size: 0.85rem;
+  font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
 .help-modal-table td:first-child {
-  font-family: monospace;
   color: var(--color-accent);
   white-space: nowrap;
 }
@@ -114,7 +113,6 @@
 }
 
 .help-modal-table td:last-child {
-  font-family: monospace;
   color: var(--color-text);
   white-space: nowrap;
 }
@@ -125,7 +123,7 @@
   margin: 0 0.25rem 0.25rem 0;
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--spacing-xs);
-  font-size: 0.8rem;
+  font-size: 14px;
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -151,7 +149,7 @@
   align-items: center;
   gap: 0.5rem;
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 14px;
   color: var(--color-text-muted);
 }
 

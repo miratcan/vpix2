@@ -103,8 +103,7 @@
 
 .vpix-command-prompt {
   color: var(--color-accent);
-  font-family: monospace;
-  font-size: 1rem;
+  font-size: 14px;
 }
 
 .vpix-command-input {
@@ -113,6 +112,5 @@
   border: none;
   outline: none;
   color: var(--color-text);
-  font-family: monospace;
-  font-size: 1rem;
+  font-size: 14px;
 }
