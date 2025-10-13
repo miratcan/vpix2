@@ -22,6 +22,7 @@
 .info-table tbody tr.category td {
   font-weight: 700;
   text-transform: uppercase;
+  text-align: center;
   padding: var(--spacing-xs) var(--spacing-s);
 }
 
