@@ -18,7 +18,7 @@
 }
 
 .left-panel {
-  width: 300px;
+  width: 200px;
   background: var(--color-background-dark);
   border-right: var(--border-width) solid var(--color-border);
   display: flex;

@@ -157,18 +157,21 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal' }: Key
 
     return (
       <div className="key-hint-sidebar">
-        <div className="key-hint-header">
-          <span className="key-hint-prefix">{count !== null ? `${count}${prefix}` : prefix}</span>
-          <span className="key-hint-category">{categoryName}</span>
-        </div>
-        <div className="key-hint-list">
-          {hints.map((hint) => (
-            <div key={hint.key} className="key-hint-item">
-              <span className="key-hint-key">{hint.key}</span>
-              <span className="key-hint-desc">{hint.description}</span>
-            </div>
-          ))}
-        </div>
+        <table className="key-hint-table">
+          <thead>
+            <tr>
+              <th colSpan={2}>{count !== null ? `${count}${prefix}` : prefix} - {categoryName}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {hints.map((hint) => (
+              <tr key={hint.key}>
+                <td className="key-hint-key">{hint.key}</td>
+                <td className="key-hint-desc">{hint.description}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
@@ -178,25 +181,28 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal' }: Key
 
   return (
     <div className="key-hint-sidebar">
-      <div className="key-hint-header">
-        <span className="key-hint-prefix">{mode === 'visual' ? 'VISUAL' : 'NORMAL'}</span>
-        <span className="key-hint-category">Commands</span>
-      </div>
-      <div className="key-hint-sections">
-        {categories.map((cat) => (
-          <div key={cat.category} className="key-hint-category-section">
-            <div className="key-hint-category-title">{cat.category}</div>
-            <div className="key-hint-list">
+      <table className="key-hint-table">
+        <thead>
+          <tr>
+            <th colSpan={2}>{mode === 'visual' ? 'VISUAL' : 'NORMAL'}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {categories.map((cat) => (
+            <>
+              <tr key={cat.category} className="key-hint-category-row">
+                <td colSpan={2}>{cat.category}</td>
+              </tr>
               {cat.hints.map((hint) => (
-                <div key={hint.key} className="key-hint-item">
-                  <span className="key-hint-key">{hint.key}</span>
-                  <span className="key-hint-desc">{hint.description}</span>
-                </div>
+                <tr key={`${cat.category}-${hint.key}`}>
+                  <td className="key-hint-key">{hint.key}</td>
+                  <td className="key-hint-desc">{hint.description}</td>
+                </tr>
               ))}
-            </div>
-          </div>
-        ))}
-      </div>
+            </>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
