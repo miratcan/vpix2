@@ -251,6 +251,9 @@ export default function App() {
         ref={containerRef}
         onKeyDown={handleKeyDown}
       >
+        <div className="left-panel">
+          <KeyHint prefix={currentPrefix} count={currentCount} visible={true} mode={engine.mode} />
+        </div>
         <div className="main-area">
           <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
           <CanvasGrid
@@ -303,8 +306,6 @@ export default function App() {
             onDontShowAgain={() => localStorage.setItem(HELP_SHOWN_KEY, 'dont-show')}
           />
         )}
-
-        <KeyHint prefix={currentPrefix} count={currentCount} visible={!cmdMode && !showHelp} mode={engine.mode} />
       </div>
     </div>
   );

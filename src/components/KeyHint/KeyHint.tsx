@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import './KeyHint.css';
 
 type KeyHintProps = {
@@ -147,19 +146,7 @@ const VISUAL_MODE_HINTS: HintCategory[] = [
 ];
 
 export default function KeyHint({ prefix, count, visible, mode = 'normal' }: KeyHintProps) {
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    if (!visible) {
-      setShow(false);
-      return;
-    }
-
-    // Show immediately
-    setShow(true);
-  }, [prefix, visible]);
-
-  if (!show || !visible) {
+  if (!visible) {
     return null;
   }
 
@@ -169,20 +156,18 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal' }: Key
     const categoryName = getCategoryName(prefix);
 
     return (
-      <div className="key-hint-overlay">
-        <div className="key-hint-panel">
-          <div className="key-hint-header">
-            <span className="key-hint-prefix">{count !== null ? `${count}${prefix}` : prefix}</span>
-            <span className="key-hint-category">{categoryName}</span>
-          </div>
-          <div className="key-hint-list">
-            {hints.map((hint) => (
-              <div key={hint.key} className="key-hint-item">
-                <span className="key-hint-key">{hint.key}</span>
-                <span className="key-hint-desc">{hint.description}</span>
-              </div>
-            ))}
-          </div>
+      <div className="key-hint-sidebar">
+        <div className="key-hint-header">
+          <span className="key-hint-prefix">{count !== null ? `${count}${prefix}` : prefix}</span>
+          <span className="key-hint-category">{categoryName}</span>
+        </div>
+        <div className="key-hint-list">
+          {hints.map((hint) => (
+            <div key={hint.key} className="key-hint-item">
+              <span className="key-hint-key">{hint.key}</span>
+              <span className="key-hint-desc">{hint.description}</span>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -192,27 +177,25 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal' }: Key
   const categories = mode === 'visual' ? VISUAL_MODE_HINTS : NORMAL_MODE_HINTS;
 
   return (
-    <div className="key-hint-overlay key-hint-fullscreen">
-      <div className="key-hint-panel key-hint-panel-large">
-        <div className="key-hint-header">
-          <span className="key-hint-prefix">{mode === 'visual' ? 'VISUAL' : 'NORMAL'}</span>
-          <span className="key-hint-category">Available Commands (Press ? for help)</span>
-        </div>
-        <div className="key-hint-grid">
-          {categories.map((cat) => (
-            <div key={cat.category} className="key-hint-category-section">
-              <div className="key-hint-category-title">{cat.category}</div>
-              <div className="key-hint-list">
-                {cat.hints.map((hint) => (
-                  <div key={hint.key} className="key-hint-item">
-                    <span className="key-hint-key">{hint.key}</span>
-                    <span className="key-hint-desc">{hint.description}</span>
-                  </div>
-                ))}
-              </div>
+    <div className="key-hint-sidebar">
+      <div className="key-hint-header">
+        <span className="key-hint-prefix">{mode === 'visual' ? 'VISUAL' : 'NORMAL'}</span>
+        <span className="key-hint-category">Commands</span>
+      </div>
+      <div className="key-hint-sections">
+        {categories.map((cat) => (
+          <div key={cat.category} className="key-hint-category-section">
+            <div className="key-hint-category-title">{cat.category}</div>
+            <div className="key-hint-list">
+              {cat.hints.map((hint) => (
+                <div key={hint.key} className="key-hint-item">
+                  <span className="key-hint-key">{hint.key}</span>
+                  <span className="key-hint-desc">{hint.description}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );

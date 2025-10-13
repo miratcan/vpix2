@@ -15,6 +15,16 @@
   outline: none;
 }
 
+.left-panel {
+  width: 300px;
+  background: var(--color-background-dark);
+  border-right: var(--border-width) solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 .main-area {
   flex: 1;
   display: flex;
