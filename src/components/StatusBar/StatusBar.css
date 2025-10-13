@@ -1,7 +1,7 @@
 .status-bar {
   color: var(--color-text-muted);
 }
-.info-table th {
+.status-bar .info-table-key {
   width: 40%;
 }
 .color-chip {

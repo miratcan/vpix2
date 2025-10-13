@@ -9,40 +9,40 @@ export default function StatusBar({ engine, zoom, pan }: Props) {
       <table className="info-table" role="table">
         <tbody>
           <tr>
-            <th scope="row">MODE</th>
-            <td>{engine.mode}</td>
+            <th scope="row" className="info-table-key">MODE</th>
+            <td className="info-table-value">{engine.mode}</td>
           </tr>
           <tr>
-            <th scope="row">AXIS</th>
-            <td>
+            <th scope="row" className="info-table-key">AXIS</th>
+            <td className="info-table-value">
               <span className="axis-symbol" aria-label="axis">
                 {engine.axis === 'horizontal' ? '-' : '|'}
               </span>
             </td>
           </tr>
           <tr>
-            <th scope="row">CURSOR</th>
-            <td>({engine.cursor.x},{engine.cursor.y})</td>
+            <th scope="row" className="info-table-key">CURSOR</th>
+            <td className="info-table-value">({engine.cursor.x},{engine.cursor.y})</td>
           </tr>
           <tr>
-            <th scope="row">COLOR</th>
-            <td><span className="color-chip" style={{ background: engine.color }} /></td>
+            <th scope="row" className="info-table-key">COLOR</th>
+            <td className="info-table-value"><span className="color-chip" style={{ background: engine.color }} /></td>
           </tr>
           <tr>
-            <th scope="row">SIZE</th>
-            <td>{engine.width}x{engine.height}</td>
+            <th scope="row" className="info-table-key">SIZE</th>
+            <td className="info-table-value">{engine.width}x{engine.height}</td>
           </tr>
           <tr>
-            <th scope="row">ZOOM</th>
-            <td>{Math.round((zoom || 1) * 100)}%</td>
+            <th scope="row" className="info-table-key">ZOOM</th>
+            <td className="info-table-value">{Math.round((zoom || 1) * 100)}%</td>
           </tr>
           <tr>
-            <th scope="row">PAN</th>
-            <td>({pan?.x ?? 0},{pan?.y ?? 0})</td>
+            <th scope="row" className="info-table-key">PAN</th>
+            <td className="info-table-value">({pan?.x ?? 0},{pan?.y ?? 0})</td>
           </tr>
           <tr>
-            <th scope="row">VERSION</th>
-            <td>{__APP_VERSION__}</td>
+            <th scope="row" className="info-table-key">VERSION</th>
+            <td className="info-table-value">{__APP_VERSION__}</td>
           </tr>
         </tbody>
       </table>

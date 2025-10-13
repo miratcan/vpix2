@@ -187,8 +187,8 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal', keyma
             <tbody>
               {prefixBindings.map((binding) => (
                 <tr key={binding.key}>
-                  <td className="key-hint-key">{binding.key}</td>
-                  <td className="key-hint-desc">{binding.description}</td>
+                  <td className="info-table-key">{binding.key}</td>
+                  <td className="info-table-value">{binding.description}</td>
                 </tr>
               ))}
             </tbody>
@@ -226,8 +226,8 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal', keyma
               </tr>
               {cat.bindings.map((binding) => (
                 <tr key={`${cat.category}-${binding.key}`}>
-                  <td className="key-hint-key">{binding.key}</td>
-                  <td className="key-hint-desc">{binding.description}</td>
+                  <td className="info-table-key">{binding.key}</td>
+                  <td className="info-table-value">{binding.description}</td>
                 </tr>
               ))}
             </>

@@ -25,17 +25,8 @@
   padding: var(--spacing-xs) var(--spacing-s);
 }
 
-.info-table tbody td.key-hint-key {
-  color: var(--color-accent);
-  padding: 2px var(--spacing-s);
-  white-space: nowrap;
-  text-align: right;
+.info-table tbody td.info-table-key {
   width: 1%;
-}
-
-.info-table tbody td.key-hint-desc {
-  color: var(--color-text);
-  padding: 2px var(--spacing-s);
 }
 
 .info-table tbody tr:hover td {
