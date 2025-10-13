@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type VPixEngine from '../../../core/engine';
+import { VIEWPORT, CANVAS, ANIMATION, THEME_COLORS } from '../../../core/constants';
 import { GRID_THEME } from '../../theme/colors';
 import './CanvasGrid.css';
 
@@ -54,7 +55,7 @@ export default function CanvasGrid({
   });
   const panX = pan?.x ?? 0;
   const panY = pan?.y ?? 0;
-  const showGridLines = (zoom || 1) > 2;
+  const showGridLines = true;
   const axis = engine.axis;
   const axisClass = axis === 'vertical' ? 'axis-vertical' : 'axis-horizontal';
   const gridClassName = `canvas-grid ${axisClass}`;
@@ -91,8 +92,8 @@ export default function CanvasGrid({
     // Determine zoom direction from wheel delta
     const delta = e.deltaY;
     const zoomFactor = 1.25;
-    const minZoom = 0.01;
-    const maxZoom = 8;
+    const minZoom = VIEWPORT.MIN_ZOOM;
+    const maxZoom = VIEWPORT.MAX_ZOOM;
 
     // Calculate new zoom level
     const currentZoom = zoom;
@@ -246,7 +247,7 @@ export default function CanvasGrid({
 
       if (showGridLines && clipRight > clipLeft && clipBottom > clipTop) {
         ctx.strokeStyle = gridLine;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = CANVAS.GRID_LINE_WIDTH_DIVISOR / 4;
         for (let x = 0; x <= engine.width; x++) {
           const vx = Math.floor(offsetX + x * cell) + 0.5;
           if (vx < 0 || vx > viewW) continue;
@@ -288,7 +289,7 @@ export default function CanvasGrid({
 
       // Trail (filled cells) — fade from start to end
       const now = performance.now ? performance.now() : Date.now();
-      const L = 500;
+      const L = ANIMATION.TRAIL_DURATION_MS;
       const N = trail?.length || 0;
       for (let i = 0; i < N; i++) {
         const p = trail![i];
@@ -301,7 +302,7 @@ export default function CanvasGrid({
         ctx.save();
         // Fade from start (i=0, old/faint) to end (i=N-1, new/bright near cursor)
         const positionFactor = i / Math.max(1, N - 1);
-        ctx.globalAlpha = 0.5 * baseAlpha * positionFactor;
+        ctx.globalAlpha = THEME_COLORS.TRAIL_OPACITY * baseAlpha * positionFactor;
         ctx.fillStyle = cursorHighlight;
         ctx.fillRect(Math.floor(px), Math.floor(py), Math.max(1, cell), Math.max(1, cell));
         ctx.restore();
@@ -310,8 +311,8 @@ export default function CanvasGrid({
       // Guides
       const guides = engine.guides;
       if (guides.x.length > 0 || guides.y.length > 0) {
-        ctx.strokeStyle = 'rgba(255, 100, 255, 0.4)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = THEME_COLORS.GUIDE;
+        ctx.lineWidth = CANVAS.CROSSHAIR_LINE_WIDTH;
 
         // Vertical guides
         for (const gx of guides.x) {
@@ -341,15 +342,15 @@ export default function CanvasGrid({
       const cursorY = engine.cursor.y;
       const cx = offsetX + cursorX * cell;
       const cy = offsetY + cursorY * cell;
-      const shouldDrawCursor = (now % 1000) < 500;
+      const shouldDrawCursor = (now % (ANIMATION.CURSOR_BLINK_MS * 2)) < ANIMATION.CURSOR_BLINK_MS;
 
       // Crosshair - full viewport lines with subtle overlay
       if (engine.showCrosshair && shouldDrawCursor) {
         const crosshairY = Math.floor(cy + cell / 2) + 0.5;
         const crosshairX = Math.floor(cx + cell / 2) + 0.5;
 
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = THEME_COLORS.CROSSHAIR_PRIMARY;
+        ctx.lineWidth = CANVAS.CROSSHAIR_LINE_WIDTH;
 
         // Horizontal line
         ctx.beginPath();
@@ -364,8 +365,8 @@ export default function CanvasGrid({
         ctx.stroke();
 
         // Add contrasting shadow line
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = THEME_COLORS.CROSSHAIR_SHADOW;
+        ctx.lineWidth = CANVAS.CROSSHAIR_LINE_WIDTH;
 
         // Horizontal shadow
         ctx.beginPath();
@@ -401,7 +402,7 @@ export default function CanvasGrid({
         }
 
         ctx.strokeStyle = invertedColor;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = CANVAS.CURSOR_STROKE_WIDTH;
         ctx.strokeRect(Math.floor(cx) + 0.5, Math.floor(cy) + 0.5, Math.max(1, cell - 1), Math.max(1, cell - 1));
       }
 

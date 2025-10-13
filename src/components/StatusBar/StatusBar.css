@@ -1,12 +1,24 @@
 .status-bar {
+  padding: var(--spacing-s);
   color: var(--color-text-muted);
+  background: var(--color-background);
+  box-sizing: border-box;
+  width: 100%;
 }
+
+.status-bar .info-table {
+  width: 100%;
+}
+
 .status-bar .info-table .key {
-  width: 40%;
+  width: 35%;
 }
+
 .color-chip {
   display: inline-block;
   width: 14px;
   height: 14px;
   vertical-align: middle;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.45);
 }

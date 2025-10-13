@@ -8,6 +8,11 @@
 | Shortcut | When | Command | Description |
 | --- | --- | --- | --- |
 | `__general__` | Always | `noop` | General tips |
+| `ctrl+d` | Always | `cursor.page-down` | Scroll half page forward (axis-aware) |
+| `ctrl+u` | Always | `cursor.page-up` | Scroll half page backward (axis-aware) |
+| `ctrl+f` | Always | `cursor.page-forward` | Scroll full page forward (axis-aware) |
+| `ctrl+b` | Always | `cursor.page-backward` | Scroll full page backward (axis-aware) |
+| `|` | Always | `view.toggle-crosshair` | Toggle crosshair cursor |
 | `ctrl+r` | Always | `history.redo` | Redo last action |
 | `ctrl+^` | Always | `palette.swap-last-color` | Swap to last used color |
 | `Tab` | Always | `axis.toggle` | Toggle axis (horizontal/vertical) |
@@ -23,9 +28,6 @@
 | `w` | No prefix | `motion.word-next` | Move to next run start |
 | `b` | No prefix | `motion.word-prev` | Move to previous run start |
 | `e` | No prefix | `motion.word-end-next` | Move to end of run |
-| `0` | No prefix | `motion.line-begin` | Go to axis line begin |
-| `^` | No prefix | `motion.line-first-nonblank` | Go to first non-empty cell on axis line |
-| `$` | No prefix | `motion.line-end` | Go to axis line end |
 | `shift+g` | No prefix | `motion.canvas-end` | Go to canvas end |
 | `x` | No prefix | `paint.cut` | Cut cell(s) (delete and yank) |
 | `d` | No prefix | `operator.set` | Begin delete operator |
@@ -42,13 +44,11 @@
 | `c` | After `g` prefix | `palette.select-index` | Select palette color by count |
 | `v` | No prefix | `mode.visual` | Enter visual mode |
 | `g` | No prefix | `prefix.set` | Begin g-prefix command |
-| `r` | No prefix | `prefix.set` | Begin r-prefix command |
 | `g` | After `g` prefix | `motion.canvas-begin` | Go to canvas begin |
 | `e` | After `g` prefix | `motion.word-end-prev` | Move to previous run end |
 | `Escape` | Prefix active | `prefix.clear` | Cancel pending prefix |
 | `t` | After `g` prefix | `palette.cycle-next` | Cycle to next palette color |
 | `shift+t` | After `g` prefix | `palette.cycle-previous` | Cycle to previous palette color |
-| `1..9` | After `r` prefix | `palette.paint-color` | Paint using palette color by index |
 
 ## Visual mode
 

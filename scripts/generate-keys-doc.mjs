@@ -56,7 +56,6 @@ const CONDITION_LABELS = {
   'no-prefix': 'No prefix',
   'prefix:any': 'Prefix active',
   'prefix:g': 'After `g` prefix',
-  'prefix:r': 'After `r` prefix',
 };
 
 function formatCondition(value) {

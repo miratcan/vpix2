@@ -47,7 +47,6 @@ function formatBindingKey(scope: string, key: string, condition?: string) {
   const extras: string[] = [];
   if (condition === 'prefix:any') extras.push('prefix');
   if (condition === 'prefix:g') extras.push('prefix g');
-  if (condition === 'prefix:r') extras.push('prefix r');
   const suffix = extras.length ? ` [${extras.join(', ')}]` : '';
   return `${scope}:${key}${suffix}`;
 }

@@ -110,14 +110,6 @@ describe('VPixEngine', () => {
     assert.equal(eng.currentColorIndex, 1);
   });
 
-  it('r + digit paints once without changing current color', () => {
-    const eng = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
-    const before = eng.currentColorIndex;
-    press(eng, 'r', '1');
-    assert.ok(eng.grid[0][0] != null);
-    assert.equal(eng.currentColorIndex, before);
-  });
-
   it('axis defaults to horizontal and toggles with Tab', () => {
     const eng = new VPixEngine({ width: 2, height: 2, palette: pico.colors });
     assert.equal((eng as any).axis, 'horizontal');

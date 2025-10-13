@@ -5,6 +5,9 @@
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
+  padding: var(--spacing-m);
+  background: var(--color-background);
+  position: relative;
 }
 
 .command-feed-content {
@@ -22,6 +25,18 @@
   white-space: pre-wrap;
 }
 
-.feed-line-tip {
+.feed-line-error {
   color: var(--color-accent);
+}
+
+.command-feed-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 1) 100%
+  );
 }

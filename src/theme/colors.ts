@@ -1,7 +1,7 @@
 export const GRID_THEME = {
-  canvasBackground: '#1e1e1e',
+  canvasBackground: '#000',
   accent: '#68b0e8',
-  gridLine: 'rgba(255, 255, 255, 0.06)',
+  gridLine: 'rgba(40, 120, 180, 0.35)',
   cursorHighlight: 'rgba(104, 176, 232, 0.9)',
 } as const;
 

@@ -2,22 +2,20 @@ import { useEffect, useMemo, useState, useCallback } from 'react';
 
 import type VPixEngine from '../../core/engine';
 import { runCommand } from '../../core/commands';
-import { KeymapBuilder } from '../../core/services/keymap-builder';
-import { BindingScope } from '../../core/keybindings';
-import { MODES } from '../../core/engine';
-import type { Command } from '../../core/commands/common';
+import { KeymapBuilder, type Keymap } from '../../core/services/keymap-builder';
+import type { BindingScope } from '../../core/keybindings';
+import type { Mode } from '../../core/engine/types';
+import type { Command, OperatorKind } from '../../core/commands/common';
+import { buildKeymapFromSpec } from './keymapSpec';
 
 export type EngineHookConfig = {
   factory: () => VPixEngine;
   getViewportCells?: () => { width: number; height: number };
 };
 
-let lineId = 0;
-
 export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
   const engine = useMemo(factory, [factory]);
   const [frame, setFrame] = useState(0);
-  const [feedLines, setFeedLines] = useState<{ id: number; text: string; type: 'in' | 'out' | 'tip' }[]>([]);
   const [currentPrefix, setCurrentPrefix] = useState<string | null>(null);
   const [currentCount, setCurrentCount] = useState<number | null>(null);
 
@@ -45,86 +43,7 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
     }
     return cmd;
   };
-
-
-  const keymap = useMemo(() => {
-    const builder = new KeymapBuilder();
-
-    // Global Bindings
-    builder.bind('global', 'Ctrl+D', 'cursor.page-down');
-    builder.bind('global', 'Ctrl+U', 'cursor.page-up');
-    builder.bind('global', 'Ctrl+F', 'cursor.page-forward');
-    builder.bind('global', 'Ctrl+B', 'cursor.page-backward');
-    builder.bind('global', '|', 'view.toggle-crosshair');
-    builder.bind('global', 'Shift+|', 'view.toggle-crosshair'); // Turkish Q keyboard sends Shift+|
-    builder.bind('global', 'Ctrl+^', 'palette.swap-last-color');
-    builder.bind('global', 'Tab', 'axis.toggle');
-
-    // Normal Mode Bindings (Phase 1 & 2)
-    const normalScope: BindingScope = MODES.NORMAL;
-    builder.bind(normalScope, 'h', 'cursor.move-left');
-    builder.bind(normalScope, 'ArrowLeft', 'cursor.move-left');
-    builder.bind(normalScope, 'j', 'cursor.move-down');
-    builder.bind(normalScope, 'ArrowDown', 'cursor.move-down');
-    builder.bind(normalScope, 'k', 'cursor.move-up');
-    builder.bind(normalScope, 'ArrowUp', 'cursor.move-up');
-    builder.bind(normalScope, 'l', 'cursor.move-right');
-    builder.bind(normalScope, 'ArrowRight', 'cursor.move-right');
-    builder.bind(normalScope, 'x', 'paint.erase');
-    builder.bind(normalScope, ' ', 'paint.toggle');
-    builder.bind(normalScope, 'p', 'clipboard.paste');
-    builder.bind(normalScope, 'v', 'mode.visual');
-    builder.bind(normalScope, 'i', 'palette.pick-color');
-
-    // Visual Mode Bindings (Phase 3)
-    const visualScope: BindingScope = MODES.VISUAL;
-    builder.bind(visualScope, 'h', 'selection.move-left');
-    builder.bind(visualScope, 'j', 'selection.move-down');
-    builder.bind(visualScope, 'k', 'selection.move-up');
-    builder.bind(visualScope, 'l', 'selection.move-right');
-    builder.bind(visualScope, 'Escape', 'selection.exit-visual');
-    builder.bind(visualScope, 'y', 'selection.yank');
-    builder.bind(visualScope, 'd', 'selection.delete');
-    builder.bind(visualScope, 'p', 'selection.paste');
-
-    // Normal Mode Bindings (Phase 4 - Prefixes, Operators, Motions, etc.)
-    // Prefix-based Commands
-    builder.bind(normalScope, 'g+g', 'motion.canvas-begin');
-    builder.bind(normalScope, 'g+e', 'motion.word-end-prev');
-    builder.bind(normalScope, 'g+c', 'palette.select-index'); // Requires count: 11gc
-    builder.bind(normalScope, 'g+t', 'palette.cycle-next');
-    builder.bind(normalScope, 'g+Shift+T', 'palette.cycle-previous');
-
-    // Motion Commands
-    builder.bind(normalScope, 'w', 'motion.word-next');
-    builder.bind(normalScope, 'b', 'motion.word-prev');
-    builder.bind(normalScope, 'e', 'motion.word-end-next');
-    builder.bind(normalScope, '0', 'motion.line-begin');
-    builder.bind(normalScope, '^', 'motion.line-first-nonblank');
-    builder.bind(normalScope, '$', 'motion.line-end');
-    builder.bind(normalScope, 'Shift+G', 'motion.canvas-end');
-
-    // History and Repeat
-    builder.bind(normalScope, 'u', 'history.undo');
-    builder.bind(normalScope, '.', 'edit.repeat-last');
-
-    // Visual Mode Bindings (Phase 4 - Remaining selection commands)
-    builder.bind(visualScope, 'Shift+P', 'selection.paste-transparent');
-    builder.bind(visualScope, ']', 'selection.rotate-cw');
-    builder.bind(visualScope, '[', 'selection.rotate-ccw');
-    builder.bind(visualScope, 'Shift+M', 'selection.move-to-cursor');
-    builder.bind(visualScope, 'Shift+F', 'selection.fill');
-    builder.bind(visualScope, 'Shift+R', 'selection.stroke-rect');
-    builder.bind(visualScope, 'Shift+C', 'selection.stroke-circle');
-    builder.bind(visualScope, 'Shift+O', 'selection.fill-circle');
-    builder.bind(visualScope, 'Shift+L', 'selection.draw-line');
-    builder.bind(visualScope, 'w', 'motion.word-next');
-    builder.bind(visualScope, 'b', 'motion.word-prev');
-    builder.bind(visualScope, 'e', 'motion.word-end-next');
-    builder.bind(visualScope, 'f', 'selection.flood-fill');
-
-    return builder.build();
-  }, []); // Empty dependency array, so it runs once.
+  const keymap = useMemo(() => buildKeymapFromSpec(), []);
 
   const handleKeyDown = useCallback((evt: React.KeyboardEvent) => {
     const mockEvent = new KeyboardEvent('keydown', evt.nativeEvent);
@@ -227,17 +146,9 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
   useEffect(() => {
     const unsub = engine.subscribe((_, payload) => {
       setFrame((prev) => (payload?.revision ?? prev + 1));
-      if (payload?.cmd) {
-        const { display, lines, ok } = payload.cmd;
-        const output = lines ?? [display];
-        const newLines = output.filter(Boolean).map((text: string) => ({ id: lineId++, text, type: 'out' as const }));
-        if (newLines.length) {
-          setFeedLines((prev) => [...prev, ...newLines]);
-        }
-      }
     });
     return unsub;
   }, [engine]);
 
-  return { engine, frame, feedLines, handleKeyDown, currentPrefix, currentCount, keymap } as const;
+  return { engine, frame, handleKeyDown, currentPrefix, currentCount, keymap } as const;
 }

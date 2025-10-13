@@ -1,7 +1,7 @@
 import type VPixEngine from './engine';
 
 export type BindingScope = 'global' | 'normal' | 'visual';
-export type BindingCondition = 'always' | 'no-prefix' | 'prefix:any' | 'prefix:g' | 'prefix:r';
+export type BindingCondition = 'always' | 'no-prefix' | 'prefix:any' | 'prefix:g';
 
 export type BindingContext = {
   engine: VPixEngine;
@@ -152,29 +152,6 @@ export const KEYBINDINGS: KeyBinding[] = [
   },
   {
     scope: 'normal',
-    key: '0',
-    command: 'motion.line-begin',
-    when: 'no-prefix',
-    description: 'Go to axis line begin',
-    tips: ['Press 0 to go to start of line/column'],
-  },
-  {
-    scope: 'normal',
-    key: '^',
-    command: 'motion.line-first-nonblank',
-    when: 'no-prefix',
-    description: 'Go to first non-empty cell on axis line',
-  },
-  {
-    scope: 'normal',
-    key: '$',
-    command: 'motion.line-end',
-    when: 'no-prefix',
-    description: 'Go to axis line end',
-    tips: ['Press $ to go to end of line/column'],
-  },
-  {
-    scope: 'normal',
     key: 'shift+g',
     command: 'motion.canvas-end',
     when: 'no-prefix',
@@ -313,15 +290,6 @@ export const KEYBINDINGS: KeyBinding[] = [
   },
   {
     scope: 'normal',
-    key: 'r',
-    command: 'prefix.set',
-    when: 'no-prefix',
-    args: () => ({ value: 'r' }),
-    description: 'Begin r-prefix command',
-    tips: ['Press r[1-9] to paint with palette color'],
-  },
-  {
-    scope: 'normal',
     key: 'g',
     command: 'motion.canvas-begin',
     when: 'prefix:g',
@@ -357,15 +325,6 @@ export const KEYBINDINGS: KeyBinding[] = [
     command: 'palette.cycle-previous',
     when: 'prefix:g',
     description: 'Cycle to previous palette color',
-  },
-  {
-    scope: 'normal',
-    key: '[1-9]',
-    display: '1..9',
-    command: 'palette.paint-color',
-    when: 'prefix:r',
-    args: ({ event }) => ({ index: parseInt(event.key, 10) }),
-    description: 'Paint using palette color by index',
   },
 
   // Visual mode bindings

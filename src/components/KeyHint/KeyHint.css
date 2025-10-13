@@ -6,17 +6,12 @@
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  padding-right: var(--spacing-s);
+  background: var(--color-background);
 }
 
-.info-table thead th {
-  background: var(--color-background);
-  color: var(--color-accent);
-  font-weight: 700;
-  text-align: right;
-  padding: var(--spacing-s);
-  position: sticky;
-  top: 0;
-  z-index: 1;
+.info-table {
+  border-spacing: 0;
 }
 
 .info-table tbody tr.category td {
@@ -24,16 +19,14 @@
   text-transform: uppercase;
   text-align: center;
   padding: var(--spacing-xs) var(--spacing-s);
+  color: var(--color-accent);
 }
 
-.info-table tbody td.key {
+.info-table tbody .key {
   width: 1%;
+  color: var(--color-accent);
 }
 
 .info-table tbody tr:hover td {
-  background: var(--color-background-light);
-}
-
-.info-table tbody tr.category:hover td {
-  background: var(--color-background);
+  background: var(--color-accent-soft);
 }

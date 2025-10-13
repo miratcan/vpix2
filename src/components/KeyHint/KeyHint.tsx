@@ -1,6 +1,12 @@
+import { Fragment } from 'react';
 import './KeyHint.css';
 import type { Keymap } from '../../../core/services/keymap-builder';
 import type { BindingScope } from '../../../core/keybindings';
+import {
+  InfoTable,
+  InfoTableCategoryRow,
+  InfoTableRow,
+} from '../InfoTable';
 
 type KeyHintProps = {
   prefix: string | null;
@@ -21,6 +27,7 @@ function getCommandDescription(commandId: string): string {
     'cursor.page-up': 'page up',
     'cursor.page-forward': 'page forward',
     'cursor.page-backward': 'page backward',
+    'paint.cut': 'cut (delete + yank)',
     'paint.erase': 'erase pixel',
     'paint.toggle': 'toggle pixel',
     'clipboard.paste': 'paste',
@@ -58,8 +65,13 @@ function getCommandDescription(commandId: string): string {
     'palette.cycle-previous': 'cycle prev',
     'palette.swap-last-color': 'swap last color',
     'history.undo': 'undo',
+    'history.redo': 'redo',
     'edit.repeat-last': 'repeat last',
     'view.toggle-crosshair': 'toggle crosshair',
+    'operator.set': 'set operator',
+    'operator.delete.to-end': 'delete to end',
+    'operator.change.to-end': 'change to end',
+    'prefix.set': 'set prefix',
     'axis.toggle': 'toggle axis',
   };
   return descriptions[commandId] || commandId;
@@ -77,6 +89,8 @@ function categorizeCommand(commandId: string): string {
   if (commandId.startsWith('history.')) return 'History';
   if (commandId.startsWith('edit.')) return 'Edit';
   if (commandId.startsWith('view.')) return 'View';
+  if (commandId.startsWith('operator.')) return 'Operator';
+  if (commandId.startsWith('prefix.')) return 'Prefix';
   if (commandId.startsWith('axis.')) return 'View';
   return 'Other';
 }
@@ -85,11 +99,49 @@ type KeyBinding = {
   key: string;
   command: string;
   description: string;
+  category?: string;
 };
 
 type CategoryBindings = {
   category: string;
   bindings: KeyBinding[];
+  order: number;
+};
+
+type BindingOverride = {
+  id: string;
+  commands: string[];
+  matchKeys?: string[];
+  key: string;
+  description: string;
+  category: string;
+};
+
+const BINDING_OVERRIDES: BindingOverride[] = [
+  {
+    id: 'group.cursor-nav',
+    commands: ['cursor.move-left', 'cursor.move-down', 'cursor.move-up', 'cursor.move-right'],
+    matchKeys: ['h', 'j', 'k', 'l'],
+    key: 'hjkl',
+    description: 'move cursor',
+    category: 'Movement',
+  },
+];
+
+const CATEGORY_ORDER: Record<string, number> = {
+  Motion: 0,
+  Movement: 1,
+  Operator: 2,
+  Selection: 3,
+  Paint: 4,
+  Clipboard: 5,
+  Palette: 6,
+  Mode: 7,
+  History: 8,
+  Edit: 9,
+  View: 10,
+  Prefix: 11,
+  Other: 12,
 };
 
 // Helper to format key for display
@@ -134,68 +186,64 @@ function extractBindingsFromScope(keymap: Keymap, scope: BindingScope): KeyBindi
 
 // Helper to group bindings by category
 function groupBindingsByCategory(bindings: KeyBinding[]): CategoryBindings[] {
-  const grouped = new Map<string, KeyBinding[]>();
+  const grouped = new Map<string, { order: number; bindings: KeyBinding[] }>();
 
   bindings.forEach((binding) => {
-    const category = categorizeCommand(binding.command);
+    const category = binding.category ?? categorizeCommand(binding.command);
+    const order = CATEGORY_ORDER[category] ?? CATEGORY_ORDER.Other;
     if (!grouped.has(category)) {
-      grouped.set(category, []);
+      grouped.set(category, { order, bindings: [] });
     }
-    grouped.get(category)!.push(binding);
+    grouped.get(category)!.bindings.push(binding);
   });
 
   const categories: CategoryBindings[] = [];
-  grouped.forEach((bindings, category) => {
-    categories.push({ category, bindings });
+  grouped.forEach(({ bindings: catBindings, order }, category) => {
+    categories.push({ category, bindings: catBindings, order });
   });
 
-  return categories;
+  return categories.sort((a, b) => a.order - b.order || a.category.localeCompare(b.category));
+}
+
+function applyOverrides(bindings: KeyBinding[]): KeyBinding[] {
+  const remaining: KeyBinding[] = [];
+  const collected = new Map<string, { override: BindingOverride; bindings: KeyBinding[] }>();
+
+  bindings.forEach((binding) => {
+    const match = BINDING_OVERRIDES.find((override) => {
+      if (!override.commands.includes(binding.command)) return false;
+      if (override.matchKeys && !override.matchKeys.includes(binding.key.toLowerCase())) return false;
+      return true;
+    });
+
+    if (match) {
+      const entry = collected.get(match.id) ?? { override: match, bindings: [] };
+      entry.bindings.push(binding);
+      collected.set(match.id, entry);
+    } else {
+      remaining.push(binding);
+    }
+  });
+
+  collected.forEach(({ override, bindings: matched }) => {
+    if (matched.length === override.commands.length) {
+      remaining.push({
+        key: override.key,
+        command: override.id,
+        description: override.description,
+        category: override.category,
+      });
+    } else {
+      remaining.push(...matched);
+    }
+  });
+
+  return remaining;
 }
 
 export default function KeyHint({ prefix, count, visible, mode = 'normal', keymap }: KeyHintProps) {
   if (!visible) {
     return null;
-  }
-
-  // Show prefix-specific hints if prefix is active
-  if (prefix) {
-    const scopeToCheck = mode as BindingScope;
-    const scopeMap = keymap.get(scopeToCheck);
-
-    // Find all commands that start with this prefix
-    const prefixBindings: KeyBinding[] = [];
-    scopeMap?.forEach((command, key) => {
-      if (key.startsWith(`${prefix}+`)) {
-        const displayKey = key.substring(prefix.length + 1); // Remove "g+" prefix
-        prefixBindings.push({
-          key: formatKeyForDisplay(displayKey),
-          command,
-          description: getCommandDescription(command),
-        });
-      }
-    });
-
-    if (prefixBindings.length > 0) {
-      return (
-        <div className="key-hint-sidebar">
-          <table className="info-table">
-            <thead>
-              <tr>
-                <th colSpan={2}>{count !== null ? `${count}${prefix}` : prefix}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {prefixBindings.map((binding) => (
-                <tr key={binding.key}>
-                  <td className="key">{binding.key}</td>
-                  <td className="value">{binding.description}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-    }
   }
 
   // Show all available commands for current mode
@@ -205,35 +253,31 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal', keyma
   // Get bindings from both mode-specific and global scopes
   const modeBindings = extractBindingsFromScope(keymap, scope);
   const globalBindings = extractBindingsFromScope(keymap, globalScope);
-  const allBindings = [...modeBindings, ...globalBindings];
+  const allBindings = [...modeBindings, ...globalBindings].filter(
+    (binding) => binding.command !== 'prefix.clear' && binding.command !== 'noop',
+  );
+
+  const mergedBindings = applyOverrides(allBindings);
 
   // Group by category
-  const categories = groupBindingsByCategory(allBindings);
+  const categories = groupBindingsByCategory(mergedBindings);
 
   return (
     <div className="key-hint-sidebar">
-      <table className="info-table">
-        <thead>
-          <tr>
-            <th colSpan={2}>{mode === 'visual' ? 'VISUAL' : 'NORMAL'}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {categories.map((cat) => (
-            <>
-              <tr key={cat.category} className="category">
-                <td colSpan={2}>{cat.category}</td>
-              </tr>
-              {cat.bindings.map((binding) => (
-                <tr key={`${cat.category}-${binding.key}`}>
-                  <td className="key">{binding.key}</td>
-                  <td className="value">{binding.description}</td>
-                </tr>
-              ))}
-            </>
-          ))}
-        </tbody>
-      </table>
+      <InfoTable>
+        {categories.map((cat) => (
+          <Fragment key={cat.category}>
+            <InfoTableCategoryRow>{cat.category}</InfoTableCategoryRow>
+            {cat.bindings.map((binding) => (
+              <InfoTableRow
+                key={`${cat.category}-${binding.key}`}
+                label={binding.key}
+                value={binding.description}
+              />
+            ))}
+          </Fragment>
+        ))}
+      </InfoTable>
     </div>
   );
 }

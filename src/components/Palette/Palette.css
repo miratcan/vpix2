@@ -1,24 +1,38 @@
 .palette {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
+  gap: var(--spacing-xs);
   padding: var(--spacing-s);
-  background: var(--color-background-dark);
+  background: transparent;
   width: 100%;
   box-sizing: border-box;
 }
+
 .swatch {
+  appearance: none;
   display: flex;
   align-items: center;
+  justify-content: center;
   background: var(--color-background-light);
   color: var(--color-text-muted);
   cursor: pointer;
+  border: var(--border-width) solid transparent;
+  padding: 0;
+  line-height: 1;
+  font: inherit;
+  transition: background 100ms linear, color 100ms linear;
 }
+
 .swatch:hover {
+  background: var(--color-accent-soft);
 }
+
 .swatch.active {
-  background: var(--color-background);
+  background: var(--color-border);
+  color: var(--color-background);
+  border-color: var(--color-border);
 }
+
 .swatch .chip {
   width: 32px;
   height: 32px;
@@ -26,8 +40,23 @@
   align-items: center;
   justify-content: center;
   image-rendering: pixelated;
+  border: var(--border-width) solid transparent;
 }
+
+.swatch.active .chip {
+  border-color: var(--color-border);
+}
+
+.swatch:focus {
+  outline: none;
+}
+
+.swatch:focus-visible {
+  box-shadow: 0 0 0 var(--border-width) var(--color-accent);
+}
+
 .swatch .key {
   font-weight: 600;
   color: var(--color-text);
+  text-shadow: none;
 }

@@ -1,0 +1,15 @@
+.mode-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-s);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.mode-indicator__value {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}

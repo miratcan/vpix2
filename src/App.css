@@ -4,44 +4,77 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--color-background);
+  background: var(--color-background-dark);
   color: var(--color-text);
+  padding: var(--spacing-s);
+  box-sizing: border-box;
 }
 
 .vpix-container {
   flex: 1;
-  display: flex;
-  flex-direction: row;
+  display: grid;
   outline: none;
   min-height: 0;
   overflow: hidden;
+  background: var(--color-background);
+  grid-template-columns: 240px minmax(0, 1fr) 280px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "mode palette sidebar-right"
+    "sidebar-left main sidebar-right"
+    "sidebar-left command sidebar-right";
+}
+
+.mode-area {
+  grid-area: mode;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: var(--spacing-s) var(--spacing-m);
+  min-height: 48px;
+}
+
+.palette-area {
+  grid-area: palette;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: var(--spacing-s) var(--spacing-m);
+  gap: var(--spacing-s);
 }
 
 .sidebar {
-  width: 200px;
-  background: var(--color-background-dark);
+  width: 100%;
   display: flex;
   flex-direction: column;
   min-height: 0;
   flex-shrink: 0;
 }
 
+.sidebar > * {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .sidebar.left {
+  grid-area: sidebar-left;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 .sidebar.right {
-  padding: var(--spacing-s);
-  gap: var(--spacing-s);
+  grid-area: sidebar-right;
 }
 
 .main-area {
+  grid-area: main;
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  padding: 0;
+  background: var(--color-background);
 }
 
 /* Shared info table styles for both sidebars */
@@ -52,12 +85,22 @@
 
 .info-table th,
 .info-table td {
-  padding: var(--spacing-xs) var(--spacing-s);
+  padding: var(--spacing-xs) var(--spacing-s) 0 var(--spacing-s);
   vertical-align: middle;
+  border-bottom: 1px solid var(--color-border-muted);
+}
+
+.info-table th {
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.info-table td {
+  padding-top: calc(var(--spacing-xs) / 2);
 }
 
 .info-table .key {
-  text-align: right;
+  text-align: left;
   color: var(--color-accent);
   white-space: nowrap;
 }
@@ -67,65 +110,29 @@
   color: var(--color-text);
 }
 
-/* help overlay / command result removed — use terminal */
-
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: var(--color-text-muted);
-}
-
 .vpix-command-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  grid-area: command;
   background: var(--color-background);
-  padding: 0.5rem 1rem;
-  z-index: 100;
+  padding: var(--spacing-s) var(--spacing-m);
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--spacing-s);
+  border-top: 1px solid var(--color-border);
 }
 
 .vpix-command-prompt {
   color: var(--color-accent);
+  font-weight: 700;
 }
 
 .vpix-command-input {
   flex: 1;
-  background: transparent;
-  border: none;
+  background: var(--color-background-light);
+  border: 1px solid var(--color-border);
   outline: none;
   color: var(--color-text);
+  padding: calc(var(--spacing-xs) / 2) var(--spacing-s);
+  border-radius: 0;
+  font-family: inherit;
+  font-size: inherit;
 }

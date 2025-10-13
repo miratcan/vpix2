@@ -12,14 +12,17 @@
 
   color-scheme: dark;
 
-  /* Renkler - Retro pixel art editor tema (Aseprite inspired) */
-  --color-background: black
-  --color-background-light: gray;
-  --color-background-dark: black;
-  --color-accent: green;
-  --color-text: #d4d4d4;
-  --color-text-muted: #858585;
-  --color-border: #3e3e42;
+  /* DOS-inspired palette */
+  --color-background: #000000;
+  --color-background-light: #1a1a1a;
+  --color-background-dark: #000000;
+  --color-surface: #000000;
+  --color-accent: #00ff6a;
+  --color-accent-soft: rgba(0, 255, 106, 0.2);
+  --color-text: #c8c8c8;
+  --color-text-muted: #7a7a7a;
+  --color-border: #00ff6a;
+  --color-border-muted: rgba(0, 255, 106, 0.35);
 
   /* Border widths - crisp, pixel perfect */
   --border-width: 2px;

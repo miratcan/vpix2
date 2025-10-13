@@ -6,11 +6,16 @@ export default function Palette({ palette, currentIndex }: Props) {
   return (
     <div className="palette">
       {palette.map((c, i) => (
-        <div key={i} className={`swatch${i === currentIndex ? ' active' : ''}`}>
+        <button
+          key={i}
+          type="button"
+          className={`swatch${i === currentIndex ? ' active' : ''}`}
+          aria-pressed={i === currentIndex}
+        >
           <span className="chip" style={{ background: c }}>
             <span className="key">{i + 1}</span>
           </span>
-        </div>
+        </button>
       ))}
     </div>
   );

@@ -39,8 +39,6 @@ function conditionMatches(condition: BindingCondition | undefined, prefix: strin
       return Boolean(prefix);
     case 'prefix:g':
       return prefix === 'g';
-    case 'prefix:r':
-      return prefix === 'r';
     default:
       return true;
   }

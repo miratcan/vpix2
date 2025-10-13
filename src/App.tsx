@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import VPixEngine, { MODES } from '../core/engine';
+import { VIEWPORT, STORAGE_KEYS, ANIMATION } from '../core/constants';
 import { DocumentRepository } from '../core/services/document-repository';
 import { PaletteService } from '../core/services/palette-service';
 import { ShareLinkService } from '../core/services/share-link-service';
 import CanvasGrid from './components/CanvasGrid/CanvasGrid';
+import ModeIndicator from './components/ModeIndicator/ModeIndicator';
 import MiniMap from './components/MiniMap/MiniMap';
 import Palette from './components/Palette/Palette';
 import StatusBar from './components/StatusBar/StatusBar';
@@ -16,12 +18,7 @@ import { useEngine } from './hooks/useEngine';
 import { FALLBACK_PALETTE } from './theme/colors';
 import './App.css';
 
-const STORAGE_KEY = 'vpix.document.v1';
-const HELP_SHOWN_KEY = 'vpix.help.shown';
 const IS_TEST_ENV = typeof import.meta !== 'undefined' && import.meta.env?.MODE === 'test';
-const DEFAULT_VIEW_WIDTH = 800;
-const DEFAULT_VIEW_HEIGHT = 480;
-const MIN_DYNAMIC_ZOOM = 0.01;
 
 export default function App() {
   const paletteService = useMemo(() => new PaletteService(), []);
@@ -34,12 +31,12 @@ export default function App() {
   // Viewport cells calculation (need to define early, but will be properly initialized later)
   const viewportCellsRef = useRef<{ width: number; height: number }>({ width: 10, height: 10 });
 
-  const { engine, frame, feedLines, handleKeyDown: engineHandleKeyDown, currentPrefix, currentCount, keymap } = useEngine({
+  const { engine, frame, handleKeyDown: engineHandleKeyDown, currentPrefix, currentCount, keymap } = useEngine({
     factory: engineFactory,
     getViewportCells: () => viewportCellsRef.current,
   });
 
-  const documents = useMemo(() => new DocumentRepository(STORAGE_KEY), []);
+  const documents = useMemo(() => new DocumentRepository(STORAGE_KEYS.DOCUMENT), []);
   const shareLinks = useMemo(() => new ShareLinkService(), []);
   const commandServices = useMemo(
     () => ({ documents, shareLinks, palettes: paletteService }),
@@ -72,13 +69,13 @@ export default function App() {
       el.focus();
     }
   }, []);
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(VIEWPORT.MIN_ZOOM);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [trail, setTrail] = useState<Array<{ x: number; y: number; ts: number }>>([]);
   const lastCursorRef = useRef<{ x: number; y: number } | null>(null);
   const [viewSize, setViewSize] = useState<{ width: number; height: number }>(() => ({
-    width: typeof window !== 'undefined' ? window.innerWidth : DEFAULT_VIEW_WIDTH,
-    height: typeof window !== 'undefined' ? window.innerHeight : DEFAULT_VIEW_HEIGHT,
+    width: typeof window !== 'undefined' ? window.innerWidth : VIEWPORT.DEFAULT_VIEW_WIDTH,
+    height: typeof window !== 'undefined' ? window.innerHeight : VIEWPORT.DEFAULT_VIEW_HEIGHT,
   }));
 
   const baseCellSize = useMemo(() => {
@@ -88,16 +85,25 @@ export default function App() {
     return Math.max(1, Math.floor(fitted));
   }, [engine.height, engine.width, viewSize.height, viewSize.width]);
 
-  const minZoom = useMemo(() => {
-    const inverse = baseCellSize > 0 ? 1 / baseCellSize : 1;
-    return Math.min(1, Math.max(MIN_DYNAMIC_ZOOM, inverse));
-  }, [baseCellSize]);
+  const minZoom = VIEWPORT.MIN_ZOOM;
 
   const cellPixelSize = useMemo(() => Math.max(1, Math.round(baseCellSize * (zoom || 1))), [baseCellSize, zoom]);
 
   useEffect(() => {
     setZoom((z) => (z < minZoom ? minZoom : z));
   }, [minZoom]);
+
+  const clampZoom = useCallback((value: number) => Math.min(VIEWPORT.MAX_ZOOM, Math.max(minZoom, value)), [minZoom]);
+
+  const handleZoomChange = useCallback(
+    (value: number) => {
+      setZoom((prev) => {
+        const next = clampZoom(value);
+        return next === prev ? prev : next;
+      });
+    },
+    [clampZoom],
+  );
 
   const getVisibleCellCounts = useCallback(() => {
     const cellPx = cellPixelSize;
@@ -126,17 +132,17 @@ export default function App() {
   // Show help modal on first visit
   useEffect(() => {
     if (IS_TEST_ENV) return;
-    const seen = localStorage.getItem(HELP_SHOWN_KEY);
+    const seen = localStorage.getItem(STORAGE_KEYS.HELP_SHOWN);
     if (!seen) {
       setShowHelp(true);
-      localStorage.setItem(HELP_SHOWN_KEY, 'seen');
+      localStorage.setItem(STORAGE_KEYS.HELP_SHOWN, 'seen');
     }
   }, []);
 
   // Keep cursor visible by adjusting pan to follow it.
   useEffect(() => {
     const { visWcells, visHcells } = getVisibleCellCounts();
-    const margin = 2; // start scrolling a bit before the edge
+    const margin = VIEWPORT.SCROLL_MARGIN; // start scrolling a bit before the edge
     const cur = engine.cursor;
 
     setPan((prev) => {
@@ -183,7 +189,7 @@ export default function App() {
     const sx = cur.x > prev.x ? 1 : -1;
     const sy = cur.y > prev.y ? 1 : -1;
     let err = (dx > dy ? dx : -dy) / 2;
-    const limit = 2048; // safety
+    const limit = ANIMATION.LINE_DRAW_LIMIT; // safety
     let guard = 0;
     while (true) {
       points.push({ x, y, ts: now });
@@ -195,10 +201,10 @@ export default function App() {
     }
     setTrail((prevTrail) => {
       const next = prevTrail.concat(points);
-      const L = 500; // ms visible window
+      const L = ANIMATION.TRAIL_DURATION_MS; // ms visible window
       const cutoff = now - L;
       const pruned = next.filter((p) => p.ts >= cutoff);
-      const MAX = 400;
+      const MAX = ANIMATION.TRAIL_MAX_POINTS;
       return pruned.length > MAX ? pruned.slice(pruned.length - MAX) : pruned;
     });
   }, [engine, engine.cursor.x, engine.cursor.y]);
@@ -221,9 +227,9 @@ export default function App() {
     // Removed old Ctrl+d/u handling - now handled by useEngine keybindings
     if (e.key === '?') { setShowHelp(true); e.preventDefault(); return; }
     if (engine.mode === MODES.NORMAL && e.key === ':') { openCommand(); e.preventDefault(); return; }
-    if (e.key === '+') { setZoom((z) => Math.min(8, z * 1.25)); e.preventDefault(); return; }
-    if (e.key === '-') { setZoom((z) => Math.max(minZoom, z / 1.25)); e.preventDefault(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key === '0') { setZoom(1); setPan({ x: 0, y: 0 }); e.preventDefault(); return; }
+    if (e.key === '+') { setZoom((z) => clampZoom(z * 1.25)); e.preventDefault(); return; }
+    if (e.key === '-') { setZoom((z) => clampZoom(z / 1.25)); e.preventDefault(); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === '0') { setZoom(minZoom); setPan({ x: 0, y: 0 }); e.preventDefault(); return; }
     if (engine.mode === MODES.NORMAL && e.key === 'S') { documents.save(engine.toSnapshot()); e.preventDefault(); return; }
     if (engine.mode === MODES.NORMAL && e.key === 'L') {
       const data = documents.load();
@@ -232,7 +238,7 @@ export default function App() {
       return;
     }
     if (['h', 'j', 'k', 'l', ' ', 'Backspace', 'Tab'].includes(e.key)) e.preventDefault();
-  }, [cmdMode, documents, engine, minZoom, openCommand, showHelp, getVisibleCellCounts, scrollPanBy, engineHandleKeyDown]);
+  }, [clampZoom, cmdMode, documents, engine, minZoom, openCommand, showHelp, getVisibleCellCounts, scrollPanBy, engineHandleKeyDown]);
 
   useEffect(() => {
     if (!cmdMode && !showHelp) {
@@ -251,11 +257,16 @@ export default function App() {
         ref={containerRef}
         onKeyDown={handleKeyDown}
       >
+        <div className="mode-area">
+          <ModeIndicator mode={engine.mode} />
+        </div>
+        <div className="palette-area">
+          <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
+        </div>
         <div className="sidebar left">
           <KeyHint prefix={currentPrefix} count={currentCount} visible={true} mode={engine.mode} keymap={keymap} />
         </div>
         <div className="main-area">
-          <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
           <CanvasGrid
             engine={engine}
             zoom={zoom}
@@ -264,7 +275,7 @@ export default function App() {
             trail={trail}
             cellSize={cellPixelSize}
             onViewSizeChange={setViewSize}
-            onZoomChange={setZoom}
+            onZoomChange={handleZoomChange}
           />
         </div>
         <div className="sidebar right">
@@ -278,7 +289,7 @@ export default function App() {
             cellSize={cellPixelSize}
           />
           <StatusBar engine={engine} zoom={zoom} pan={pan} />
-          <CommandFeed items={feedLines} />
+          <CommandFeed logs={engine.logs} />
         </div>
 
         {cmdMode && (
@@ -303,7 +314,7 @@ export default function App() {
         {showHelp && (
           <HelpModal
             onClose={() => setShowHelp(false)}
-            onDontShowAgain={() => localStorage.setItem(HELP_SHOWN_KEY, 'dont-show')}
+            onDontShowAgain={() => localStorage.setItem(STORAGE_KEYS.HELP_SHOWN, 'dont-show')}
           />
         )}
       </div>

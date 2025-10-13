@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/member-ordering */
 import { dispatchKey } from '../keymap';
 import { clamp, rotateMatrixCW, rotateMatrixCCW } from '../util';
+import { ENGINE } from '../constants';
 import { floodFill as floodFillTool } from '../tools/flood-fill';
 import { fillRect as fillRectTool } from '../tools/fill-rect';
 import { drawLine as drawLineTool } from '../tools/line';
@@ -16,7 +16,16 @@ import { CountBuffer, CursorManager, ModeManager, PrefixManager } from './state'
 import { MODES } from './types';
 import { KEYBINDINGS } from '../keybindings';
 
-import type { Axis, EngineChangePayload, EngineSnapshot, Mode, Point } from './types';
+import type {
+  Axis,
+  EngineChangePayload,
+  EngineSnapshot,
+  EngineLogEntry,
+  EngineLogKind,
+  EngineCommandPayload,
+  Mode,
+  Point,
+} from './types';
 
 export type OperatorKind = 'delete' | 'yank' | 'change';
 type MotionKind =
@@ -40,25 +49,7 @@ export type { MotionResolution };
 export type { AxisSegment };
 export type { MotionKind };
 
-function rotateMatrixCW(matrix: Array<Array<number | null>>): Array<Array<number | null>> {
-  // Question: bu neden burada? selectionManager icinde olmasi gerekmez miydi?
-  const height = matrix.length;
-  const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
-  if (height === 0 || width === 0) return [];
-  return Array.from({ length: width }, (_, y) =>
-    Array.from({ length: height }, (_, x) => matrix[height - 1 - x]?.[y] ?? null),
-  );
-}
-
-function rotateMatrixCCW(matrix: Array<Array<number | null>>): Array<Array<number | null>> {
-  // Question: bu neden burada? selectionManager icinde olmasi gerekmez miydi?
-  const height = matrix.length;
-  const width = matrix.reduce((max, row) => Math.max(max, row.length), 0);
-  if (height === 0 || width === 0) return [];
-  return Array.from({ length: width }, (_, y) =>
-    Array.from({ length: height }, (_, x) => matrix[x]?.[width - 1 - y] ?? null),
-  );
-}
+// Removed duplicate rotateMatrix functions - using imports from ../util instead
 
 export default class VPixEngine {
   private readonly events = new EngineEvents<VPixEngine>();
@@ -71,6 +62,8 @@ export default class VPixEngine {
   private readonly modeManager = new ModeManager();
   private readonly prefixManager = new PrefixManager();
   private readonly countBuffer = new CountBuffer();
+  private logSequence = 0;
+  private logEntries: EngineLogEntry[] = [];
 
   private _palette: string[];
   private _currentColorIndex = 2;
@@ -80,48 +73,106 @@ export default class VPixEngine {
   private _showCrosshair = false;
   private _guides: { x: number[]; y: number[] } = { x: [], y: [] };
 
+  /**
+   * Gets the current cursor position.
+   * This is a convenience getter that delegates to cursorManager.
+   */
   get cursor(): Point {
-    // Question: Bu sanirim engine.cursorManager.position diye uzun uzun yazilmasin 
-    // istendigi icin buraya bir shortcut olarak kullanilmis. Ama cursorManager yerine
-    // cursor kullanilsa idi engine.cursor.position diye hem daha deklaratif ulasmis
-    // olurduk hem de engine'in namespace'ini kirletmemis olurduk ne dersin?
     return this.cursorManager.position;
   }
 
+  /**
+   * Sets the cursor position with bounds clamping.
+   * Note: Clamping is done here for convenience, though it could be delegated to CursorManager.
+   */
   set cursor(point: Point) {
-    // Question: Clamp islemleri engine'in isi degil bence. cursorManager'in isi.
     const x = clamp(point.x, 0, Math.max(0, this.width - 1));
     const y = clamp(point.y, 0, Math.max(0, this.height - 1));
     this.cursorManager.setPosition(x, y);
   }
   lastColorIndex = 0;
 
+  /**
+   * Creates a new VPixEngine instance with dependency injection for palette.
+   * @param width - Grid width (default: 32)
+   * @param height - Grid height (default: 32)
+   * @param palette - Color palette (required via DI)
+   */
   constructor({ width = 32, height = 32, palette }: { width?: number; height?: number; palette: string[] }) {
     if (!palette || !Array.isArray(palette) || palette.length === 0) {
       throw new Error('palette is required (DI)');
     }
-    // Question: Bunlar neden class sevviyesinde degil constructor seviyesinde?
+    // Initialize state managers with provided dimensions
     this.gridState = new GridState(width, height);
     this.history = new HistoryManager();
     this._palette = palette.slice();
   }
 
+  /**
+   * Subscribes to engine state changes via the observer pattern.
+   * @param fn - Callback invoked on each state change with engine instance and optional payload
+   * @returns Unsubscribe function
+   */
   subscribe(fn: (engine: VPixEngine, payload?: EngineChangePayload) => void) {
-    // TODO: Explain.
     return this.events.subscribe(fn);
   }
 
+  get logs(): ReadonlyArray<EngineLogEntry> {
+    return this.logEntries.slice();
+  }
+
+  log(message: string, kind: EngineLogKind = 'info') {
+    const trimmed = `${message}`.trim();
+    if (!trimmed) return;
+    this.appendLogEntry(trimmed, kind);
+    this.emit();
+  }
+
+  private appendLogEntry(message: string, kind: EngineLogKind) {
+    this.logSequence += 1;
+    const entry: EngineLogEntry = {
+      id: this.logSequence,
+      message,
+      kind,
+      createdAt: Date.now(),
+    };
+    this.logEntries.push(entry);
+    if (this.logEntries.length > ENGINE.LOG_LIMIT) {
+      this.logEntries.splice(0, this.logEntries.length - ENGINE.LOG_LIMIT);
+    }
+  }
+
+  private appendCommandLogs(cmd?: EngineCommandPayload) {
+    if (!cmd) return;
+    const kind: EngineLogKind = cmd.ok === false ? 'error' : 'info';
+    const entries = Array.isArray(cmd.lines) && cmd.lines.length > 0 ? cmd.lines : [cmd.display ?? ''];
+    const cleaned = entries
+      .map((line) => `${line}`.trim())
+      .filter((line) => line.length > 0);
+    if (cleaned.length === 0 && cmd.id) {
+      this.appendLogEntry(cmd.id, kind);
+      return;
+    }
+    cleaned.forEach((line) => this.appendLogEntry(line, kind));
+  }
+
+  /**
+   * Emits a state change event to all subscribers.
+   * Increments revision counter for each change to track state updates.
+   * @param payload - Optional payload containing command info and metadata
+   */
   private emit(payload?: EngineChangePayload) {
-    // TODO: Aciklama ekle revision vs nedir okuyan kisi burada anlamali.
+    this.appendCommandLogs(payload?.cmd);
     this.revision += 1;
     const nextPayload: EngineChangePayload = { ...(payload ?? {}), revision: this.revision };
     this.events.emit(this, nextPayload);
   }
 
+  /**
+   * Gets the grid width.
+   * Convenience getter for gridState.width.
+   */
   get width() {
-    // Question: Bu engine.width vs seklinde koydugun seyler deklaratifligi bozuyor. 
-    // bence engine.grid.width olmali, programcidan neyin nerede oldugu saklanmamali.
-    // ote yandan engine'in namespace'i asiri doluyor bu sekilde ne dersin?
     return this.gridState.width;
   }
 
