@@ -112,4 +112,36 @@ describe('Command execution', () => {
       handlerSpy.mockRestore();
     });
   });
+
+  it('new command clears canvas, resets palette, and resets cursor', () => {
+    const eng = new VPixEngine({ width: 5, height: 5, palette: pico.colors });
+
+    // Make some changes
+    eng.paint(3);
+    eng.move(1, 1);
+    eng.paint(5);
+    eng.cursor.setPosition(2, 2);
+    eng.setColorIndex(7);
+
+    // Verify changes were made
+    assert.equal(eng.grid.cells[0][0], 3);
+    assert.equal(eng.grid.cells[1][1], 5);
+    assert.equal(eng.cursor.x, 2);
+    assert.equal(eng.cursor.y, 2);
+    assert.equal(eng.currentColorIndex, 7);
+
+    // Execute new command
+    const result = executeCommand(eng, 'new') as CommandResult;
+    assert.ok(result, 'Command should return a result');
+    assert.equal(result.ok, true, 'Command should succeed');
+
+    // Verify everything was reset
+    assert.equal(eng.grid.cells[0][0], null, 'Canvas should be cleared');
+    assert.equal(eng.grid.cells[1][1], null, 'Canvas should be cleared');
+    assert.equal(eng.cursor.x, 0, 'Cursor should be at origin');
+    assert.equal(eng.cursor.y, 0, 'Cursor should be at origin');
+    assert.equal(eng.currentColorIndex, 0, 'Color should be reset to 0');
+    assert.deepEqual(eng.palette, pico.colors, 'Palette should be reset to pico-8');
+    assert.ok(result.msg.includes('Started new document'), 'Should return success message');
+  });
 });

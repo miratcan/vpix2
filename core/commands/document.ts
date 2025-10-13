@@ -1,4 +1,5 @@
 import VPixEngine from '../engine';
+import { getPaletteByName } from '../palettes';
 
 import type { CommandDefinition } from './common';
 
@@ -34,6 +35,33 @@ function rgbaToHex(r: number, g: number, b: number): string {
 }
 
 export const documentCommands: CommandDefinition[] = [
+  {
+    id: 'document.new',
+    summary: 'Start a new document (clear canvas, reset palette, reset cursor)',
+    handler: ({ engine }) => {
+      // Reset cursor to top-left first (before clearing canvas for history)
+      engine.cursor.setPosition(0, 0);
+
+      // Reset color index to first color
+      engine.setColorIndex(0);
+
+      // Clear any pending operations
+      engine.clearPrefix();
+      engine.clearPendingOperator();
+
+      // Clear the canvas
+      engine.clearCanvas();
+
+      // Reset palette to default (pico-8)
+      const defaultPalette = getPaletteByName('pico-8');
+      if (defaultPalette) {
+        engine.setPalette(defaultPalette.colors);
+      }
+
+      return { msg: 'Started new document.', meta: { closeTerminal: true } };
+    },
+    patterns: [{ pattern: 'new', help: 'new' }],
+  },
   {
     id: 'document.read',
     summary: 'Load last saved document',
