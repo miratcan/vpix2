@@ -65,7 +65,6 @@
 .info-table .value {
   text-align: left;
   color: var(--color-text);
-  text-transform: uppercase;
 }
 
 /* help overlay / command result removed — use terminal */
