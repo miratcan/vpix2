@@ -94,6 +94,12 @@ type CategoryBindings = {
 
 // Helper to format key for display
 function formatKeyForDisplay(key: string): string {
+  // Special handling for shift + letter combinations: show as uppercase letter
+  const shiftLetterMatch = key.match(/^shift\+([a-z])$/i);
+  if (shiftLetterMatch) {
+    return shiftLetterMatch[1].toUpperCase();
+  }
+
   // Normalize the key for display
   return key
     .replace(/\+/g, '+')
