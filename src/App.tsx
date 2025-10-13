@@ -304,7 +304,7 @@ export default function App() {
           />
         )}
 
-        <KeyHint prefix={currentPrefix} count={currentCount} visible={!cmdMode && !showHelp} />
+        <KeyHint prefix={currentPrefix} count={currentCount} visible={!cmdMode && !showHelp} mode={engine.mode} />
       </div>
     </div>
   );
