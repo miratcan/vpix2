@@ -9,7 +9,7 @@ describe('keymap spec', () => {
     const normal = keymap.get('normal');
     expect(normal?.get('h')).toBe('cursor.move-left');
     expect(normal?.get('arrowleft')).toBe('cursor.move-left');
-    expect(normal?.get('space')).toBe('paint.toggle');
+    expect(normal?.get('space')).toBe('paint.apply');
   });
 
   it('includes prefix combinations for g-prefixed commands', () => {

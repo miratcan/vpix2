@@ -188,11 +188,10 @@ export const KEYBINDINGS: KeyBinding[] = [
   {
     scope: 'normal',
     key: ' ',
-    command: 'paint.toggle',
+    command: 'paint.apply',
     when: 'no-prefix',
-    args: ({ count }) => ({ count: clampCount(count) }),
-    description: 'Toggle cell(s)',
-    tips: ['Press Space to draw with current color'],
+    description: 'Paint with current color',
+    tips: ['Press Space to paint with current color'],
   },
   {
     scope: 'normal',
