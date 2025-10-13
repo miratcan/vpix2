@@ -38,13 +38,13 @@
 }
 
 .side-panel {
-  width: 260px;
+  width: 200px;
   background: var(--color-background-dark);
   border-left: var(--border-width) solid var(--color-border);
   display: flex;
   flex-direction: column;
-  padding: var(--spacing-m);
-  gap: var(--spacing-m);
+  padding: var(--spacing-s);
+  gap: var(--spacing-s);
   min-height: 0;
   flex-shrink: 0;
 }
