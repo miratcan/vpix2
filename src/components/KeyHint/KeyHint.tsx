@@ -103,7 +103,12 @@ function formatKeyForDisplay(key: string): string {
   // Normalize the key for display
   return key
     .replace(/\+/g, '+')
-    .replace(/space/gi, 'Space')
+    .replace(/arrowleft/gi, '←')
+    .replace(/arrowright/gi, '→')
+    .replace(/arrowup/gi, '↑')
+    .replace(/arrowdown/gi, '↓')
+    .replace(/space/gi, '␣')
+    .replace(/escape/gi, 'Esc')
     .replace(/shift/gi, 'Shift')
     .replace(/ctrl/gi, 'Ctrl')
     .replace(/alt/gi, 'Alt')
