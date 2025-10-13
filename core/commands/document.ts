@@ -108,45 +108,43 @@ export const documentCommands: CommandDefinition[] = [
   },
   {
     id: 'document.export',
-    summary: 'Export current canvas as PNG',
-    handler: ({ engine }) => {
+    summary: 'Export current canvas as PNG with optional scale (1x-64x)',
+    handler: ({ engine }, { scale }) => {
       if (typeof document === 'undefined') return 'Export feature is not available.';
       const target = document.body;
       if (!target) return 'Export feature is not available.';
 
+      // Parse scale parameter (default to 1x)
+      const pixelScale = typeof scale === 'number' ? Math.max(1, Math.min(64, scale)) : 1;
+
       const canvas = document.createElement('canvas');
-      canvas.width = engine.grid.width;
-      canvas.height = engine.grid.height;
+      canvas.width = engine.grid.width * pixelScale;
+      canvas.height = engine.grid.height * pixelScale;
       const ctx = canvas.getContext('2d');
       if (!ctx) return 'Export feature is not available.';
 
-      const imageData = ctx.createImageData(canvas.width, canvas.height);
-      const data = imageData.data;
+      // Fill background with transparent
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw each pixel as a scaled square
       for (let y = 0; y < engine.grid.height; y += 1) {
         for (let x = 0; x < engine.grid.width; x += 1) {
-          const idx = (y * canvas.width + x) * 4;
           const colorIndex = engine.grid.cells[y][x];
-          if (colorIndex == null) {
-            data[idx] = 0;
-            data[idx + 1] = 0;
-            data[idx + 2] = 0;
-            data[idx + 3] = 0;
-            continue;
-          }
+          if (colorIndex == null) continue; // Skip transparent pixels
+
           const color = engine.palette[colorIndex];
-          const [r, g, b, a] = colorToRgba(color ?? '#000000');
-          data[idx] = r;
-          data[idx + 1] = g;
-          data[idx + 2] = b;
-          data[idx + 3] = a;
+          if (!color) continue;
+
+          ctx.fillStyle = color;
+          ctx.fillRect(x * pixelScale, y * pixelScale, pixelScale, pixelScale);
         }
       }
 
-      ctx.putImageData(imageData, 0, 0);
       const url = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      link.download = `vpix-${timestamp}.png`;
+      const scaleText = pixelScale > 1 ? `-${pixelScale}x` : '';
+      link.download = `vpix-${timestamp}${scaleText}.png`;
       link.href = url;
       link.style.display = 'none';
       target.appendChild(link);
@@ -156,9 +154,13 @@ export const documentCommands: CommandDefinition[] = [
         link.remove();
       }
 
-      return { msg: `Exported ${canvas.width}x${canvas.height} PNG file.`, meta: { closeTerminal: true } };
+      const scaleMsg = pixelScale > 1 ? ` at ${pixelScale}x scale` : '';
+      return { msg: `Exported ${canvas.width}x${canvas.height} PNG file${scaleMsg}.`, meta: { closeTerminal: true } };
     },
-    patterns: [{ pattern: 'export', help: 'export' }],
+    patterns: [
+      { pattern: 'export', help: 'export' },
+      { pattern: 'export {scale:int[1..64]}', help: 'export <scale>' },
+    ],
   },
   {
     id: 'document.import',
