@@ -17,8 +17,7 @@ const applyOperator = (
   const segment = engine.computeOperatorSegment(startPoint, motionResult);
   engine.clearPrefix();
   if (!segment) {
-    engine.cursor.x = motionResult.target.x;
-    engine.cursor.y = motionResult.target.y;
+    engine.cursor.setPosition(motionResult.target.x, motionResult.target.y);
     if (motionResult.moved) engine.emit();
     engine.recordLastAction(null);
     return;
@@ -30,8 +29,7 @@ const applyOperator = (
   const startOffset = segment.start - anchor;
   const endOffset = segment.end - anchor;
   const cursorPoint = axis === 'horizontal' ? { x: segment.start, y: fixed } : { x: fixed, y: segment.start };
-  engine.cursor.x = cursorPoint.x;
-  engine.cursor.y = cursorPoint.y;
+  engine.cursor.setPosition(cursorPoint.x, cursorPoint.y);
 
   if (op === 'yank') {
     engine.yankSegment(segment);
@@ -51,8 +49,7 @@ const applyOperator = (
         axis === 'horizontal'
           ? { x: repeatSegment.start, y: currentFixed }
           : { x: currentFixed, y: repeatSegment.start };
-      eng.cursor.x = repeatCursor.x;
-      eng.cursor.y = repeatCursor.y;
+      eng.cursor.setPosition(repeatCursor.x, repeatCursor.y);
       const changedAgain = eng.deleteSegment(repeatSegment);
       if (!changedAgain) {
         eng.emit();
@@ -201,38 +198,7 @@ export const modeCommands: CommandDefinition[] = [
       engine.clearPrefix();
       return 'Prefix cleared.';
     },
-    patterns: [{ pattern: 'operator change-to-end {count:int[1..512]}', help: 'operator change-to-end <count>' }],
-    hidden: true,
-  },
-  {
-    id: 'edit.repeat-last',
-    summary: 'Repeat last modifying action',
-    handler: ({ engine }) => {
-      engine.repeatLastAction();
-      return 'Repeated';
-    },
-    patterns: [{ pattern: 'repeat last', help: 'repeat last' }],
-    hidden: true,
-  },
-  {
-    id: 'prefix.set',
-    summary: 'Set pending prefix',
-    handler: ({ engine }, { value }) => {
-      const val = String(value);
-      if (val === 'g' || val === 'r') {
-        engine.setPrefix(val as 'g' | 'r');
-        return `Prefix ${val}`;
-      }
-    },
-    patterns: [{ pattern: 'prefix set {value:oneof[g|r]}', help: 'prefix set <g|r>' }],
-  },
-  {
-    id: 'prefix.clear',
-    summary: 'Clear pending prefix',
-    handler: ({ engine }) => {
-      engine.clearPrefix();
-      return 'Cleared prefix';
-    },
     patterns: [{ pattern: 'prefix clear', help: 'prefix clear' }],
+    hidden: true,
   },
 ];

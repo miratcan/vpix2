@@ -100,14 +100,14 @@ export default class TestableEngine extends VPixEngine {
     const { axis, currentColorIndex: colorIndex } = engine;
     const directive = `Axis: ${axis}, Color: ${colorIndex}`;
     const lines: string[] = [directive, ''];
-    for (let y = 0; y < engine.height; y += 1) {
+    for (let y = 0; y < engine.grid.height; y += 1) {
       let line = '';
-      for (let x = 0; x < engine.width; x += 1) {
+      for (let x = 0; x < engine.grid.width; x += 1) {
         const overlay = engine.cursor.x === x && engine.cursor.y === y ? 'C' : ' ';
         const value = engine.grid[y]?.[x];
         const valueChar = value == null ? '.' : String(value);
         line += `${overlay}${valueChar}`;
-        if (x < engine.width - 1) line += '  ';
+        if (x < engine.grid.width - 1) line += '  ';
       }
       lines.push(line);
     }
@@ -118,15 +118,15 @@ export default class TestableEngine extends VPixEngine {
     const { grid, cursor, meta } = TestableEngine.parseState(text);
     if (meta.axis) this.setAxis(meta.axis);
     if (typeof meta.colorIndex === 'number') this.setColorIndex(meta.colorIndex);
-    const h = Math.min(this.height, grid.length);
-    const w = Math.min(this.width, grid[0]?.length ?? 0);
+    const h = Math.min(this.grid.height, grid.length);
+    const w = Math.min(this.grid.width, grid[0]?.length ?? 0);
     for (let y = 0; y < h; y += 1) {
       for (let x = 0; x < w; x += 1) {
-        (this as any).gridState.writeCell(x, y, grid[y][x]);
+        this.grid.writeCell(x, y, grid[y][x]);
       }
     }
     if (cursor) {
-      this.cursor = cursor;
+      this.cursor.setPosition(cursor.x, cursor.y);
     }
   }
 

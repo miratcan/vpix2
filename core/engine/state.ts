@@ -66,6 +66,16 @@ export class CursorManager {
     return this.point;
   }
 
+  /** Convenience getter for x coordinate */
+  get x(): number {
+    return this.point.x;
+  }
+
+  /** Convenience getter for y coordinate */
+  get y(): number {
+    return this.point.y;
+  }
+
   setPosition(x: number, y: number) {
     this.point.x = x;
     this.point.y = y;

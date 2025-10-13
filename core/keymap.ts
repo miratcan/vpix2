@@ -120,7 +120,7 @@ function scopeForMode(mode: number): BindingScope {
 }
 
 export function dispatchKey(engine: VPixEngine, evt: EventLike) {
-  const prefix = engine.prefix ?? null;
+  const prefix = engine.prefix.current ?? null;
   const pendingOperator = engine.pendingOperator;
 
   if (pendingOperator && evt.key === 'Escape') {
@@ -131,7 +131,7 @@ export function dispatchKey(engine: VPixEngine, evt: EventLike) {
 
   const isDigit = /^\d$/.test(evt.key);
   const isLeadingZero = evt.key === '0' && !engine.hasCount();
-  if (engine.mode === MODES.NORMAL && !prefix && !evt.ctrlKey && !evt.metaKey && isDigit && !isLeadingZero) {
+  if (engine.mode.current === MODES.NORMAL && !prefix && !evt.ctrlKey && !evt.metaKey && isDigit && !isLeadingZero) {
     engine.pushCountDigit(evt.key);
     return `count:${evt.key}`;
   }
@@ -147,7 +147,7 @@ export function dispatchKey(engine: VPixEngine, evt: EventLike) {
     return result;
   }
 
-  const scope = scopeForMode(engine.mode);
+  const scope = scopeForMode(engine.mode.current);
   const binding = findBinding(scope, engine, evt, prefix, count);
   if (binding) {
     if (binding.command === 'prefix.set') shouldClearCount = false;

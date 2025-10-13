@@ -26,48 +26,48 @@ describe('VPixEngine', () => {
 
   it('initializes with correct defaults', () => {
     const eng = new VPixEngine({ width: 8, height: 8, palette: pico.colors });
-    assert.equal(eng.width, 8);
-    assert.equal(eng.height, 8);
-    assert.equal(eng.mode, MODES.NORMAL);
-    assert.deepEqual(eng.cursor, { x: 0, y: 0 });
-    assert.equal(eng.grid.length, 8);
-    assert.equal(eng.grid[0].length, 8);
+    assert.equal(eng.grid.width, 8);
+    assert.equal(eng.grid.height, 8);
+    assert.equal(eng.mode.current, MODES.NORMAL);
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 0 });
+    assert.equal(eng.grid.cells.length, 8);
+    assert.equal(eng.grid.cells[0].length, 8);
   });
 
   it('moves cursor with hjkl and clamps bounds', () => {
     const eng = new VPixEngine({ width: 3, height: 2, palette: pico.colors });
     press(eng, 'l', 'l', 'l');
-    assert.deepEqual(eng.cursor, { x: 2, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 2, y: 0 });
     press(eng, 'j', 'j');
-    assert.deepEqual(eng.cursor, { x: 2, y: 1 });
+    assert.deepEqual(eng.cursor.position, { x: 2, y: 1 });
     press(eng, 'h', 'k');
-    assert.deepEqual(eng.cursor, { x: 1, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 1, y: 0 });
   });
 
   it('count prefix repeats actions', () => {
     const eng = new VPixEngine({ width: 10, height: 1, palette: pico.colors });
     press(eng, '3', '2', 'l');
-    assert.deepEqual(eng.cursor, { x: 9, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 9, y: 0 });
   });
 
   it('erases with x in normal mode', () => {
     const eng = new VPixEngine({ width: 2, height: 1, palette: pico.colors });
     eng.paint();
-    assert.ok(eng.grid[0][0] != null);
+    assert.ok(eng.grid.cells[0][0] != null);
     press(eng, 'x');
-    assert.equal(eng.grid[0][0], null);
+    assert.equal(eng.grid.cells[0][0], null);
   });
 
   it('undo/redo works for paint/erase', () => {
     const eng = new VPixEngine({ width: 1, height: 1, palette: pico.colors });
     eng.paint();
-    const colorIndex1 = eng.grid[0][0];
+    const colorIndex1 = eng.grid.cells[0][0];
     eng.erase();
-    assert.equal(eng.grid[0][0], null);
+    assert.equal(eng.grid.cells[0][0], null);
     eng.undo();
-    assert.equal(eng.grid[0][0], colorIndex1);
+    assert.equal(eng.grid.cells[0][0], colorIndex1);
     eng.redo();
-    assert.equal(eng.grid[0][0], null);
+    assert.equal(eng.grid.cells[0][0], null);
   });
 
   it('serialize/deserialize roundtrips', () => {
@@ -79,10 +79,10 @@ describe('VPixEngine', () => {
     eng.paint();
     const json = eng.serialize();
     const clone = VPixEngine.deserialize(json);
-    assert.equal(clone.width, 2);
-    assert.equal(clone.height, 2);
-    assert.equal(clone.grid[0][0], 5);
-    assert.equal(clone.grid[0][1], 7);
+    assert.equal(clone.grid.width, 2);
+    assert.equal(clone.grid.height, 2);
+    assert.equal(clone.grid.cells[0][0], 5);
+    assert.equal(clone.grid.cells[0][1], 7);
   });
 
   it('[count] c selects color index', () => {
@@ -132,10 +132,10 @@ describe('VPixEngine', () => {
        .  .  .  .  .  .
        .  .  .  .  .  .
     `);
-    assert.deepEqual(eng.grid[0].slice(0, 6), [1, 1, null, null, 2, 2]);
-    assert.deepEqual(eng.cursor, { x: 0, y: 0 });
+    assert.deepEqual(eng.grid.cells[0].slice(0, 6), [1, 1, null, null, 2, 2]);
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 0 });
     press(eng, 'w');
-    assert.deepEqual(eng.cursor, { x: 2, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 2, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: horizontal
 
@@ -147,7 +147,7 @@ describe('VPixEngine', () => {
        .  .  .  .  .  .
     `, { checkCursor: false });
     press(eng, 'w');
-    assert.deepEqual(eng.cursor, { x: 4, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 4, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: horizontal
 
@@ -159,7 +159,7 @@ describe('VPixEngine', () => {
        .  .  .  .  .  .
     `, { checkCursor: false });
     press(eng, 'b');
-    assert.deepEqual(eng.cursor, { x: 2, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 2, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: horizontal
 
@@ -171,7 +171,7 @@ describe('VPixEngine', () => {
        .  .  .  .  .  .
     `, { checkCursor: false });
     press(eng, 'e');
-    assert.deepEqual(eng.cursor, { x: 3, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 3, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: horizontal
 
@@ -182,9 +182,9 @@ describe('VPixEngine', () => {
        .  .  .  .  .  .
        .  .  .  .  .  .
     `, { checkCursor: false });
-    eng.cursor = { x: 4, y: 0 };
+    eng.cursor.setPosition(4, 0);
     press(eng, 'g', 'e');
-    assert.deepEqual(eng.cursor, { x: 3, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 3, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: horizontal
 
@@ -208,7 +208,7 @@ describe('VPixEngine', () => {
        5  .  .  .  .  .
     `);
     press(eng, 'w');
-    assert.deepEqual(eng.cursor, { x: 0, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: vertical
 
@@ -220,7 +220,7 @@ describe('VPixEngine', () => {
        5  .  .  .  .  .
     `, { checkCursor: false });
     press(eng, 'w');
-    assert.deepEqual(eng.cursor, { x: 0, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: vertical
 
@@ -232,7 +232,7 @@ describe('VPixEngine', () => {
        5  .  .  .  .  .
     `, { checkCursor: false });
     press(eng, 'b');
-    assert.deepEqual(eng.cursor, { x: 0, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: vertical
 
@@ -244,7 +244,7 @@ describe('VPixEngine', () => {
        5  .  .  .  .  .
     `, { checkCursor: false });
     press(eng, 'e');
-    assert.deepEqual(eng.cursor, { x: 0, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: vertical
 
@@ -255,9 +255,9 @@ describe('VPixEngine', () => {
        5  .  .  .  .  .
        5  .  .  .  .  .
     `, { checkCursor: false });
-    eng.cursor = { x: 0, y: 4 };
+    eng.cursor.setPosition(0, 4);
     press(eng, 'g', 'e');
-    assert.deepEqual(eng.cursor, { x: 0, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 0 });
     expectEngineToMatchText(eng, `
       Axis: vertical
 
@@ -282,11 +282,11 @@ Axis: horizontal
  .  .  .  .  .
 `);
     assert.equal(eng.axis, 'horizontal');
-    eng.cursor = { x: 3, y: 2 };
+    eng.cursor.setPosition(3, 2);
     press(eng, 'g', 'g');
-    assert.deepEqual(eng.cursor, { x: 0, y: 2 });
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 2 });
     press(eng, 'G');
-    assert.deepEqual(eng.cursor, { x: 0, y: 2 });
+    assert.deepEqual(eng.cursor.position, { x: 0, y: 2 });
 
     // Switch axis using helper
     setEngineFromText(eng, `
@@ -297,11 +297,11 @@ Axis: vertical
  .  .  .  .  .
  .  .  .  .  .
 `);
-    eng.cursor = { x: 2, y: 1 };
+    eng.cursor.setPosition(2, 1);
     press(eng, 'g', 'g');
-    assert.deepEqual(eng.cursor, { x: 2, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 2, y: 0 });
     press(eng, 'G');
-    assert.deepEqual(eng.cursor, { x: 2, y: 0 });
+    assert.deepEqual(eng.cursor.position, { x: 2, y: 0 });
   });
 
   it('operator motions delete and change along axis', () => {
@@ -312,13 +312,13 @@ Axis: vertical
        1  1  .  .  2  2
     `);
 
-    eng.cursor = { x: 0, y: 0 };
+    eng.cursor.setPosition(0, 0);
     press(eng, 'd', 'w');
-    assert.deepEqual(eng.grid[0].slice(0, 6), [null, null, null, null, 2, 2]);
+    assert.deepEqual(eng.grid.cells[0].slice(0, 6), [null, null, null, null, 2, 2]);
     assert.equal(eng.cursor.x, 0);
 
     press(eng, 'w', '.');
-    assert.deepEqual(eng.grid[0].slice(0, 6), [null, null, null, null, null, null]);
+    assert.deepEqual(eng.grid.cells[0].slice(0, 6), [null, null, null, null, null, null]);
 
     const engChange = new TestableEngine({ width: 4, height: 1, palette: pico.colors });
     setEngineFromText(engChange, `
@@ -326,9 +326,9 @@ Axis: vertical
 
        3  3  4  4
     `);
-    engChange.cursor = { x: 0, y: 0 };
+    engChange.cursor.setPosition(0, 0);
     press(engChange, 'c', 'w');
-    assert.deepEqual(engChange.grid[0].slice(0, 4), [null, null, 4, 4]);
+    assert.deepEqual(engChange.grid.cells[0].slice(0, 4), [null, null, 4, 4]);
 
     const engDeleteToEnd = new TestableEngine({ width: 4, height: 1, palette: pico.colors });
     setEngineFromText(engDeleteToEnd, `
@@ -336,32 +336,32 @@ Axis: vertical
 
        5  5  6  6
     `);
-    engDeleteToEnd.cursor = { x: 1, y: 0 };
+    engDeleteToEnd.cursor.setPosition(1, 0);
     press(engDeleteToEnd, 'D');
-    assert.deepEqual(engDeleteToEnd.grid[0].slice(0, 4), [5, null, null, null]);
+    assert.deepEqual(engDeleteToEnd.grid.cells[0].slice(0, 4), [5, null, null, null]);
   });
 
   it('repeat last action replays toggles and deletes', () => {
     const eng = new VPixEngine({ width: 4, height: 1, palette: pico.colors });
     press(eng, ' ');
-    eng.cursor = { x: 1, y: 0 };
+    eng.cursor.setPosition(1, 0);
     press(eng, '.');
-    assert.ok(eng.grid[0][1] != null);
+    assert.ok(eng.grid.cells[0][1] != null);
 
-    eng.grid[0].splice(0, 4, 1, 1, null, null);
-    eng.cursor = { x: 0, y: 0 };
+    eng.grid.cells[0].splice(0, 4, 1, 1, null, null);
+    eng.cursor.setPosition(0, 0);
     press(eng, 'd', 'w');
-    eng.cursor = { x: 2, y: 0 };
+    eng.cursor.setPosition(2, 0);
     press(eng, '.');
-    assert.deepEqual(eng.grid[0].slice(0, 4), [null, null, null, null]);
+    assert.deepEqual(eng.grid.cells[0].slice(0, 4), [null, null, null, null]);
   });
 
   it('u and Ctrl-r act as undo/redo aliases', () => {
     const eng = new VPixEngine({ width: 2, height: 1, palette: pico.colors });
     eng.paint();
     press(eng, 'u');
-    assert.equal(eng.grid[0][0], null);
+    assert.equal(eng.grid.cells[0][0], null);
     press(eng, { key: 'r', ctrlKey: true });
-    assert.ok(eng.grid[0][0] != null);
+    assert.ok(eng.grid.cells[0][0] != null);
   });
 });

@@ -17,12 +17,15 @@ export function parseVp2Meta(value: string) {
 }
 
 export function encodeToParamV2R(engine: VPixEngine, paletteSlug?: string) {
-  const { width: w, height: h, palette, currentColorIndex: cidx } = engine; const slug = normalizeSlug(paletteSlug) || 'pico-8';
+  const { grid, palette, currentColorIndex: cidx } = engine;
+  const w = grid.width;
+  const h = grid.height;
+  const slug = normalizeSlug(paletteSlug) || 'pico-8';
   const nColors = palette.length; const bitsPer = Math.max(1, Math.ceil(Math.log2(nColors + 1)));
   const total = w * h; const totalBits = total * bitsPer; const bytes = new Uint8Array(Math.ceil(totalBits / 8));
   let bitPos = 0;
   const writeVal = (v: number) => { for (let b = bitsPer - 1; b >= 0; b--) { const bit = (v >> b) & 1; const byteIndex = bitPos >> 3; const bitIndex = 7 - (bitPos & 7); bytes[byteIndex] |= bit << bitIndex; bitPos++; } };
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = engine.grid[y][x]; const idx = c == null ? 0 : c + 1; writeVal(idx); }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = engine.grid.cells[y][x]; const idx = c == null ? 0 : c + 1; writeVal(idx); }
   const segs: string[] = [];
   for (let i = 0; i < bytes.length;) {
     if (bytes[i] === 0) { let j = i; while (j < bytes.length && bytes[j] === 0) j++; const count = j - i; segs.push(`z${toB62(count)}`); i = j; }
@@ -49,7 +52,7 @@ export function decodeFromParamV2R(value: string, engineClass: new (opts: { widt
   const eng = new engineClass({ width: w, height: h, palette: pal.colors });
   eng.currentColorIndex = cidx;
   let bitPos = 0; const readVal = () => { let v = 0; for (let b = 0; b < bitsPer; b++) { const byteIndex = bitPos >> 3; const bitIndex = 7 - (bitPos & 7); const bit = (out[byteIndex] >> bitIndex) & 1; v = (v << 1) | bit; bitPos++; } return v; };
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = readVal(); (eng as any).grid[y][x] = v === 0 ? null : (v - 1); }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const v = readVal(); (eng as any).grid.writeCell(x, y, v === 0 ? null : (v - 1)); }
   return eng;
 }
 

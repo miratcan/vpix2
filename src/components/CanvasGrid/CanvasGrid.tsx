@@ -77,10 +77,10 @@ export default function CanvasGrid({
     const gridY = Math.floor((clickY - offsetY) / cellSize);
 
     // Bounds check
-    if (gridX < 0 || gridX >= engine.width || gridY < 0 || gridY >= engine.height) return;
+    if (gridX < 0 || gridX >= engine.grid.width || gridY < 0 || gridY >= engine.grid.height) return;
 
     // Move cursor to clicked position (no painting)
-    engine.cursor = { x: gridX, y: gridY };
+    engine.cursor.setPosition(gridX, gridY);
   };
 
   // Mouse wheel handler - zoom in/out
@@ -208,9 +208,9 @@ export default function CanvasGrid({
 
     // Calculate visible cell bounds
     const startX = Math.max(0, Math.floor(panX));
-    const endX = Math.min(engine.width, Math.ceil(panX + viewW / cell));
+    const endX = Math.min(engine.grid.width, Math.ceil(panX + viewW / cell));
     const startY = Math.max(0, Math.floor(panY));
-    const endY = Math.min(engine.height, Math.ceil(panY + viewH / cell));
+    const endY = Math.min(engine.grid.height, Math.ceil(panY + viewH / cell));
 
     // Only draw visible cells (viewport clipping optimization)
     for (let y = startY; y < endY; y++) {
@@ -235,8 +235,8 @@ export default function CanvasGrid({
       const offsetY = -panY * cell;
       const gridLeft = offsetX;
       const gridTop = offsetY;
-      const gridRight = offsetX + engine.width * cell;
-      const gridBottom = offsetY + engine.height * cell;
+      const gridRight = offsetX + engine.grid.width * cell;
+      const gridBottom = offsetY + engine.grid.height * cell;
 
       ctx.clearRect(0, 0, viewW, viewH);
 
@@ -248,7 +248,7 @@ export default function CanvasGrid({
       if (showGridLines && clipRight > clipLeft && clipBottom > clipTop) {
         ctx.strokeStyle = gridLine;
         ctx.lineWidth = CANVAS.GRID_LINE_WIDTH_DIVISOR / 4;
-        for (let x = 0; x <= engine.width; x++) {
+        for (let x = 0; x <= engine.grid.width; x++) {
           const vx = Math.floor(offsetX + x * cell) + 0.5;
           if (vx < 0 || vx > viewW) continue;
           const startY = Math.max(0, clipTop) + 0.5;
@@ -259,7 +259,7 @@ export default function CanvasGrid({
           ctx.lineTo(vx, endY);
           ctx.stroke();
         }
-        for (let y = 0; y <= engine.height; y++) {
+        for (let y = 0; y <= engine.grid.height; y++) {
           const vy = Math.floor(offsetY + y * cell) + 0.5;
           if (vy < 0 || vy > viewH) continue;
           const startX = Math.max(0, clipLeft) + 0.5;

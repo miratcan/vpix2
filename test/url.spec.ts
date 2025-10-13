@@ -13,8 +13,8 @@ describe('URL encode/decode', () => {
     const rPart = payload.split(';').find((t) => t.startsWith('r')) || '';
     if (rPart) { const body = rPart.slice(1); if (body.length > 0) { if (body[0] !== 'z') throw new Error('vp2r did not start with zero-run for empty canvas'); } }
     const eng2 = decodeFromParamV2R(payload, VPixEngine)!;
-    assert.equal(eng2.width, 16);
-    assert.equal(eng2.height, 16);
-    assert.equal(eng2.grid[0][0], null);
+    assert.equal(eng2.grid.width, 16);
+    assert.equal(eng2.grid.height, 16);
+    assert.equal(eng2.grid.cells[0][0], null);
   });
 });

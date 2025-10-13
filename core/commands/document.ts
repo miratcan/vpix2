@@ -87,17 +87,17 @@ export const documentCommands: CommandDefinition[] = [
       if (!target) return 'Export feature is not available.';
 
       const canvas = document.createElement('canvas');
-      canvas.width = engine.width;
-      canvas.height = engine.height;
+      canvas.width = engine.grid.width;
+      canvas.height = engine.grid.height;
       const ctx = canvas.getContext('2d');
       if (!ctx) return 'Export feature is not available.';
 
       const imageData = ctx.createImageData(canvas.width, canvas.height);
       const data = imageData.data;
-      for (let y = 0; y < engine.height; y += 1) {
-        for (let x = 0; x < engine.width; x += 1) {
+      for (let y = 0; y < engine.grid.height; y += 1) {
+        for (let x = 0; x < engine.grid.width; x += 1) {
           const idx = (y * canvas.width + x) * 4;
-          const colorIndex = engine.grid[y][x];
+          const colorIndex = engine.grid.cells[y][x];
           if (colorIndex == null) {
             data[idx] = 0;
             data[idx + 1] = 0;

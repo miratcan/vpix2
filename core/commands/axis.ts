@@ -6,7 +6,7 @@ import type { MotionKind } from './common';
 
 const runMotion = (engine: VPixEngine, motion: MotionKind, count: unknown): string => {
   engine.applyMotion(motion, ensureCount(count));
-  if (engine.mode === MODES.VISUAL) {
+  if (engine.mode.current === MODES.VISUAL) {
     engine.updateSelectionRect();
   }
   const motionLabels: Record<MotionKind, string> = {

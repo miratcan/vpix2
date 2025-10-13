@@ -13,6 +13,14 @@ export class SelectionManager {
     return this.state;
   }
 
+  get rect(): Rect | null {
+    return this.state.rect;
+  }
+
+  get active(): boolean {
+    return this.state.active;
+  }
+
   enter(anchor: Point): Rect {
     const rect = { x1: anchor.x, y1: anchor.y, x2: anchor.x, y2: anchor.y };
     this.state = { active: true, anchor: { ...anchor }, rect };

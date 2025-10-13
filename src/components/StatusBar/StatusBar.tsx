@@ -8,7 +8,7 @@ export default function StatusBar({ engine, zoom, pan }: Props) {
   return (
     <div className="status-bar" role="status">
       <InfoTable role="table">
-        <InfoTableRow label="MODE" value={engine.mode} />
+        <InfoTableRow label="MODE" value={engine.mode.current} />
         <InfoTableRow
           label="AXIS"
           value={
@@ -27,7 +27,7 @@ export default function StatusBar({ engine, zoom, pan }: Props) {
         />
         <InfoTableRow
           label="SIZE"
-          value={`${engine.width}x${engine.height}`}
+          value={`${engine.grid.width}x${engine.grid.height}`}
         />
         <InfoTableRow
           label="ZOOM"

@@ -86,7 +86,7 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
     }
 
     // 4. Find command
-    let commandId = findCommandInKeymap(keymap, engine.mode, key, currentPrefix);
+    let commandId = findCommandInKeymap(keymap, engine.mode.current, key, currentPrefix);
 
     if (commandId) {
       const count = currentCount !== null ? currentCount : 1;
@@ -129,7 +129,7 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
       if (currentPrefix !== null) {
         setCurrentPrefix(null);
         // Now, try to find a command for the simple key (without prefix)
-        commandId = findCommandInKeymap(keymap, engine.mode, key, null); // Try again with no prefix
+        commandId = findCommandInKeymap(keymap, engine.mode.current, key, null); // Try again with no prefix
         if (commandId) {
           const count = currentCount !== null ? currentCount : 1;
           setCurrentCount(null);

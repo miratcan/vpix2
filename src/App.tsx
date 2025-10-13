@@ -79,11 +79,11 @@ export default function App() {
   }));
 
   const baseCellSize = useMemo(() => {
-    const widthScale = viewSize.width / engine.width;
-    const heightScale = viewSize.height / engine.height;
+    const widthScale = viewSize.width / engine.grid.width;
+    const heightScale = viewSize.height / engine.grid.height;
     const fitted = Math.min(widthScale, heightScale);
     return Math.max(1, Math.floor(fitted));
-  }, [engine.height, engine.width, viewSize.height, viewSize.width]);
+  }, [engine.grid.height, engine.grid.width, viewSize.height, viewSize.width]);
 
   const minZoom = VIEWPORT.MIN_ZOOM;
 
@@ -118,8 +118,8 @@ export default function App() {
     (dx: number, dy: number) => {
       const { visWcells, visHcells } = getVisibleCellCounts();
       setPan((prev) => {
-        const maxX = Math.max(0, engine.width - visWcells);
-        const maxY = Math.max(0, engine.height - visHcells);
+        const maxX = Math.max(0, engine.grid.width - visWcells);
+        const maxY = Math.max(0, engine.grid.height - visHcells);
         const nextX = Math.min(maxX, Math.max(0, prev.x + dx));
         const nextY = Math.min(maxY, Math.max(0, prev.y + dy));
         if (nextX === prev.x && nextY === prev.y) return prev;
@@ -143,17 +143,17 @@ export default function App() {
   useEffect(() => {
     const { visWcells, visHcells } = getVisibleCellCounts();
     const margin = VIEWPORT.SCROLL_MARGIN; // start scrolling a bit before the edge
-    const cur = engine.cursor;
+    const cur = engine.cursor.position;
 
     setPan((prev) => {
       let nx = prev.x;
       let ny = prev.y;
       // horizontal
       if (cur.x < prev.x + margin) nx = Math.max(0, cur.x - margin);
-      else if (cur.x >= prev.x + visWcells - margin) nx = Math.min(engine.width - visWcells, cur.x - (visWcells - 1 - margin));
+      else if (cur.x >= prev.x + visWcells - margin) nx = Math.min(engine.grid.width - visWcells, cur.x - (visWcells - 1 - margin));
       // vertical
       if (cur.y < prev.y + margin) ny = Math.max(0, cur.y - margin);
-      else if (cur.y >= prev.y + visHcells - margin) ny = Math.min(engine.height - visHcells, cur.y - (visHcells - 1 - margin));
+      else if (cur.y >= prev.y + visHcells - margin) ny = Math.min(engine.grid.height - visHcells, cur.y - (visHcells - 1 - margin));
       if (nx !== prev.x || ny !== prev.y) return { x: nx, y: ny };
       return prev;
     });
@@ -176,7 +176,7 @@ export default function App() {
   // Cursor trail: sample intermediate cells on large jumps and timestamp them
   useEffect(() => {
     const now = performance.now ? performance.now() : Date.now();
-    const cur = engine.cursor;
+    const cur = engine.cursor.position;
     const prev = lastCursorRef.current;
     lastCursorRef.current = { x: cur.x, y: cur.y };
     if (!prev) return;
@@ -226,12 +226,12 @@ export default function App() {
 
     // Removed old Ctrl+d/u handling - now handled by useEngine keybindings
     if (e.key === '?') { setShowHelp(true); e.preventDefault(); return; }
-    if (engine.mode === MODES.NORMAL && e.key === ':') { openCommand(); e.preventDefault(); return; }
+    if (engine.mode.current === MODES.NORMAL && e.key === ':') { openCommand(); e.preventDefault(); return; }
     if (e.key === '+') { setZoom((z) => clampZoom(z * 1.25)); e.preventDefault(); return; }
     if (e.key === '-') { setZoom((z) => clampZoom(z / 1.25)); e.preventDefault(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === '0') { setZoom(minZoom); setPan({ x: 0, y: 0 }); e.preventDefault(); return; }
-    if (engine.mode === MODES.NORMAL && e.key === 'S') { documents.save(engine.toSnapshot()); e.preventDefault(); return; }
-    if (engine.mode === MODES.NORMAL && e.key === 'L') {
+    if (engine.mode.current === MODES.NORMAL && e.key === 'S') { documents.save(engine.toSnapshot()); e.preventDefault(); return; }
+    if (engine.mode.current === MODES.NORMAL && e.key === 'L') {
       const data = documents.load();
       if (data) engine.loadSnapshot(data);
       e.preventDefault();
@@ -258,13 +258,13 @@ export default function App() {
         onKeyDown={handleKeyDown}
       >
         <div className="mode-area">
-          <ModeIndicator mode={engine.mode} />
+          <ModeIndicator mode={engine.mode.current} />
         </div>
         <div className="palette-area">
           <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
         </div>
         <div className="sidebar left">
-          <KeyHint prefix={currentPrefix} count={currentCount} visible={true} mode={engine.mode} keymap={keymap} />
+          <KeyHint prefix={currentPrefix} count={currentCount} visible={true} mode={engine.mode.current} keymap={keymap} />
         </div>
         <div className="main-area">
           <CanvasGrid

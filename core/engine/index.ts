@@ -54,14 +54,16 @@ export type { MotionKind };
 export default class VPixEngine {
   private readonly events = new EngineEvents<VPixEngine>();
   private revision = 0;
-  private gridState: GridState;
-  private history: HistoryManager;
-  private readonly clipboard = new ClipboardBuffer();
-  private readonly selectionManager = new SelectionManager();
-  private readonly cursorManager = new CursorManager();
-  private readonly modeManager = new ModeManager();
-  private readonly prefixManager = new PrefixManager();
-  private readonly countBuffer = new CountBuffer();
+
+  // Public managers - exposed API
+  public readonly grid: GridState;
+  public readonly history: HistoryManager;
+  public readonly clipboard = new ClipboardBuffer();
+  public readonly selection = new SelectionManager();
+  public readonly cursor = new CursorManager();
+  public readonly mode = new ModeManager();
+  public readonly prefix = new PrefixManager();
+  public readonly count = new CountBuffer();
   private logSequence = 0;
   private logEntries: EngineLogEntry[] = [];
 
@@ -73,23 +75,6 @@ export default class VPixEngine {
   private _showCrosshair = false;
   private _guides: { x: number[]; y: number[] } = { x: [], y: [] };
 
-  /**
-   * Gets the current cursor position.
-   * This is a convenience getter that delegates to cursorManager.
-   */
-  get cursor(): Point {
-    return this.cursorManager.position;
-  }
-
-  /**
-   * Sets the cursor position with bounds clamping.
-   * Note: Clamping is done here for convenience, though it could be delegated to CursorManager.
-   */
-  set cursor(point: Point) {
-    const x = clamp(point.x, 0, Math.max(0, this.width - 1));
-    const y = clamp(point.y, 0, Math.max(0, this.height - 1));
-    this.cursorManager.setPosition(x, y);
-  }
   lastColorIndex = 0;
 
   /**
@@ -103,7 +88,7 @@ export default class VPixEngine {
       throw new Error('palette is required (DI)');
     }
     // Initialize state managers with provided dimensions
-    this.gridState = new GridState(width, height);
+    this.grid = new GridState(width, height);
     this.history = new HistoryManager();
     this._palette = palette.slice();
   }
@@ -168,44 +153,16 @@ export default class VPixEngine {
     this.events.emit(this, nextPayload);
   }
 
-  /**
-   * Gets the grid width.
-   * Convenience getter for gridState.width.
-   */
-  get width() {
-    return this.gridState.width;
-  }
-
-  get height() {
-    return this.gridState.height;
-  }
-
   get palette() {
     return this._palette;
   }
 
-  get grid() {
-    return this.gridState.cells;
-  }
-
-  get mode() {
-    return this.modeManager.current;
-  }
-
-  get selection() {
-    return this.selectionManager.snapshot;
-  }
-
-  get prefix() {
-    return this.prefixManager.current;
-  }
-
   setPrefix(prefix: 'g' | 'r' | null) {
-    this.prefixManager.set(prefix);
+    this.prefix.set(prefix);
   }
 
   clearPrefix() {
-    this.prefixManager.clear();
+    this.prefix.clear();
   }
 
   get pendingOperator(): PendingOperator | null {
@@ -262,7 +219,7 @@ export default class VPixEngine {
   }
 
   addGuideX(x: number) {
-    if (x < 0 || x >= this.width) return;
+    if (x < 0 || x >= this.grid.width) return;
     if (this._guides.x.includes(x)) return;
     this._guides.x.push(x);
     this._guides.x.sort((a, b) => a - b);
@@ -270,7 +227,7 @@ export default class VPixEngine {
   }
 
   addGuideY(y: number) {
-    if (y < 0 || y >= this.height) return;
+    if (y < 0 || y >= this.grid.height) return;
     if (this._guides.y.includes(y)) return;
     this._guides.y.push(y);
     this._guides.y.sort((a, b) => a - b);
@@ -297,19 +254,19 @@ export default class VPixEngine {
   }
 
   countValue() {
-    return this.countBuffer.value();
+    return this.count.value();
   }
 
   hasCount() {
-    return this.countBuffer.hasValue;
+    return this.count.hasValue;
   }
 
   clearCount() {
-    this.countBuffer.clear();
+    this.count.clear();
   }
 
   pushCountDigit(d: string) {
-    const changed = this.countBuffer.pushDigit(d);
+    const changed = this.count.pushDigit(d);
     if (changed) this.emit();
   }
 
@@ -328,8 +285,8 @@ export default class VPixEngine {
   }
 
   pickColorAtCursor() {
-    const { x, y } = this.cursor;
-    const colorIndex = this.gridState.getCell(x, y);
+    const { x, y } = this.cursor.position;
+    const colorIndex = this.grid.getCell(x, y);
     if (colorIndex == null) {
       return 'No color at cursor position.';
     }
@@ -338,7 +295,7 @@ export default class VPixEngine {
   }
 
   setMode(mode: Mode) {
-    const changed = this.modeManager.set(mode);
+    const changed = this.mode.set(mode);
     if (changed) this.emit();
   }
 
@@ -352,22 +309,22 @@ export default class VPixEngine {
   }
 
   setSize(width: number, height: number) {
-    const changed = this.gridState.resize(width, height);
+    const changed = this.grid.resize(width, height);
     if (!changed) return;
-    this.cursorManager.clampToBounds(this.width, this.height);
+    this.cursor.clampToBounds(this.grid.width, this.grid.height);
     this.emit();
   }
 
   setWidth(width: number) {
-    this.setSize(width, this.height);
+    this.setSize(width, this.grid.height);
   }
 
   setHeight(height: number) {
-    this.setSize(this.width, height);
+    this.setSize(this.grid.width, height);
   }
 
   clearCanvas() {
-    const snapshot = this.gridState.cloneGrid();
+    const snapshot = this.grid.cloneGrid();
     const cells: Array<{ type: 'cell'; x: number; y: number; prev: number | null; next: null }> = [];
 
     // Collect only non-empty cells for history
@@ -380,7 +337,7 @@ export default class VPixEngine {
       }
     }
 
-    this.gridState.clear();
+    this.grid.clear();
 
     if (cells.length > 0) {
       this.history.record({ type: 'group', cells });
@@ -393,7 +350,7 @@ export default class VPixEngine {
     const steps = Math.max(1, count);
     let moved = false;
     for (let i = 0; i < steps; i++) {
-      const stepMoved = this.cursorManager.moveBy(dx, dy, this.width, this.height);
+      const stepMoved = this.cursor.moveBy(dx, dy, this.grid.width, this.grid.height);
       if (!stepMoved) continue;
       moved = true;
     }
@@ -403,26 +360,26 @@ export default class VPixEngine {
   }
 
   paint(colorIndex: number = this._currentColorIndex) {
-    const { x, y } = this.cursor;
-    const prev = this.gridState.getCell(x, y);
+    const { x, y } = this.cursor.position;
+    const prev = this.grid.getCell(x, y);
     if (prev === colorIndex) return;
     this.recordCell({ type: 'cell', x, y, prev, next: colorIndex });
-    this.gridState.writeCell(x, y, colorIndex);
+    this.grid.writeCell(x, y, colorIndex);
     this.emit();
   }
 
   erase() {
-    const { x, y } = this.cursor;
-    const prev = this.gridState.getCell(x, y);
+    const { x, y } = this.cursor.position;
+    const prev = this.grid.getCell(x, y);
     if (prev == null) return;
     this.recordCell({ type: 'cell', x, y, prev, next: null });
-    this.gridState.writeCell(x, y, null);
+    this.grid.writeCell(x, y, null);
     this.emit();
   }
 
   cut() {
-    const { x, y } = this.cursor;
-    const colorIndex = this.gridState.getCell(x, y);
+    const { x, y } = this.cursor.position;
+    const colorIndex = this.grid.getCell(x, y);
     if (colorIndex == null) return;
 
     // Put single cell into clipboard
@@ -433,8 +390,8 @@ export default class VPixEngine {
   }
 
   toggle() {
-    const { x, y } = this.cursor;
-    const curr = this.gridState.getCell(x, y);
+    const { x, y } = this.cursor.position;
+    const curr = this.grid.getCell(x, y);
     if (curr == null) this.paint();
     else this.erase();
   }
@@ -442,7 +399,7 @@ export default class VPixEngine {
   deleteAxisLines(count = 1) {
     const total = Math.max(1, count | 0);
     const axis = this._axis;
-    const maxLines = axis === 'horizontal' ? this.height : this.width;
+    const maxLines = axis === 'horizontal' ? this.grid.height : this.grid.width;
     if (maxLines <= 0) return;
     const startIndex = axis === 'horizontal' ? this.cursor.y : this.cursor.x;
     const ordered = Array.from({ length: total }, (_, i) => clamp(startIndex + i, 0, maxLines - 1))
@@ -451,11 +408,11 @@ export default class VPixEngine {
     if (!ordered.length) return;
 
     if (axis === 'horizontal') {
-      const rows = ordered.map((y) => Array.from({ length: this.width }, (_, x) => this.gridState.getCell(x, y)));
-      if (rows.length) this.clipboard.store({ w: this.width, h: rows.length, cells: rows });
+      const rows = ordered.map((y) => Array.from({ length: this.grid.width }, (_, x) => this.grid.getCell(x, y)));
+      if (rows.length) this.clipboard.store({ w: this.grid.width, h: rows.length, cells: rows });
     } else {
-      const cols = Array.from({ length: this.height }, (_, y) =>
-        ordered.map((x) => this.gridState.getCell(x, y))
+      const cols = Array.from({ length: this.grid.height }, (_, y) =>
+        ordered.map((x) => this.grid.getCell(x, y))
       );
       if (cols.length) this.clipboard.store({ w: ordered.length, h: cols.length, cells: cols });
     }
@@ -464,22 +421,22 @@ export default class VPixEngine {
     let changed = false;
     if (axis === 'horizontal') {
       for (const y of ordered) {
-        for (let x = 0; x < this.width; x += 1) {
-          const prev = this.gridState.getCell(x, y);
+        for (let x = 0; x < this.grid.width; x += 1) {
+          const prev = this.grid.getCell(x, y);
           if (prev == null) continue;
           changed = true;
           this.recordCell({ type: 'cell', x, y, prev, next: null });
-          this.gridState.writeCell(x, y, null);
+          this.grid.writeCell(x, y, null);
         }
       }
     } else {
       for (const x of ordered) {
-        for (let y = 0; y < this.height; y += 1) {
-          const prev = this.gridState.getCell(x, y);
+        for (let y = 0; y < this.grid.height; y += 1) {
+          const prev = this.grid.getCell(x, y);
           if (prev == null) continue;
           changed = true;
           this.recordCell({ type: 'cell', x, y, prev, next: null });
-          this.gridState.writeCell(x, y, null);
+          this.grid.writeCell(x, y, null);
         }
       }
     }
@@ -487,10 +444,10 @@ export default class VPixEngine {
 
     if (axis === 'horizontal') {
       const nextY = ordered[0] ?? this.cursor.y;
-      this.cursor = { x: 0, y: nextY };
+      this.cursor.setPosition(0, nextY);
     } else {
       const nextX = ordered[0] ?? this.cursor.x;
-      this.cursor = { x: nextX, y: 0 };
+      this.cursor.setPosition(nextX, 0);
     }
 
     if (changed) this.recordLastAction((eng) => eng.deleteAxisLines(ordered.length));
@@ -498,11 +455,11 @@ export default class VPixEngine {
   }
 
   beginGroup(label = '') {
-    this.history.beginGroup(label, this.cursor);
+    this.history.beginGroup(label, this.cursor.position);
   }
 
   endGroup() {
-    const grp = this.history.endGroup(this.cursor);
+    const grp = this.history.endGroup(this.cursor.position);
     if (!grp) return;
     this.emit();
   }
@@ -511,7 +468,7 @@ export default class VPixEngine {
     const entry = this.history.undo();
     if (!entry) return;
     if (entry.type === 'cell') {
-      this.gridState.writeCell(entry.x, entry.y, entry.prev ?? null);
+      this.grid.writeCell(entry.x, entry.y, entry.prev ?? null);
       this.emit();
       return;
     }
@@ -522,7 +479,7 @@ export default class VPixEngine {
     const entry = this.history.redoEntry();
     if (!entry) return;
     if (entry.type === 'cell') {
-      this.gridState.writeCell(entry.x, entry.y, entry.next ?? null);
+      this.grid.writeCell(entry.x, entry.y, entry.next ?? null);
       this.emit();
       return;
     }
@@ -535,11 +492,11 @@ export default class VPixEngine {
 
   toSnapshot(): EngineSnapshot {
     return {
-      width: this.width,
-      height: this.height,
+      width: this.grid.width,
+      height: this.grid.height,
       palette: this._palette.slice(),
       currentColorIndex: this._currentColorIndex,
-      grid: this.gridState.cloneGrid(),
+      grid: this.grid.cloneGrid(),
       axis: this._axis,
     };
   }
@@ -548,12 +505,12 @@ export default class VPixEngine {
     this._palette = snapshot.palette.slice();
     this._currentColorIndex = clamp(snapshot.currentColorIndex ?? 0, 0, Math.max(0, this._palette.length - 1));
     this.lastColorIndex = clamp(this.lastColorIndex, 0, Math.max(0, this._palette.length - 1));
-    this.gridState.load(snapshot);
+    this.grid.load(snapshot);
     this._axis = snapshot.axis ?? 'horizontal';
-    this.cursorManager.clampToBounds(this.width, this.height);
+    this.cursor.clampToBounds(this.grid.width, this.grid.height);
     this.history = new HistoryManager();
     this.clipboard.clear();
-    this.selectionManager.exit();
+    this.selection.exit();
     this.emit();
   }
 
@@ -569,19 +526,19 @@ export default class VPixEngine {
   }
 
   enterVisual() {
-    this.selectionManager.enter({ x: this.cursor.x, y: this.cursor.y });
+    this.selection.enter({ x: this.cursor.x, y: this.cursor.y });
     this.setMode(MODES.VISUAL);
     this.emit();
   }
 
   exitVisual() {
-    this.selectionManager.exit();
+    this.selection.exit();
     this.setMode(MODES.NORMAL);
     this.emit();
   }
 
   updateSelectionRect() {
-    this.selectionManager.update({ x: this.cursor.x, y: this.cursor.y });
+    this.selection.update({ x: this.cursor.x, y: this.cursor.y });
     this.emit();
   }
 
@@ -591,7 +548,7 @@ export default class VPixEngine {
     const w = rect.x2 - rect.x1 + 1;
     const h = rect.y2 - rect.y1 + 1;
     const cells = Array.from({ length: h }, (_, yy) =>
-      Array.from({ length: w }, (_, xx) => this.gridState.getCell(rect.x1 + xx, rect.y1 + yy))
+      Array.from({ length: w }, (_, xx) => this.grid.getCell(rect.x1 + xx, rect.y1 + yy))
     );
     this.clipboard.store({ w, h, cells });
   }
@@ -602,13 +559,13 @@ export default class VPixEngine {
     this.yankSelection();
     for (let y = rect.y1; y <= rect.y2; y++) {
       for (let x = rect.x1; x <= rect.x2; x++) {
-        const prev = this.gridState.getCell(x, y);
+        const prev = this.grid.getCell(x, y);
         if (prev == null) continue;
         this.recordCell({ type: 'cell', x, y, prev, next: null });
-        this.gridState.writeCell(x, y, null);
+        this.grid.writeCell(x, y, null);
       }
     }
-    this.cursorManager.setPosition(this.selection.rect.x1, this.selection.rect.y1);
+    this.cursor.setPosition(this.selection.rect.x1, this.selection.rect.y1);
   }
 
   pasteAtCursor() {
@@ -618,11 +575,11 @@ export default class VPixEngine {
       for (let xx = 0; xx < data.w; xx++) {
         const x = this.cursor.x + xx;
         const y = this.cursor.y + yy;
-        if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
+        if (x < 0 || y < 0 || x >= this.grid.width || y >= this.grid.height) continue;
         const next = data.cells[yy][xx];
-        const prev = this.gridState.getCell(x, y);
+        const prev = this.grid.getCell(x, y);
         this.recordCell({ type: 'cell', x, y, prev, next });
-        this.gridState.writeCell(x, y, next ?? null);
+        this.grid.writeCell(x, y, next ?? null);
       }
     }
   }
@@ -635,12 +592,12 @@ export default class VPixEngine {
       for (let xx = 0; xx < data.w; xx++) {
         const x = this.cursor.x + xx;
         const y = this.cursor.y + yy;
-        if (x < 0 || y < 0 || x >= this.width || y >= this.height) continue;
+        if (x < 0 || y < 0 || x >= this.grid.width || y >= this.grid.height) continue;
         const next = data.cells[yy][xx];
         if (next == null) continue;
-        const prev = this.gridState.getCell(x, y);
+        const prev = this.grid.getCell(x, y);
         this.recordCell({ type: 'cell', x, y, prev, next });
-        this.gridState.writeCell(x, y, next);
+        this.grid.writeCell(x, y, next);
       }
     }
     this.endGroup();
@@ -664,14 +621,14 @@ export default class VPixEngine {
     const height = rect.y2 - rect.y1 + 1;
     if (width <= 0 || height <= 0) return false;
     const source = Array.from({ length: height }, (_, row) =>
-      Array.from({ length: width }, (_, col) => this.gridState.getCell(rect.x1 + col, rect.y1 + row)),
+      Array.from({ length: width }, (_, col) => this.grid.getCell(rect.x1 + col, rect.y1 + row)),
     );
     const rotated = direction === 'cw' ? rotateMatrixCW(source) : rotateMatrixCCW(source);
     const newHeight = rotated.length;
     const newWidth = rotated.reduce((max, row) => Math.max(max, row.length), 0);
     if (newHeight === 0 || newWidth === 0) return false;
-    let baseX = clamp(rect.x1, 0, Math.max(0, this.width - newWidth));
-    let baseY = clamp(rect.y1, 0, Math.max(0, this.height - newHeight));
+    let baseX = clamp(rect.x1, 0, Math.max(0, this.grid.width - newWidth));
+    let baseY = clamp(rect.y1, 0, Math.max(0, this.grid.height - newHeight));
     const newRect = {
       x1: baseX,
       y1: baseY,
@@ -695,18 +652,18 @@ export default class VPixEngine {
           const ry = y - newRect.y1;
           next = rotated[ry]?.[rx] ?? null;
         }
-        const prev = this.gridState.getCell(x, y);
+        const prev = this.grid.getCell(x, y);
         if (prev === next) continue;
         changed = true;
         this.recordCell({ type: 'cell', x, y, prev, next });
-        this.gridState.writeCell(x, y, next);
+        this.grid.writeCell(x, y, next);
       }
     }
     this.endGroup();
 
-    this.selectionManager.enter({ x: newRect.x1, y: newRect.y1 });
-    this.selectionManager.update({ x: newRect.x2, y: newRect.y2 });
-    this.cursor = { x: newRect.x1, y: newRect.y1 };
+    this.selection.enter({ x: newRect.x1, y: newRect.y1 });
+    this.selection.update({ x: newRect.x2, y: newRect.y2 });
+    this.cursor.setPosition(newRect.x1, newRect.y1);
 
     if (changed) {
       if (direction === 'cw') this.recordLastAction((eng) => eng.rotateSelectionCW());
@@ -733,7 +690,7 @@ export default class VPixEngine {
     const w = rect.x2 - rect.x1 + 1;
     const h = rect.y2 - rect.y1 + 1;
     const cells = Array.from({ length: h }, (_, yy) =>
-      Array.from({ length: w }, (_, xx) => this.gridState.getCell(rect.x1 + xx, rect.y1 + yy))
+      Array.from({ length: w }, (_, xx) => this.grid.getCell(rect.x1 + xx, rect.y1 + yy))
     );
     this.beginGroup('moveSelection');
     for (let y = rect.y1; y <= rect.y2; y++) {
@@ -751,49 +708,49 @@ export default class VPixEngine {
   fillSelection(colorIndex: number = this._currentColorIndex) {
     const rect = this.selection.rect;
     if (!rect) return;
-    const operations = fillRectTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    const operations = fillRectTool(rect, colorIndex, (x, y) => this.grid.getCell(x, y));
     this.applyToolOperations('fill', operations);
   }
 
   strokeRectSelection(colorIndex: number = this._currentColorIndex) {
     const rect = this.selection.rect;
     if (!rect) return;
-    const operations = strokeRectTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    const operations = strokeRectTool(rect, colorIndex, (x, y) => this.grid.getCell(x, y));
     this.applyToolOperations('rect', operations);
   }
 
   strokeCircleSelection(colorIndex: number = this._currentColorIndex) {
     const rect = this.selection.rect;
     if (!rect) return;
-    const operations = strokeEllipseTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    const operations = strokeEllipseTool(rect, colorIndex, (x, y) => this.grid.getCell(x, y));
     this.applyToolOperations('ellipse-stroke', operations);
   }
 
   fillCircleSelection(colorIndex: number = this._currentColorIndex) {
     const rect = this.selection.rect;
     if (!rect) return;
-    const operations = fillEllipseTool(rect, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    const operations = fillEllipseTool(rect, colorIndex, (x, y) => this.grid.getCell(x, y));
     this.applyToolOperations('ellipse-fill', operations);
   }
 
   drawLine(a: Point | null, b: Point | null, colorIndex: number = this._currentColorIndex) {
     if (!a || !b) return;
-    const operations = drawLineTool(a, b, colorIndex, (x, y) => this.gridState.getCell(x, y));
+    const operations = drawLineTool(a, b, colorIndex, (x, y) => this.grid.getCell(x, y));
     this.applyToolOperations('line', operations);
   }
 
   floodFill(x: number, y: number, colorIndex: number = this._currentColorIndex) {
-    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
+    if (x < 0 || y < 0 || x >= this.grid.width || y >= this.grid.height) return;
     const operations = floodFillTool(
       { x, y },
       colorIndex,
-      (cx, cy) => this.gridState.getCell(cx, cy),
-      { width: this.width, height: this.height, bounds: this.selection.rect ?? null },
+      (cx, cy) => this.grid.getCell(cx, cy),
+      { width: this.grid.width, height: this.grid.height, bounds: this.selection.rect ?? null },
     );
     this.applyToolOperations('flood', operations);
   }
 
-  resolveMotion(motion: MotionKind, count = 1, from: Point = this.cursor): MotionResolution {
+  resolveMotion(motion: MotionKind, count = 1, from: Point = this.cursor.position): MotionResolution {
     const axis = this._axis;
     const steps = Math.max(1, count | 0);
     const axisLength = this.getAxisLength(axis);
@@ -803,7 +760,7 @@ export default class VPixEngine {
     let exclusive = false;
 
     const toPoint = (axisPos: number): Point =>
-      axis === 'horizontal' ? { x: axisPos, y: clamp(fixed, 0, this.height - 1) } : { x: clamp(fixed, 0, this.width - 1), y: axisPos };
+      axis === 'horizontal' ? { x: axisPos, y: clamp(fixed, 0, this.grid.height - 1) } : { x: clamp(fixed, 0, this.grid.width - 1), y: axisPos };
 
     const clampLine = (value: number) => clamp(value, 0, axisLength - 1);
 
@@ -895,7 +852,7 @@ export default class VPixEngine {
 
   applyMotion(motion: MotionKind, count = 1) {
     const result = this.resolveMotion(motion, count);
-    this.cursorManager.setPosition(result.target.x, result.target.y);
+    this.cursor.setPosition(result.target.x, result.target.y);
     if (result.moved) {
       this.emit();
     }
@@ -948,11 +905,11 @@ export default class VPixEngine {
     this.history.beginGroup(label);
     let changed = false;
     this.forEachSegmentCell(segment, (x, y) => {
-      const prev = this.gridState.getCell(x, y);
+      const prev = this.grid.getCell(x, y);
       if (prev === value) return;
       changed = true;
       this.recordCell({ type: 'cell', x, y, prev, next: value });
-      this.gridState.writeCell(x, y, value);
+      this.grid.writeCell(x, y, value);
     });
     const grp = this.history.endGroup();
     if (grp) this.emit();
@@ -972,16 +929,16 @@ export default class VPixEngine {
     const len = end - start + 1;
     if (len <= 0) return;
     if (axis === 'horizontal') {
-      const cells = [Array.from({ length: len }, (_, i) => this.gridState.getCell(start + i, fixed))];
+      const cells = [Array.from({ length: len }, (_, i) => this.grid.getCell(start + i, fixed))];
       this.clipboard.store({ w: len, h: 1, cells });
     } else {
-      const cells = Array.from({ length: len }, (_, i) => [this.gridState.getCell(fixed, start + i)]);
+      const cells = Array.from({ length: len }, (_, i) => [this.grid.getCell(fixed, start + i)]);
       this.clipboard.store({ w: 1, h: len, cells });
     }
   }
 
   private getAxisLength(axis: Axis) {
-    return axis === 'horizontal' ? this.width : this.height;
+    return axis === 'horizontal' ? this.grid.width : this.grid.height;
   }
 
   private getAxisPosition(point: Point, axis: Axis) {
@@ -999,9 +956,9 @@ export default class VPixEngine {
 
   private getAxisCell(axis: Axis, fixed: number, pos: number) {
     if (axis === 'horizontal') {
-      return this.gridState.getCell(pos, clamp(fixed, 0, this.height - 1));
+      return this.grid.getCell(pos, clamp(fixed, 0, this.grid.height - 1));
     }
-    return this.gridState.getCell(clamp(fixed, 0, this.width - 1), pos);
+    return this.grid.getCell(clamp(fixed, 0, this.grid.width - 1), pos);
   }
 
   private findRunEnd(axis: Axis, fixed: number, pos: number) {
@@ -1053,16 +1010,16 @@ export default class VPixEngine {
   private forEachSegmentCell(segment: AxisSegment, fn: (x: number, y: number) => void) {
     const { axis, start, end, fixed } = segment;
     if (axis === 'horizontal') {
-      const y = clamp(fixed, 0, this.height - 1);
+      const y = clamp(fixed, 0, this.grid.height - 1);
       for (let x = start; x <= end; x += 1) {
-        const cx = clamp(x, 0, this.width - 1);
+        const cx = clamp(x, 0, this.grid.width - 1);
         fn(cx, y);
       }
       return;
     }
-    const x = clamp(fixed, 0, this.width - 1);
+    const x = clamp(fixed, 0, this.grid.width - 1);
     for (let y = start; y <= end; y += 1) {
-      const cy = clamp(y, 0, this.height - 1);
+      const cy = clamp(y, 0, this.grid.height - 1);
       fn(x, cy);
     }
   }
@@ -1077,11 +1034,11 @@ export default class VPixEngine {
   }
 
   private paintAt(x: number, y: number, colorIndex: number | null) {
-    if (x < 0 || y < 0 || x >= this.width || y >= this.height) return;
-    const prev = this.gridState.getCell(x, y);
+    if (x < 0 || y < 0 || x >= this.grid.width || y >= this.grid.height) return;
+    const prev = this.grid.getCell(x, y);
     if (prev === colorIndex) return;
     this.recordCell({ type: 'cell', x, y, prev, next: colorIndex });
-    this.gridState.writeCell(x, y, colorIndex);
+    this.grid.writeCell(x, y, colorIndex);
   }
 
   private recordCell(entry: HistoryCell) {
@@ -1091,7 +1048,7 @@ export default class VPixEngine {
   private applyGroup(group: HistoryGroup, key: 'prev' | 'next') {
     for (let i = 0; i < group.items.length; i++) {
       const it = group.items[i];
-      this.gridState.writeCell(it.x, it.y, (it as any)[key] ?? null);
+      this.grid.writeCell(it.x, it.y, (it as any)[key] ?? null);
     }
     this.emit();
   }

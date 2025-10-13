@@ -36,9 +36,9 @@ export default function MiniMap({
     if (!ctx) return;
     // Fit entire grid within canvas size
     const maxSize = 200;
-    const cell = Math.max(1, Math.floor(Math.min(maxSize / engine.width, maxSize / engine.height)));
-    const w = engine.width * cell;
-    const h = engine.height * cell;
+    const cell = Math.max(1, Math.floor(Math.min(maxSize / engine.grid.width, maxSize / engine.grid.height)));
+    const w = engine.grid.width * cell;
+    const h = engine.grid.height * cell;
     if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
 
     const drawCell = (x, y) => {
@@ -55,17 +55,17 @@ export default function MiniMap({
     // Always full redraw
     ctx.fillStyle = canvasBackground;
     ctx.fillRect(0, 0, w, h);
-    for (let y = 0; y < engine.height; y++) {
-      for (let x = 0; x < engine.width; x++) drawCell(x, y);
+    for (let y = 0; y < engine.grid.height; y++) {
+      for (let x = 0; x < engine.grid.width; x++) drawCell(x, y);
     }
     // viewport rectangle
     const cellPx = Math.max(1, cellSize || Math.round(16 * (zoom || 1)));
     const visWcells = Math.max(1, Math.floor(viewW / cellPx));
     const visHcells = Math.max(1, Math.floor(viewH / cellPx));
-    const rx = Math.max(0, Math.min(engine.width, (pan?.x || 0))) * cell;
-    const ry = Math.max(0, Math.min(engine.height, (pan?.y || 0))) * cell;
-    const rw = Math.min(engine.width, visWcells) * cell;
-    const rh = Math.min(engine.height, visHcells) * cell;
+    const rx = Math.max(0, Math.min(engine.grid.width, (pan?.x || 0))) * cell;
+    const ry = Math.max(0, Math.min(engine.grid.height, (pan?.y || 0))) * cell;
+    const rw = Math.min(engine.grid.width, visWcells) * cell;
+    const rh = Math.min(engine.grid.height, visHcells) * cell;
     ctx.strokeStyle = accent;
     ctx.lineWidth = 2;
     ctx.strokeRect(rx + 0.5, ry + 0.5, rw, rh);

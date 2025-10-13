@@ -9,14 +9,14 @@ export function setEngineFromText(engine: VPixEngine, text: string) {
   const { grid, cursor, meta } = TestableEngine.parseState(text);
   if (meta.axis) engine.setAxis(meta.axis);
   if (typeof meta.colorIndex === 'number') engine.setColorIndex(meta.colorIndex);
-  const h = Math.min(engine.height, grid.length);
-  const w = Math.min(engine.width, grid[0]?.length ?? 0);
+  const h = Math.min(engine.grid.height, grid.length);
+  const w = Math.min(engine.grid.width, grid[0]?.length ?? 0);
   for (let y = 0; y < h; y += 1) {
     for (let x = 0; x < w; x += 1) {
-      (engine as any).gridState.writeCell(x, y, grid[y][x]);
+      (engine as any).grid.writeCell(x, y, grid[y][x]);
     }
   }
-  if (cursor) engine.cursor = cursor;
+  if (cursor) engine.cursor.setPosition(cursor.x, cursor.y);
 }
 
 export function expectEngineToMatchText(
@@ -25,7 +25,7 @@ export function expectEngineToMatchText(
   options?: { checkCursor?: boolean },
 ) {
   const actualState = engine instanceof TestableEngine ? engine.getStateAsString() : TestableEngine.serializeState(engine);
-  const expectedEngine = new TestableEngine({ width: engine.width, height: engine.height, palette: engine.palette });
+  const expectedEngine = new TestableEngine({ width: engine.grid.width, height: engine.grid.height, palette: engine.palette });
   expectedEngine.setStateFromString(text);
   const expectedState = expectedEngine.getStateAsString();
 

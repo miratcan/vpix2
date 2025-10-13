@@ -61,7 +61,7 @@ describe('App keyboard flows', () => {
        .  .  .  .  .  .
     `);
     await userEvent.keyboard('w');
-    expect(engine.cursor).toEqual({ x: 2, y: 0 });
+    expect(engine.cursor.position).toEqual({ x: 2, y: 0 });
     expectEngineToMatchText(engine as any, `
       Axis: horizontal
 
@@ -70,7 +70,7 @@ describe('App keyboard flows', () => {
        .  .  .  .  .  .
     `, { checkCursor: false });
     await userEvent.keyboard('w');
-    expect(engine.cursor).toEqual({ x: 4, y: 0 });
+    expect(engine.cursor.position).toEqual({ x: 4, y: 0 });
     expectEngineToMatchText(engine as any, `
       Axis: horizontal
 
@@ -79,7 +79,7 @@ describe('App keyboard flows', () => {
        .  .  .  .  .  .
     `, { checkCursor: false });
     await userEvent.keyboard('b');
-    expect(engine.cursor).toEqual({ x: 2, y: 0 });
+    expect(engine.cursor.position).toEqual({ x: 2, y: 0 });
     expectEngineToMatchText(engine as any, `
       Axis: horizontal
 
@@ -88,7 +88,7 @@ describe('App keyboard flows', () => {
        .  .  .  .  .  .
     `, { checkCursor: false });
     await userEvent.keyboard('e');
-    expect(engine.cursor).toEqual({ x: 3, y: 0 });
+    expect(engine.cursor.position).toEqual({ x: 3, y: 0 });
     expectEngineToMatchText(engine as any, `
       Axis: horizontal
 
@@ -97,9 +97,9 @@ describe('App keyboard flows', () => {
        .  .  .  .  .  .
     `, { checkCursor: false });
     await userEvent.keyboard('G');
-    expect(engine.cursor).toEqual({ x: 3, y: 0 });
+    expect(engine.cursor.position).toEqual({ x: 3, y: 0 });
     await userEvent.keyboard('ge');
-    expect(engine.cursor).toEqual({ x: 1, y: 0 });
+    expect(engine.cursor.position).toEqual({ x: 1, y: 0 });
     expectEngineToMatchText(engine as any, `
       Axis: horizontal
 
@@ -135,7 +135,7 @@ describe('App keyboard flows', () => {
       C.  .  2  2  .  .  .
     `);
     await userEvent.keyboard('cw');
-    expect(engine.mode).toBe('normal');
+    expect(engine.mode.current).toBe('normal');
   });
 
   it('dot repeats deletions', async () => {
@@ -152,6 +152,6 @@ describe('App keyboard flows', () => {
     await userEvent.keyboard('dw');
     await userEvent.keyboard('w');
     await userEvent.keyboard('.');
-    expect(engine.grid[0].slice(0, 6)).toEqual([null, null, 2, 2, null, null]);
+    expect(engine.grid.cells[0].slice(0, 6)).toEqual([null, null, 2, 2, null, null]);
   });
 });
