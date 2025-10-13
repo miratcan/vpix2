@@ -221,7 +221,7 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal', keyma
         <tbody>
           {categories.map((cat) => (
             <>
-              <tr key={cat.category} className="key-hint-category-row">
+              <tr key={cat.category} className="info-table-category">
                 <td colSpan={2}>{cat.category}</td>
               </tr>
               {cat.bindings.map((binding) => (
