@@ -239,5 +239,5 @@ export function useEngine({ factory, getViewportCells }: EngineHookConfig) {
     return unsub;
   }, [engine]);
 
-  return { engine, frame, feedLines, handleKeyDown, currentPrefix, currentCount } as const;
+  return { engine, frame, feedLines, handleKeyDown, currentPrefix, currentCount, keymap } as const;
 }

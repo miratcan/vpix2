@@ -34,7 +34,7 @@ export default function App() {
   // Viewport cells calculation (need to define early, but will be properly initialized later)
   const viewportCellsRef = useRef<{ width: number; height: number }>({ width: 10, height: 10 });
 
-  const { engine, frame, feedLines, handleKeyDown: engineHandleKeyDown, currentPrefix, currentCount } = useEngine({
+  const { engine, frame, feedLines, handleKeyDown: engineHandleKeyDown, currentPrefix, currentCount, keymap } = useEngine({
     factory: engineFactory,
     getViewportCells: () => viewportCellsRef.current,
   });
@@ -252,7 +252,7 @@ export default function App() {
         onKeyDown={handleKeyDown}
       >
         <div className="left-panel">
-          <KeyHint prefix={currentPrefix} count={currentCount} visible={true} mode={engine.mode} />
+          <KeyHint prefix={currentPrefix} count={currentCount} visible={true} mode={engine.mode} keymap={keymap} />
         </div>
         <div className="main-area">
           <Palette palette={engine.palette} currentIndex={engine.currentColorIndex} />
