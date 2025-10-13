@@ -9,40 +9,40 @@ export default function StatusBar({ engine, zoom, pan }: Props) {
       <table className="info-table" role="table">
         <tbody>
           <tr>
-            <th scope="row" className="info-table-key">MODE</th>
-            <td className="info-table-value">{engine.mode}</td>
+            <th scope="row" className="key">MODE</th>
+            <td className="value">{engine.mode}</td>
           </tr>
           <tr>
-            <th scope="row" className="info-table-key">AXIS</th>
-            <td className="info-table-value">
+            <th scope="row" className="key">AXIS</th>
+            <td className="value">
               <span className="axis-symbol" aria-label="axis">
                 {engine.axis === 'horizontal' ? '-' : '|'}
               </span>
             </td>
           </tr>
           <tr>
-            <th scope="row" className="info-table-key">CURSOR</th>
-            <td className="info-table-value">({engine.cursor.x},{engine.cursor.y})</td>
+            <th scope="row" className="key">CURSOR</th>
+            <td className="value">({engine.cursor.x},{engine.cursor.y})</td>
           </tr>
           <tr>
-            <th scope="row" className="info-table-key">COLOR</th>
-            <td className="info-table-value"><span className="color-chip" style={{ background: engine.color }} /></td>
+            <th scope="row" className="key">COLOR</th>
+            <td className="value"><span className="color-chip" style={{ background: engine.color }} /></td>
           </tr>
           <tr>
-            <th scope="row" className="info-table-key">SIZE</th>
-            <td className="info-table-value">{engine.width}x{engine.height}</td>
+            <th scope="row" className="key">SIZE</th>
+            <td className="value">{engine.width}x{engine.height}</td>
           </tr>
           <tr>
-            <th scope="row" className="info-table-key">ZOOM</th>
-            <td className="info-table-value">{Math.round((zoom || 1) * 100)}%</td>
+            <th scope="row" className="key">ZOOM</th>
+            <td className="value">{Math.round((zoom || 1) * 100)}%</td>
           </tr>
           <tr>
-            <th scope="row" className="info-table-key">PAN</th>
-            <td className="info-table-value">({pan?.x ?? 0},{pan?.y ?? 0})</td>
+            <th scope="row" className="key">PAN</th>
+            <td className="value">({pan?.x ?? 0},{pan?.y ?? 0})</td>
           </tr>
           <tr>
-            <th scope="row" className="info-table-key">VERSION</th>
-            <td className="info-table-value">{__APP_VERSION__}</td>
+            <th scope="row" className="key">VERSION</th>
+            <td className="value">{__APP_VERSION__}</td>
           </tr>
         </tbody>
       </table>

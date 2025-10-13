@@ -56,13 +56,13 @@
   vertical-align: middle;
 }
 
-.info-table-key {
+.info-table .key {
   text-align: right;
   color: var(--color-accent);
   white-space: nowrap;
 }
 
-.info-table-value {
+.info-table .value {
   text-align: left;
   color: var(--color-text);
 }

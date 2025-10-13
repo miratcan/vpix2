@@ -187,8 +187,8 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal', keyma
             <tbody>
               {prefixBindings.map((binding) => (
                 <tr key={binding.key}>
-                  <td className="info-table-key">{binding.key}</td>
-                  <td className="info-table-value">{binding.description}</td>
+                  <td className="key">{binding.key}</td>
+                  <td className="value">{binding.description}</td>
                 </tr>
               ))}
             </tbody>
@@ -221,13 +221,13 @@ export default function KeyHint({ prefix, count, visible, mode = 'normal', keyma
         <tbody>
           {categories.map((cat) => (
             <>
-              <tr key={cat.category} className="info-table-category">
+              <tr key={cat.category} className="category">
                 <td colSpan={2}>{cat.category}</td>
               </tr>
               {cat.bindings.map((binding) => (
                 <tr key={`${cat.category}-${binding.key}`}>
-                  <td className="info-table-key">{binding.key}</td>
-                  <td className="info-table-value">{binding.description}</td>
+                  <td className="key">{binding.key}</td>
+                  <td className="value">{binding.description}</td>
                 </tr>
               ))}
             </>

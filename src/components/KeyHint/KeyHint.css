@@ -19,13 +19,13 @@
   z-index: 1;
 }
 
-.info-table tbody tr.info-table-category td {
+.info-table tbody tr.category td {
   font-weight: 700;
   text-transform: uppercase;
   padding: var(--spacing-xs) var(--spacing-s);
 }
 
-.info-table tbody td.info-table-key {
+.info-table tbody td.key {
   width: 1%;
 }
 
@@ -33,6 +33,6 @@
   background: var(--color-background-light);
 }
 
-.info-table tbody tr.info-table-category:hover td {
+.info-table tbody tr.category:hover td {
   background: var(--color-background);
 }
