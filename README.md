@@ -13,6 +13,7 @@ If you know Vim, you know VPix:
 - `Space` to paint, `x` to erase
 - `v` for visual selection, `d` to delete, `y` to yank, `p` to paste
 - `u` to undo, `Ctrl+r` to redo
+- `Tab` to switch cursor axis (horizontal/vertical)
 - `:` to open the command terminal
 
 ## Drawing tools
